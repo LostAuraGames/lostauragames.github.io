@@ -68,6 +68,11 @@ input.name{font:bold 20px "Courier New",monospace;background:#050806;color:#fff;
 #wprev{position:absolute;left:0;top:50px;width:360px;height:150px;image-rendering:pixelated;border-top:3px solid #000;border-bottom:3px solid #000}
 .tabs{position:absolute;left:4px;right:4px;top:206px;display:flex;flex-wrap:wrap;justify-content:center}
 .tabs .btn{font-size:11px;padding:5px 6px;margin:2px}
+/* i18n: keep long translations on one line / inside their boxes */
+.tabs{flex-wrap:nowrap}.tabs .btn{white-space:nowrap}html:not([lang=en]) .tabs .btn{font-size:10px;padding:5px 4px;margin:2px 1px}
+.topbar .btn{white-space:nowrap}html:not([lang=en]) .topbar .btn.sm{font-size:11px;padding:5px 6px}
+.item .nm{overflow-wrap:anywhere}html:not([lang=en]) .item .nm{font-size:8px;line-height:9px;height:27px;flex-shrink:0}html:not([lang=en]) .item canvas{width:59px;height:44px}html:not([lang=en]) .item .pr{font-size:9px;white-space:nowrap;flex-shrink:0}
+#langlist .btn{min-width:200px;margin:3px}
 #wgrid{position:absolute;left:6px;right:6px;top:262px;bottom:58px;overflow-y:auto;overflow-x:hidden;touch-action:pan-y;display:flex;flex-wrap:wrap;align-content:flex-start;justify-content:center;gap:6px;padding:4px 0 10px}
 .item{width:78px;height:96px;border:3px solid var(--bone2);background:#0a100c;box-shadow:3px 3px 0 #000;text-align:center;font-size:9px;cursor:pointer;position:relative;display:flex;flex-direction:column;align-items:center;padding:2px 1px;touch-action:pan-y}
 .item canvas{width:64px;height:48px;display:block}
@@ -121,6 +126,236 @@ input.name{font:bold 20px "Courier New",monospace;background:#050806;color:#fff;
  <div id="toast"></div>
 </div>
 <script>
+// ================= I18N (shared by Lost Aura Games titles) =================
+// One language setting for the whole site and every game: localStorage "lag.lang".
+// Strings are looked up by their English text: t('PLAY') -> 'JUGAR'. {name} placeholders are filled from vars.
+// Missing translations fall back to English and are logged once (console.info + I18N_MISS) so tests can catch them.
+const LAG_LANGS=[['en','English'],['es','Español'],['fr','Français'],['de','Deutsch'],['pt','Português'],['it','Italiano']];
+const LAG_LANG_KEY='lag.lang';
+const LAG_LANG_CODES=LAG_LANGS.map(l=>l[0]);
+function lagDetectLang(){let v=null;try{v=localStorage.getItem(LAG_LANG_KEY);}catch(e){}if(v&&LAG_LANG_CODES.includes(v))return v;
+ const navs=(navigator.languages&&navigator.languages.length?navigator.languages:[navigator.language||'en']);
+ for(const n of navs){const c=String(n||'').toLowerCase().slice(0,2);if(LAG_LANG_CODES.includes(c))return c;}return'en';}
+let LANG=lagDetectLang();
+const I18N={};for(const c of LAG_LANG_CODES)I18N[c]={};
+const I18N_MISS=new Set();
+// rows: [english, es, fr, de, pt, it]
+function i18nRows(rows){for(const r of rows){for(let i=1;i<LAG_LANG_CODES.length;i++){if(r[i]!=null)I18N[LAG_LANG_CODES[i]][r[0]]=r[i];}}}
+function t(key,vars){let s=key;if(LANG!=='en'){const d=I18N[LANG];if(d&&Object.prototype.hasOwnProperty.call(d,key))s=d[key];else if(!I18N_MISS.has(LANG+'|'+key)){I18N_MISS.add(LANG+'|'+key);try{console.info('[i18n] missing '+LANG+': '+key);}catch(e){}}}
+ if(vars)s=String(s).replace(/\{(\w+)\}/g,(m,k)=>vars[k]!=null?vars[k]:m);return s;}
+const I18N_HOOKS=[];
+function langName(c){const l=LAG_LANGS.find(x=>x[0]===c);return l?l[1]:c;}
+function setLang(c,fromStorage){if(!LAG_LANG_CODES.includes(c))return;const changed=c!==LANG;LANG=c;try{document.documentElement.lang=c;}catch(e){}
+ if(!fromStorage){try{localStorage.setItem(LAG_LANG_KEY,c);}catch(e){}}
+ if(changed)for(const f of I18N_HOOKS){try{f(c);}catch(e){console.error(e);}}}
+addEventListener('storage',e=>{if(e.key===LAG_LANG_KEY&&e.newValue&&e.newValue!==LANG)setLang(e.newValue,true);});
+try{document.documentElement.lang=LANG;}catch(e){}
+// Accented capitals for 5x7 bitmap fonts. Accented glyphs have 9 rows: row 0 is drawn one pixel row ABOVE the
+// normal cell, rows 1..7 are the normal 7 rows, row 8 is one row below (for the cedilla).
+function i18nFontExt(F){const sq=(g,drop)=>g.filter((_,i)=>i!==drop);
+ const AC={acute:[2,4],grave:[8,4],circ:[4,10],tilde:[13,22],uml:[10,0],ring:[4,10]};
+ const mk=(base,acc,drop)=>{const g=F[base];if(!g)return;const s=sq(g,drop==null?2:drop);return[AC[acc][0],AC[acc][1],...s,0];};
+ const map={'Á':['A','acute'],'À':['A','grave'],'Â':['A','circ'],'Ã':['A','tilde'],'Ä':['A','uml'],'É':['E','acute'],'È':['E','grave'],'Ê':['E','circ'],'Ë':['E','uml'],
+  'Í':['I','acute'],'Ì':['I','grave'],'Î':['I','circ'],'Ï':['I','uml'],'Ó':['O','acute'],'Ò':['O','grave'],'Ô':['O','circ'],'Õ':['O','tilde'],'Ö':['O','uml'],
+  'Ú':['U','acute'],'Ù':['U','grave'],'Û':['U','circ'],'Ü':['U','uml'],'Ñ':['N','tilde',1]};
+ for(const k in map){if(F[k])continue;const v=map[k];const g=mk(v[0],v[1],v[2]);if(g)F[k]=g;}
+ if(!F['Ç']&&F.C)F['Ç']=[0,...F.C,4];
+ if(!F['¿'])F['¿']=[4,0,4,8,16,17,14];if(!F['¡'])F['¡']=[4,0,4,4,4,4,4];
+ if(!F[','])F[',']=[0,0,0,0,0,4,8];if(!F['/'])F['/']=[1,1,2,4,8,16,16];if(!F['('])F['(']=[2,4,8,8,8,4,2];if(!F[')'])F[')']=[8,4,2,2,2,4,8];
+ if(!F['%'])F['%']=[24,25,2,4,8,19,3];if(!F['+'])F['+']=[0,4,4,31,4,4,0];if(!F['"'])F['"']=[10,10,0,0,0,0,0];if(!F['«'])F['«']=[0,5,10,20,10,5,0];if(!F['»'])F['»']=[0,20,10,5,10,20,0];
+ if(!F['Œ']&&F.O)F['Œ']=[15,20,20,23,20,20,15];return F;}
+// glyph row helper for font renderers: returns [rows, yOffset]
+function glyphRows(g){return g&&g.length===9?[g,-1]:[g,0];}
+// Upper-case for the pixel fonts: keep ß as SS (toUpperCase does that) and fold anything unknown to its base letter.
+function pixUpper(s,F){s=String(s).toUpperCase();if(!F)return s;let o='';for(const ch of s){if(F[ch]){o+=ch;continue;}const b=ch.normalize('NFD').replace(/[\u0300-\u036f]/g,'');o+=F[b]?b:ch;}return o;}
+// tiny pixel globe icon (12x12, scaled) for the language buttons
+function globeIcon(px=2,col='#9fc0ff'){const c=document.createElement('canvas');c.width=12*px;c.height=12*px;c.className='px';const x=c.getContext('2d');x.fillStyle=col;
+ const R=['....####....','..##.#..##..','.#..#..#..#.','.#..#..#..#.','############','#...#..#...#','#...#..#...#','############','.#..#..#..#.','.#..#..#..#.','..##.#..##..','....####....'];
+ for(let j=0;j<12;j++)for(let i=0;i<12;i++)if(R[j][i]==='#')x.fillRect(i*px,j*px,px,px);c.style.verticalAlign='middle';return c;}
+
+// ================= TRANSLATIONS (en, es, fr, de, pt, it) =================
+// Generated from the translation table; one row per English string.
+i18nRows([
+["BEST {n}", "RÉCORD {n}", "RECORD {n}", "REKORD {n}", "RECORDE {n}", "RECORD {n}"],
+["{n} RUNS", "{n} PARTIDAS", "{n} PARTIES", "{n} RUNDEN", "{n} PARTIDAS", "{n} PARTITE"],
+["TOTAL {n}", "TOTAL {n}", "TOTAL {n}", "GESAMT {n}", "TOTAL {n}", "TOTALE {n}"],
+["Reach a best score of {n}", "Consigue un récord de {n}", "Atteins un record de {n}", "Erreiche einen Rekord von {n}", "Alcance um recorde de {n}", "Raggiungi un record di {n}"],
+["Play {n} runs", "Juega {n} partidas", "Joue {n} parties", "Spiele {n} Runden", "Jogue {n} partidas", "Gioca {n} partite"],
+["Score {n} points in total (all runs)", "Suma {n} puntos en total (todas las partidas)", "Marque {n} points au total (toutes parties)", "Sammle insgesamt {n} Punkte (alle Runden)", "Some {n} pontos no total (todas as partidas)", "Totalizza {n} punti (tutte le partite)"],
+["Use 3-12 letters or numbers.", "Usa de 3 a 12 letras o números.", "Utilise 3 à 12 lettres ou chiffres.", "Nutze 3–12 Buchstaben oder Zahlen.", "Use de 3 a 12 letras ou números.", "Usa da 3 a 12 lettere o numeri."],
+["Max 12 characters.", "Máximo 12 caracteres.", "12 caractères maximum.", "Maximal 12 Zeichen.", "Máximo de 12 caracteres.", "Massimo 12 caratteri."],
+["Please pick a friendlier name.", "Elige un nombre más amable, porfa.", "Choisis un nom plus sympa, s'il te plaît.", "Bitte wähle einen freundlicheren Namen.", "Escolha um nome mais simpático, por favor.", "Scegli un nome più gentile, per favore."],
+["ZONE {n}", "ZONA {n}", "ZONE {n}", "ZONE {n}", "ZONA {n}", "ZONA {n}"],
+["TAP TO FLY", "TOCA PARA VOLAR", "TOUCHE POUR VOLER", "TIPPEN ZUM FLIEGEN", "TOQUE PARA VOAR", "TOCCA PER VOLARE"],
+["TAP / CLICK / SPACE / UP", "TOCA/CLIC/ESPACIO/ARRIBA", "TOUCHE/CLIC/ESPACE/HAUT", "TIPPEN/KLICK/LEERTASTE/HOCH", "TOQUE/CLIQUE/ESPAÇO/CIMA", "TOCCA/CLIC/SPAZIO/SU"],
+["PAUSED", "EN PAUSA", "EN PAUSE", "PAUSE", "PAUSADO", "IN PAUSA"],
+["TAP TO RESUME", "TOCA PARA SEGUIR", "TOUCHE POUR REPRENDRE", "TIPPEN ZUM WEITERSPIELEN", "TOQUE PARA CONTINUAR", "TOCCA PER RIPRENDERE"],
+["BEST", "RÉCORD", "RECORD", "REKORD", "RECORDE", "RECORD"],
+["A SPACE CAT TAP-FLYER", "UN GATO ESPACIAL A TOQUECITOS", "UN CHAT SPATIAL À TAPOTER", "EINE WELTRAUMKATZE ZUM TIPPEN", "UM GATO ESPACIAL DE TOQUINHOS", "UN GATTO SPAZIALE A COLPI DI TAP"],
+["PLAY", "JUGAR", "JOUER", "SPIELEN", "JOGAR", "GIOCA"],
+["WARDROBE", "ARMARIO", "GARDE-ROBE", "GARDEROBE", "GUARDA-ROUPA", "GUARDAROBA"],
+["LEADERBOARD", "CLASIFICACIÓN", "CLASSEMENT", "BESTENLISTE", "CLASSIFICAÇÃO", "CLASSIFICA"],
+["HOW TO PLAY", "CÓMO JUGAR", "COMMENT JOUER", "SO WIRD GESPIELT", "COMO JOGAR", "COME SI GIOCA"],
+["Language", "Idioma", "Langue", "Sprache", "Idioma", "Lingua"],
+["A LOST AURA GAMES PRODUCTION", "UNA PRODUCCIÓN DE LOST AURA GAMES", "UNE PRODUCTION LOST AURA GAMES", "EINE PRODUKTION VON LOST AURA GAMES", "UMA PRODUÇÃO LOST AURA GAMES", "UNA PRODUZIONE LOST AURA GAMES"],
+["{n} COSMETICS", "{n} ACCESORIOS", "{n} TENUES", "{n} OUTFITS", "{n} VISUAIS", "{n} ACCESSORI"],
+["{n} TRAILS", "{n} ESTELAS", "{n} TRAÎNÉES", "{n} SPUREN", "{n} RASTROS", "{n} SCIE"],
+["ENDLESS", "INFINITO", "SANS FIN", "ENDLOS", "INFINITO", "INFINITO"],
+["<b>TAP</b>, <b>CLICK</b>, <b>SPACE</b> or <b>UP</b> to jump. Jumps are short and sharp &mdash; tap a lot!", "<b>TOCA</b>, haz <b>CLIC</b> o pulsa <b>ESPACIO</b> o <b>↑</b> para saltar. Los saltos son cortos y secos: ¡toca mucho!", "<b>TOUCHE</b>, <b>CLIQUE</b>, ou appuie sur <b>ESPACE</b> ou <b>↑</b> pour sauter. Les sauts sont courts et secs : tapote sans arrêt !", "<b>TIPPEN</b>, <b>KLICKEN</b>, <b>LEERTASTE</b> oder <b>↑</b> zum Springen. Die Sprünge sind kurz und knackig – also oft tippen!", "<b>TOQUE</b>, <b>CLIQUE</b> ou aperte <b>ESPAÇO</b> ou <b>↑</b> para pular. Os pulos são curtos e rápidos: toque bastante!", "<b>TOCCA</b>, fai <b>CLIC</b> o premi <b>SPAZIO</b> o <b>↑</b> per saltare. I salti sono brevi e secchi: tocca tanto!"],
+["Fly through the gaps. Every gap passed = <span class=\"gold\">+1</span>.", "Vuela por los huecos. Cada hueco superado = <span class=\"gold\">+1</span>.", "Passe dans les trous. Chaque trou franchi = <span class=\"gold\">+1</span>.", "Flieg durch die Lücken. Jede Lücke = <span class=\"gold\">+1</span>.", "Voe pelas brechas. Cada brecha vencida = <span class=\"gold\">+1</span>.", "Vola tra i varchi. Ogni varco superato = <span class=\"gold\">+1</span>."],
+["Grab <span class=\"gold\">{star}</span> stars (blue ones are worth 5). Every point also pays 1 {star}.", "Atrapa estrellas <span class=\"gold\">{star}</span> (las azules valen 5). Cada punto también da 1 {star}.", "Attrape les étoiles <span class=\"gold\">{star}</span> (les bleues valent 5). Chaque point rapporte aussi 1 {star}.", "Schnapp dir Sterne <span class=\"gold\">{star}</span> (blaue zählen 5). Jeder Punkt bringt außerdem 1 {star}.", "Pegue estrelas <span class=\"gold\">{star}</span> (as azuis valem 5). Cada ponto também rende 1 {star}.", "Prendi le stelle <span class=\"gold\">{star}</span> (quelle blu valgono 5). Ogni punto ti dà anche 1 {star}."],
+["It gets harder the further you go &mdash; and never ends.", "Cuanto más lejos llegas, más difícil se pone... y nunca termina.", "Plus tu vas loin, plus ça se corse... et ça ne s'arrête jamais.", "Je weiter du kommst, desto härter wird es – und es endet nie.", "Quanto mais longe você vai, mais difícil fica... e nunca acaba.", "Più vai avanti, più si fa dura... e non finisce mai."],
+["Spend stars in the <span class=\"pinkc\">WARDROBE</span> on suits, helmets, hats &amp; trails. Some unlock with high scores.", "Gasta estrellas en el <span class=\"pinkc\">ARMARIO</span> en trajes, cascos, gorros y estelas. Algunos se desbloquean con buenas puntuaciones.", "Dépense tes étoiles dans la <span class=\"pinkc\">GARDE-ROBE</span> : combinaisons, casques, chapeaux et traînées. Certains se débloquent avec de gros scores.", "Gib Sterne in der <span class=\"pinkc\">GARDEROBE</span> für Anzüge, Helme, Hüte und Spuren aus. Manches schaltest du mit hohen Punktzahlen frei.", "Gaste estrelas no <span class=\"pinkc\">GUARDA-ROUPA</span> em trajes, capacetes, chapéus e rastros. Alguns são liberados com pontuações altas.", "Spendi le stelle nel <span class=\"pinkc\">GUARDAROBA</span> per tute, caschi, cappelli e scie. Alcuni si sbloccano con punteggi alti."],
+["Beat your best to climb the <span class=\"gold\">LEADERBOARD</span>.", "Supera tu récord para escalar en la <span class=\"gold\">CLASIFICACIÓN</span>.", "Bats ton record pour grimper au <span class=\"gold\">CLASSEMENT</span>.", "Knack deinen Rekord und klettere in der <span class=\"gold\">BESTENLISTE</span>.", "Supere seu recorde para subir na <span class=\"gold\">CLASSIFICAÇÃO</span>.", "Batti il tuo record per scalare la <span class=\"gold\">CLASSIFICA</span>."],
+["P / ESC pause &middot; M mute", "P / ESC pausa &middot; M silencio", "P / ÉCHAP pause &middot; M muet", "P / ESC Pause &middot; M Ton aus", "P / ESC pausa &middot; M mudo", "P / ESC pausa &middot; M muto"],
+["LET'S FLY", "¡A VOLAR!", "EN VOL !", "AB IN DIE LÜFTE", "BORA VOAR", "SI VOLA!"],
+["LANGUAGE", "IDIOMA", "LANGUE", "SPRACHE", "IDIOMA", "LINGUA"],
+["Also changes the language on the Lost Aura Games website and in the other games.", "También cambia el idioma de la web de Lost Aura Games y de los demás juegos.", "Change aussi la langue du site Lost Aura Games et des autres jeux.", "Ändert auch die Sprache der Lost-Aura-Games-Website und der anderen Spiele.", "Também muda o idioma do site da Lost Aura Games e dos outros jogos.", "Cambia la lingua anche sul sito di Lost Aura Games e negli altri giochi."],
+["DONE", "LISTO", "OK", "FERTIG", "PRONTO", "FATTO"],
+["Pause", "Pausa", "Pause", "Pause", "Pausar", "Pausa"],
+["Mute / unmute (M)", "Silenciar / activar sonido (M)", "Couper / remettre le son (M)", "Ton aus / an (M)", "Silenciar / ativar som (M)", "Muto / audio (M)"],
+["GAME OVER", "FIN DEL JUEGO", "PARTIE TERMINÉE", "GAME OVER", "FIM DE JOGO", "GAME OVER"],
+["Reach 10 for a bronze medal!", "¡Llega a 10 para ganar la medalla de bronce!", "Atteins 10 pour une médaille de bronze !", "Erreiche 10 für eine Bronzemedaille!", "Chegue a 10 para ganhar a medalha de bronze!", "Arriva a 10 per la medaglia di bronzo!"],
+["SCORE", "PUNTOS", "SCORE", "PUNKTE", "PONTOS", "PUNTI"],
+["NEW BEST!", "¡NUEVO RÉCORD!", "NOUVEAU RECORD !", "NEUER REKORD!", "NOVO RECORDE!", "NUOVO RECORD!"],
+["STARS EARNED", "ESTRELLAS GANADAS", "ÉTOILES GAGNÉES", "VERDIENTE STERNE", "ESTRELAS GANHAS", "STELLE GUADAGNATE"],
+["UNLOCKED: {item}", "DESBLOQUEADO: {item}", "DÉBLOQUÉ : {item}", "FREIGESCHALTET: {item}", "LIBERADO: {item}", "SBLOCCATO: {item}"],
+["RETRY", "OTRA VEZ", "REJOUER", "NOCHMAL", "DE NOVO", "RIPROVA"],
+["MENU", "MENÚ", "MENU", "MENÜ", "MENU", "MENU"],
+["RANKS", "RANKING", "SCORES", "RANGLISTE", "RANKING", "CLASSIFICA"],
+["Submitting to leaderboard...", "Enviando a la clasificación...", "Envoi au classement...", "Wird an die Bestenliste gesendet...", "Enviando para a classificação...", "Invio alla classifica..."],
+["LEADERBOARD RANK #{n}", "PUESTO EN LA CLASIFICACIÓN: #{n}", "RANG AU CLASSEMENT : #{n}", "PLATZ IN DER BESTENLISTE: #{n}", "POSIÇÃO NA CLASSIFICAÇÃO: #{n}", "POSIZIONE IN CLASSIFICA: #{n}"],
+["Offline: will upload your best later.", "Sin conexión: subiremos tu récord más tarde.", "Hors ligne : ton record sera envoyé plus tard.", "Offline: Dein Rekord wird später hochgeladen.", "Sem conexão: seu recorde será enviado depois.", "Offline: caricheremo il tuo record più tardi."],
+["CHANGE NAME", "CAMBIAR NOMBRE", "CHANGER DE NOM", "NAMEN ÄNDERN", "MUDAR NOME", "CAMBIA NOME"],
+["YOU SCORED!", "¡HAS PUNTUADO!", "TU AS MARQUÉ !", "DU HAST GEPUNKTET!", "VOCÊ PONTUOU!", "HAI FATTO PUNTI!"],
+["Pick a new leaderboard name.", "Elige un nuevo nombre para la clasificación.", "Choisis un nouveau nom pour le classement.", "Wähle einen neuen Namen für die Bestenliste.", "Escolha um novo nome para a classificação.", "Scegli un nuovo nome per la classifica."],
+["Enter a name for the leaderboard.", "Escribe un nombre para la clasificación.", "Entre un nom pour le classement.", "Gib einen Namen für die Bestenliste ein.", "Digite um nome para a classificação.", "Inserisci un nome per la classifica."],
+["SPACE CAT", "GATO ESPACIAL", "CHAT SPATIAL", "WELTRAUMKATZE", "GATO ESPACIAL", "GATTO SPAZIALE"],
+["3-12 letters, numbers, space, _ - .", "3-12 letras, números, espacio, _ - .", "3 à 12 lettres, chiffres, espace, _ - .", "3–12 Buchstaben, Zahlen, Leerzeichen, _ - .", "3-12 letras, números, espaço, _ - .", "3-12 lettere, numeri, spazio, _ - ."],
+["SAVE", "GUARDAR", "ENREGISTRER", "SPEICHERN", "SALVAR", "SALVA"],
+["CANCEL", "CANCELAR", "ANNULER", "ABBRECHEN", "CANCELAR", "ANNULLA"],
+["LATER", "LUEGO", "PLUS TARD", "SPÄTER", "DEPOIS", "DOPO"],
+["BACK", "VOLVER", "RETOUR", "ZURÜCK", "VOLTAR", "INDIETRO"],
+["HEAD", "CABEZA", "TÊTE", "KOPF", "CABEÇA", "TESTA"],
+["{a}/{b} OWNED", "{a}/{b} TUYOS", "{a}/{b} OBTENUS", "{a}/{b} IM BESITZ", "{a}/{b} SEUS", "{a}/{b} POSSEDUTI"],
+["ALL: {a}/{b}", "TOTAL: {a}/{b}", "TOTAL : {a}/{b}", "GESAMT: {a}/{b}", "TOTAL: {a}/{b}", "TOTALE: {a}/{b}"],
+["EQUIPPED", "EQUIPADO", "PORTÉ", "AUSGERÜSTET", "EQUIPADO", "EQUIPAGGIATO"],
+["OWNED", "TUYO", "OBTENU", "IM BESITZ", "SEU", "POSSEDUTO"],
+["Need {star} {n} more for {item}", "Te faltan {star} {n} para {item}", "Il te manque {star} {n} pour {item}", "Dir fehlen {star} {n} für {item}", "Faltam {star} {n} para {item}", "Ti mancano {star} {n} per {item}"],
+["BUY {item}?", "¿COMPRAR {item}?", "ACHETER {item} ?", "{item} KAUFEN?", "COMPRAR {item}?", "COMPRARE {item}?"],
+["Cost:", "Precio:", "Prix :", "Preis:", "Preço:", "Costo:"],
+["You have {star} {n}", "Tienes {star} {n}", "Tu as {star} {n}", "Du hast {star} {n}", "Você tem {star} {n}", "Hai {star} {n}"],
+["BUY & WEAR", "COMPRAR Y PONER", "ACHETER ET PORTER", "KAUFEN & ANZIEHEN", "COMPRAR E USAR", "COMPRA E INDOSSA"],
+["NEW: {item}", "NUEVO: {item}", "NOUVEAU : {item}", "NEU: {item}", "NOVO: {item}", "NUOVO: {item}"],
+["TOP 100", "TOP 100", "TOP 100", "TOP 100", "TOP 100", "TOP 100"],
+["LOADING...", "CARGANDO...", "CHARGEMENT...", "LÄDT...", "CARREGANDO...", "CARICAMENTO..."],
+["NAME", "NOMBRE", "NOM", "NAME", "NOME", "NOME"],
+["Loading...", "Cargando...", "Chargement...", "Lädt...", "Carregando...", "Caricamento..."],
+["SET NAME", "PONER NOMBRE", "CHOISIR UN NOM", "NAMEN WÄHLEN", "DEFINIR NOME", "SCEGLI NOME"],
+["REFRESH", "ACTUALIZAR", "ACTUALISER", "AKTUALISIEREN", "ATUALIZAR", "AGGIORNA"],
+["YOU", "TÚ", "TOI", "DU", "VOCÊ", "TU"],
+["LIVE", "EN VIVO", "EN DIRECT", "LIVE", "AO VIVO", "IN DIRETTA"],
+["GLOBAL", "GLOBAL", "MONDIAL", "WELTWEIT", "GLOBAL", "GLOBALE"],
+["OFFLINE", "SIN CONEXIÓN", "HORS LIGNE", "OFFLINE", "OFFLINE", "OFFLINE"],
+["LOCAL BOARD", "TABLA LOCAL", "CLASSEMENT LOCAL", "LOKALE LISTE", "PLACAR LOCAL", "CLASSIFICA LOCALE"],
+["UPDATED {time}", "ACTUALIZADO {time}", "MIS À JOUR {time}", "AKTUALISIERT {time}", "ATUALIZADO {time}", "AGGIORNATO {time}"],
+["No scores yet. Be the first!", "Aún no hay puntuaciones. ¡Sé el primero!", "Pas encore de score. Sois le premier !", "Noch keine Punkte. Sei die Erste oder der Erste!", "Ainda sem pontuações. Seja o primeiro!", "Ancora nessun punteggio. Sii il primo!"],
+["YOUR POSITION", "TU PUESTO", "TA POSITION", "DEIN PLATZ", "SUA POSIÇÃO", "LA TUA POSIZIONE"],
+["Uploading your best...", "Subiendo tu récord...", "Envoi de ton record...", "Dein Rekord wird hochgeladen...", "Enviando seu recorde...", "Caricamento del tuo record..."],
+["Score a point to get ranked!", "¡Consigue un punto para entrar en el ranking!", "Marque un point pour être classé !", "Hol einen Punkt, um in die Wertung zu kommen!", "Marque um ponto para entrar no ranking!", "Fai un punto per entrare in classifica!"],
+["Score a point and set a name to get ranked!", "¡Consigue un punto y ponte un nombre para entrar en el ranking!", "Marque un point et choisis un nom pour être classé !", "Hol einen Punkt und wähle einen Namen, um in die Wertung zu kommen!", "Marque um ponto e defina um nome para entrar no ranking!", "Fai un punto e scegli un nome per entrare in classifica!"],
+["You're #{n} in the top 100! Your row is highlighted.", "¡Estás en el puesto #{n} del top 100! Tu fila está resaltada.", "Tu es #{n} du top 100 ! Ta ligne est en surbrillance.", "Du bist Platz #{n} in den Top 100! Deine Zeile ist markiert.", "Você está em #{n} no top 100! Sua linha está destacada.", "Sei #{n} nella top 100! La tua riga è evidenziata."],
+["Fur", "Pelaje", "Pelage", "Fell", "Pelagem", "Pelo"],
+["Suits", "Trajes", "Combis", "Anzüge", "Trajes", "Tute"],
+["Helmets & Hats", "Cascos y gorros", "Casques et chapeaux", "Helme & Hüte", "Capacetes e chapéus", "Caschi e cappelli"],
+["Face", "Cara", "Visage", "Gesicht", "Rosto", "Viso"],
+["Back", "Espalda", "Dos", "Rücken", "Costas", "Schiena"],
+["Trails", "Estelas", "Traînées", "Spuren", "Rastros", "Scie"],
+["ASTEROID BELT", "CINTURÓN DE ASTEROIDES", "CEINTURE D'ASTÉROÏDES", "ASTEROIDENGÜRTEL", "CINTURÃO DE ASTEROIDES", "FASCIA DI ASTEROIDI"],
+["SATELLITE SPIRES", "AGUJAS SATÉLITE", "FLÈCHES SATELLITES", "SATELLITENTÜRME", "TORRES SATÉLITE", "GUGLIE SATELLITARI"],
+["CRYSTAL CAVERNS", "CAVERNAS DE CRISTAL", "CAVERNES DE CRISTAL", "KRISTALLHÖHLEN", "CAVERNAS DE CRISTAL", "CAVERNE DI CRISTALLO"],
+["LASER GATES", "PUERTAS LÁSER", "PORTES LASER", "LASERTORE", "PORTÕES LASER", "CANCELLI LASER"],
+["CANDY NEBULA", "NEBULOSA DE CARAMELO", "NÉBULEUSE BONBON", "BONBON-NEBEL", "NEBULOSA DOCE", "NEBULOSA CARAMELLA"],
+["THE VOID", "EL VACÍO", "LE NÉANT", "DIE LEERE", "O VAZIO", "IL VUOTO"],
+["BRONZE MEDAL", "MEDALLA DE BRONCE", "MÉDAILLE DE BRONZE", "BRONZEMEDAILLE", "MEDALHA DE BRONZE", "MEDAGLIA DI BRONZO"],
+["SILVER MEDAL", "MEDALLA DE PLATA", "MÉDAILLE D'ARGENT", "SILBERMEDAILLE", "MEDALHA DE PRATA", "MEDAGLIA D'ARGENTO"],
+["GOLD MEDAL", "MEDALLA DE ORO", "MÉDAILLE D'OR", "GOLDMEDAILLE", "MEDALHA DE OURO", "MEDAGLIA D'ORO"],
+["PLATINUM MEDAL", "MEDALLA DE PLATINO", "MÉDAILLE DE PLATINE", "PLATINMEDAILLE", "MEDALHA DE PLATINA", "MEDAGLIA DI PLATINO"],
+["COSMIC MEDAL", "MEDALLA CÓSMICA", "MÉDAILLE COSMIQUE", "KOSMISCHE MEDAILLE", "MEDALHA CÓSMICA", "MEDAGLIA COSMICA"],
+["Orange Tabby", "Atigrado naranja", "Tigré roux", "Rote Tigerkatze", "Malhado laranja", "Tigrato rosso"],
+["Midnight", "Medianoche", "Minuit", "Mitternacht", "Meia-noite", "Mezzanotte"],
+["Snowball", "Bola de nieve", "Boule de neige", "Schneeball", "Bola de neve", "Palla di neve"],
+["Smoke Tabby", "Atigrado humo", "Tigré fumé", "Rauchtiger", "Malhado fumaça", "Tigrato fumo"],
+["Tuxedo", "Esmoquin", "Smoking", "Smoking", "Smoking", "Smoking"],
+["Calico", "Tricolor", "Calico", "Glückskatze", "Tricolor", "Calico"],
+["Siamese", "Siamés", "Siamois", "Siam", "Siamês", "Siamese"],
+["Bubblegum", "Chicle", "Chewing-gum", "Kaugummi", "Chiclete", "Gomma da masticare"],
+["Mint Alien", "Alien menta", "Alien menthe", "Minz-Alien", "Alien menta", "Alieno menta"],
+["Cosmic Purple", "Morado cósmico", "Violet cosmique", "Kosmisch Lila", "Roxo cósmico", "Viola cosmico"],
+["Robo-Cat", "Robogato", "Robo-chat", "Robo-Katze", "Robogato", "Robo-gatto"],
+["Golden Cat", "Gato dorado", "Chat doré", "Goldkatze", "Gato dourado", "Gatto dorato"],
+["Galaxy Cat", "Gato galaxia", "Chat galaxie", "Galaxiekatze", "Gato galáxia", "Gatto galassia"],
+["No Suit", "Sin traje", "Sans combi", "Kein Anzug", "Sem traje", "Niente tuta"],
+["Astro Suit", "Traje astro", "Combi astro", "Astro-Anzug", "Traje astro", "Tuta astro"],
+["Mars Red", "Rojo Marte", "Rouge Mars", "Marsrot", "Vermelho Marte", "Rosso Marte"],
+["Cobalt Pilot", "Piloto cobalto", "Pilote cobalt", "Kobalt-Pilot", "Piloto cobalto", "Pilota cobalto"],
+["Neon Runner", "Corredor neón", "Coureur néon", "Neon-Läufer", "Corredor neon", "Corridore neon"],
+["Stealth Ops", "Operación sigilo", "Ops furtives", "Tarnmission", "Operação furtiva", "Operazione stealth"],
+["Moon Camo", "Camuflaje lunar", "Camouflage lunaire", "Mond-Tarnung", "Camuflagem lunar", "Mimetica lunare"],
+["Gold Plated", "Bañado en oro", "Plaqué or", "Vergoldet", "Banhado a ouro", "Placcato oro"],
+["Star Pajamas", "Pijama de estrellas", "Pyjama étoilé", "Sternenpyjama", "Pijama de estrelas", "Pigiama stellato"],
+["Bare Head", "Sin nada", "Tête nue", "Ohne Kopfschmuck", "Cabeça livre", "Testa nuda"],
+["Bubble Helmet", "Casco burbuja", "Casque bulle", "Blasenhelm", "Capacete bolha", "Casco a bolla"],
+["Visor Helmet", "Casco con visor", "Casque à visière", "Visierhelm", "Capacete com viseira", "Casco con visiera"],
+["Fishbowl", "Pecera", "Bocal", "Goldfischglas", "Aquário", "Boccia dei pesci"],
+["Gold Helmet", "Casco de oro", "Casque doré", "Goldhelm", "Capacete de ouro", "Casco d'oro"],
+["Alien Antennae", "Antenas alien", "Antennes d'alien", "Alien-Fühler", "Antenas alien", "Antenne aliene"],
+["Party Hat", "Gorro de fiesta", "Chapeau de fête", "Partyhut", "Chapéu de festa", "Cappellino da festa"],
+["Top Hat", "Chistera", "Haut-de-forme", "Zylinder", "Cartola", "Cilindro"],
+["Royal Crown", "Corona real", "Couronne royale", "Königskrone", "Coroa real", "Corona reale"],
+["Star Wizard", "Mago estelar", "Mage stellaire", "Sternenzauberer", "Mago estelar", "Mago stellare"],
+["Propeller Cap", "Gorra con hélice", "Casquette à hélice", "Propellermütze", "Boné de hélice", "Cappello a elica"],
+["Space Cowboy", "Vaquero espacial", "Cow-boy de l'espace", "Weltraum-Cowboy", "Caubói espacial", "Cowboy spaziale"],
+["Halo", "Aureola", "Auréole", "Heiligenschein", "Auréola", "Aureola"],
+["Pirate Hat", "Sombrero pirata", "Chapeau de pirate", "Piratenhut", "Chapéu pirata", "Cappello da pirata"],
+["Cozy Beanie", "Gorrito calentito", "Bonnet douillet", "Kuschelmütze", "Gorrinho quentinho", "Berretto caldo"],
+["Nothing", "Nada", "Rien", "Nichts", "Nada", "Niente"],
+["Cool Shades", "Gafas molonas", "Lunettes stylées", "Coole Sonnenbrille", "Óculos maneiros", "Occhiali fighi"],
+["Deal-With-It", "Gafas chulas", "Classe ultime", "Deal-With-It", "Óculos estilosos", "Occhiali da boss"],
+["Monocle", "Monóculo", "Monocle", "Monokel", "Monóculo", "Monocolo"],
+["3D Glasses", "Gafas 3D", "Lunettes 3D", "3D-Brille", "Óculos 3D", "Occhiali 3D"],
+["Eye Patch", "Parche", "Cache-œil", "Augenklappe", "Tapa-olho", "Benda sull'occhio"],
+["Mustache", "Bigote", "Moustache", "Schnurrbart", "Bigode", "Baffi"],
+["Star Blush", "Rubor estelar", "Joues étoilées", "Sternenröte", "Blush estelar", "Guance stellate"],
+["Cyber Visor", "Visor cíber", "Visière cyber", "Cyber-Visier", "Viseira cyber", "Visore cyber"],
+["Jetpack", "Mochila cohete", "Jetpack", "Jetpack", "Mochila a jato", "Jetpack"],
+["Hero Cape", "Capa de héroe", "Cape de héros", "Heldenumhang", "Capa de herói", "Mantello da eroe"],
+["Angel Wings", "Alas de ángel", "Ailes d'ange", "Engelsflügel", "Asas de anjo", "Ali d'angelo"],
+["Bat Wings", "Alas de murciélago", "Ailes de chauve-souris", "Fledermausflügel", "Asas de morcego", "Ali di pipistrello"],
+["Comet Scarf", "Bufanda cometa", "Écharpe comète", "Kometenschal", "Cachecol cometa", "Sciarpa cometa"],
+["Bow Tie", "Pajarita", "Nœud papillon", "Fliege", "Gravata-borboleta", "Papillon"],
+["Gold Bell", "Cascabel de oro", "Clochette dorée", "Goldglöckchen", "Sino de ouro", "Campanella d'oro"],
+["Twin Boosters", "Propulsores dobles", "Double propulseur", "Doppel-Booster", "Propulsores duplos", "Doppi propulsori"],
+["No Trail", "Sin estela", "Sans traînée", "Keine Spur", "Sem rastro", "Niente scia"],
+["Stardust", "Polvo de estrellas", "Poussière d'étoiles", "Sternenstaub", "Poeira estelar", "Polvere di stelle"],
+["Rainbow", "Arcoíris", "Arc-en-ciel", "Regenbogen", "Arco-íris", "Arcobaleno"],
+["Fire", "Fuego", "Feu", "Feuer", "Fogo", "Fuoco"],
+["Pixel Hearts", "Corazones pixel", "Cœurs pixel", "Pixelherzen", "Corações pixel", "Cuori pixel"],
+["Comet", "Cometa", "Comète", "Komet", "Cometa", "Cometa"],
+["Glitch", "Glitch", "Bug", "Glitch", "Glitch", "Glitch"],
+["Bubbles", "Burbujas", "Bulles", "Blasen", "Bolhas", "Bolle"],
+["Chiptune Notes", "Notas chiptune", "Notes chiptune", "Chiptune-Noten", "Notas chiptune", "Note chiptune"],
+["Snowflakes", "Copos de nieve", "Flocons", "Schneeflocken", "Flocos de neve", "Fiocchi di neve"],
+["Lightning", "Rayo", "Éclair", "Blitz", "Raio", "Fulmine"],
+["Confetti", "Confeti", "Confettis", "Konfetti", "Confete", "Coriandoli"],
+["Matrix Code", "Código Matrix", "Code Matrix", "Matrix-Code", "Código Matrix", "Codice Matrix"],
+["Ghost Echo", "Eco fantasma", "Écho fantôme", "Geisterecho", "Eco fantasma", "Eco fantasma"],
+["Plasma", "Plasma", "Plasma", "Plasma", "Plasma", "Plasma"],
+["Gold Rush", "Fiebre del oro", "Ruée vers l'or", "Goldrausch", "Corrida do ouro", "Febbre dell'oro"],
+["Fish Bones", "Espinas de pez", "Arêtes de poisson", "Fischgräten", "Espinhas de peixe", "Lische di pesce"],
+["Black Hole", "Agujero negro", "Trou noir", "Schwarzes Loch", "Buraco negro", "Buco nero"]
+]);
+
 "use strict";
 // ================= CORE UTILITIES =================
 const $=(s,r=document)=>r.querySelector(s);
@@ -147,14 +382,15 @@ function pMap(x,rows,pal,ox=0,oy=0){for(let j=0;j<rows.length;j++)for(let i=0;i<
 // ================= BITMAP FONT (5x7) =================
 const FONT={A:[14,17,17,31,17,17,17],B:[30,17,17,30,17,17,30],C:[14,17,16,16,16,17,14],D:[30,17,17,17,17,17,30],E:[31,16,16,30,16,16,31],F:[31,16,16,30,16,16,16],G:[14,17,16,23,17,17,15],H:[17,17,17,31,17,17,17],I:[14,4,4,4,4,4,14],J:[7,2,2,2,2,18,12],K:[17,18,20,24,20,18,17],L:[16,16,16,16,16,16,31],M:[17,27,21,21,17,17,17],N:[17,17,25,21,19,17,17],O:[14,17,17,17,17,17,14],P:[30,17,17,30,16,16,16],Q:[14,17,17,17,21,18,13],R:[30,17,17,30,20,18,17],S:[15,16,16,14,1,1,30],T:[31,4,4,4,4,4,4],U:[17,17,17,17,17,17,14],V:[17,17,17,17,17,10,4],W:[17,17,17,21,21,21,10],X:[17,17,10,4,10,17,17],Y:[17,17,10,4,4,4,4],Z:[31,1,2,4,8,16,31],
 '0':[14,17,19,21,25,17,14],'1':[4,12,4,4,4,4,14],'2':[14,17,1,2,4,8,31],'3':[31,2,4,2,1,17,14],'4':[2,6,10,18,31,2,2],'5':[31,16,30,1,1,17,14],'6':[6,8,16,30,17,17,14],'7':[31,1,2,4,8,8,8],'8':[14,17,17,14,17,17,14],'9':[14,17,17,15,1,2,12],'&':[12,18,20,8,21,18,13],'!':[4,4,4,4,4,0,4],'-':[0,0,0,31,0,0,0],"'":[4,4,8,0,0,0,0],'.':[0,0,0,0,0,12,12],'?':[14,17,1,2,4,0,4],':':[0,12,12,0,12,12,0],' ':[0,0,0,0,0,0,0],'/':[1,1,2,4,8,16,16],',':[0,0,0,0,12,4,8],'+':[0,4,4,31,4,4,0],'#':[10,10,31,10,31,10,10],'%':[24,25,2,4,8,19,3],'(':[2,4,8,8,8,4,2],')':[8,4,2,2,2,4,8],'x':[0,17,10,4,10,17,0]};
-function pixText(str,s=4,fill=BONE,glow=null){str=String(str).toUpperCase();const w=str.length*6+2,h=10;const [c,x]=mkCanvas(w*s,h*s);
-  const draw=(ox,oy,col)=>{x.fillStyle=col;for(let k=0;k<str.length;k++){const g=FONT[str[k]]||FONT[' '];for(let r=0;r<7;r++)for(let b=0;b<5;b++)if(g[r]&(16>>b))x.fillRect((1+k*6+b+ox)*s,(1+r+oy)*s,s,s);}};
+i18nFontExt(FONT);
+function pixText(str,s=4,fill=BONE,glow=null){str=pixUpper(str,FONT);const w=str.length*6+2,h=10;const [c,x]=mkCanvas(w*s,h*s);
+  const draw=(ox,oy,col)=>{x.fillStyle=col;for(let k=0;k<str.length;k++){const [g,yo]=glyphRows(FONT[str[k]]||FONT[' ']);for(let r=0;r<g.length;r++)for(let b=0;b<5;b++)if(g[r]&(16>>b))x.fillRect((1+k*6+b+ox)*s,(1+r+yo+oy)*s,s,s);}};
   for(const [dx,dy] of [[-1,0],[1,0],[0,-1],[0,1],[1,1],[2,2]])draw(dx,dy,'#000');
   draw(0,0,fill);if(glow){c.style.filter=`drop-shadow(0 0 ${s*2}px ${glow})`;}return c;}
 // draw text straight onto a context (s = pixel size)
-function drawPixText(x,str,X,Y,s,fill,shadow='#000'){str=String(str).toUpperCase();const draw=(ox,oy,col)=>{x.fillStyle=col;for(let k=0;k<str.length;k++){const g=FONT[str[k]]||FONT[' '];for(let r=0;r<7;r++)for(let b=0;b<5;b++)if(g[r]&(16>>b))x.fillRect(X+(k*6+b+ox)*s,Y+(r+oy)*s,s,s);}};
+function drawPixText(x,str,X,Y,s,fill,shadow='#000'){str=pixUpper(str,FONT);const draw=(ox,oy,col)=>{x.fillStyle=col;for(let k=0;k<str.length;k++){const [g,yo]=glyphRows(FONT[str[k]]||FONT[' ']);for(let r=0;r<g.length;r++)for(let b=0;b<5;b++)if(g[r]&(16>>b))x.fillRect(X+(k*6+b+ox)*s,Y+(r+yo+oy)*s,s,s);}};
   if(shadow){for(const [dx,dy] of [[-1,0],[1,0],[0,-1],[0,1],[1,1],[1,2],[2,2]])draw(dx,dy,shadow);}draw(0,0,fill);}
-const textW=(str,s)=>String(str).length*6*s-s;
+const textW=(str,s)=>pixUpper(str,FONT).length*6*s-s;
 // ================= AUDIO (WebAudio chiptune) =================
 let AC=null,MASTER=null;
 function ac(){if(!AC){try{AC=new (window.AudioContext||window.webkitAudioContext)();MASTER=AC.createGain();MASTER.gain.value=SAVE.muted?0:1;MASTER.connect(AC.destination);}catch(e){AC=null;}}if(AC&&AC.state==='suspended')AC.resume().catch(()=>{});return AC;}
@@ -207,8 +443,9 @@ function bgFrame(){const x=BG.x;BG.t+=.05;x.fillStyle='#050308';x.fillRect(0,0,B
 const SCREENS={},LEAVE={};let CUR='title';
 function show(id,...args){closeModal();if(LEAVE[CUR])LEAVE[CUR](id);$$('.screen').forEach(s=>s.classList.remove('on'));CUR=id;const s=$('#s-'+id);s.classList.add('on');if(SCREENS[id])SCREENS[id](s,...args);}
 let MODAL_OPEN=false;
-function modal(html,btns,opts={}){const p=$('#modalp');p.innerHTML='';if(typeof html==='string')p.innerHTML=html;else p.appendChild(html);const row=el('div',{style:'margin-top:12px'});(btns||[{t:'OK'}]).forEach(b=>{const e=el('div',{class:'btn '+(b.c||'')},b.t);e.onclick=(ev)=>{ev.stopPropagation();sfx('click');if(b.keep){b.f&&b.f();return;}closeModal();b.f&&b.f();};row.appendChild(e);});p.appendChild(row);$('#modal').classList.add('on');MODAL_OPEN=true;}
-function closeModal(){$('#modal').classList.remove('on');MODAL_OPEN=false;}
+let MODAL_REDO=null;
+function modal(html,btns,opts={}){MODAL_REDO=opts.redo||null;const p=$('#modalp');p.innerHTML='';if(typeof html==='string')p.innerHTML=html;else p.appendChild(html);const row=el('div',{style:'margin-top:12px'});(btns||[{t:'OK'}]).forEach(b=>{const e=el('div',{class:'btn '+(b.c||'')},b.t);e.onclick=(ev)=>{ev.stopPropagation();sfx('click');if(b.keep){b.f&&b.f();return;}closeModal();b.f&&b.f();};row.appendChild(e);});p.appendChild(row);$('#modal').classList.add('on');MODAL_OPEN=true;}
+function closeModal(){$('#modal').classList.remove('on');MODAL_OPEN=false;MODAL_REDO=null;}
 function toast(html,col){const t=el('div',{},html);if(col)t.style.borderColor=col;$('#toast').appendChild(t);setTimeout(()=>t.remove(),2700);}
 function fmt(n){return Math.floor(n).toLocaleString('en-US');}
 const STAR_ICON='&#9733;';
@@ -363,8 +600,8 @@ const ITEMS=[
 const IMAP={};for(const it of ITEMS)IMAP[it.id]=it;
 const COSMETIC_COUNT=ITEMS.filter(i=>i.slot!=='trail'&&!/_none$/.test(i.id)).length;
 const TRAIL_COUNT=ITEMS.filter(i=>i.slot==='trail'&&i.id!=='trail_none').length;
-function reqText(it){if(it.price)return STAR_ICON+' '+it.price;if(it.best)return'BEST '+it.best;if(it.runs)return it.runs+' RUNS';if(it.total)return'TOTAL '+it.total;return'';}
-function reqLong(it){if(it.best)return`Reach a best score of ${it.best}`;if(it.runs)return`Play ${it.runs} runs`;if(it.total)return`Score ${it.total} points in total (all runs)`;return'';}
+function reqText(it){if(it.price)return STAR_ICON+' '+it.price;if(it.best)return t('BEST {n}',{n:it.best});if(it.runs)return t('{n} RUNS',{n:it.runs});if(it.total)return t('TOTAL {n}',{n:it.total});return'';}
+function reqLong(it){if(it.best)return t('Reach a best score of {n}',{n:it.best});if(it.runs)return t('Play {n} runs',{n:it.runs});if(it.total)return t('Score {n} points in total (all runs)',{n:it.total});return'';}
 function reqMet(it){if(it.best)return SAVE.best>=it.best;if(it.runs)return SAVE.runs>=it.runs;if(it.total)return SAVE.total>=it.total;return false;}
 // ================= SAVE (localStorage) =================
 const SAVE_KEY='meowteor.save.v1';
@@ -401,10 +638,10 @@ const BAD_SUB=['fuck','fuk','shit','bitch','cunt','dick','pussy','asshole','nigg
 const BAD_WORD=['ass','cum','sex','fag','tit','xxx','hoe','fck','fk','stfu','piss','arse','kys','cock','rape','spic','anus','nazis','sexy','cocks'];
 function lbNormalize(s){return s.toLowerCase().replace(/0/g,'o').replace(/[1!|]/g,'i').replace(/3/g,'e').replace(/[4@]/g,'a').replace(/[5$]/g,'s').replace(/7/g,'t').replace(/8/g,'b').replace(/9/g,'g');}
 function cleanName(raw){return String(raw||'').toUpperCase().replace(/[^A-Z0-9 _.\-]/g,'').replace(/\s+/g,' ').trim();}
-function validateName(raw){const n=cleanName(raw);if(n.length<3)return{ok:false,err:'Use 3-12 letters or numbers.'};if(n.length>12)return{ok:false,err:'Max 12 characters.'};
+function validateName(raw){const n=cleanName(raw);if(n.length<3)return{ok:false,err:t('Use 3-12 letters or numbers.')};if(n.length>12)return{ok:false,err:t('Max 12 characters.')};
  const norm=lbNormalize(n);const squash=norm.replace(/[^a-z]/g,'');const dedup=squash.replace(/(.)\1+/g,'$1');
- if(BAD_SUB.some(w=>squash.includes(w)||dedup.includes(w)))return{ok:false,err:'Please pick a friendlier name.'};
- const words=norm.split(/[^a-z]+/).filter(Boolean);if(words.some(w=>BAD_WORD.includes(w))||BAD_WORD.includes(squash))return{ok:false,err:'Please pick a friendlier name.'};
+ if(BAD_SUB.some(w=>squash.includes(w)||dedup.includes(w)))return{ok:false,err:t('Please pick a friendlier name.')};
+ const words=norm.split(/[^a-z]+/).filter(Boolean);if(words.some(w=>BAD_WORD.includes(w))||BAD_WORD.includes(squash))return{ok:false,err:t('Please pick a friendlier name.')};
  return{ok:true,name:n};}
 // ---------- Local adapter (offline / fallback) ----------
 const LocalAdapter={kind:'local',
@@ -722,11 +959,11 @@ function render(){const x=GCX,W=G.world;x.setTransform(2,0,0,2,0,0);x.imageSmoot
  for(const p of G.pops){const a=1-p.t/p.life;x.globalAlpha=a;const s=2;const tw=textW(p.txt,s);drawPixText(x,p.txt,Math.round(p.x*2-tw/2),Math.round((p.y-p.t*30)*2),s,p.c);}x.globalAlpha=1;
  if(W&&(G.mode==='play'||G.mode==='ready'||G.mode==='dead')){const sc=String(W.score);const s=6;drawPixText(x,sc,Math.round(180-textW(sc,s)/2),54,s,'#ffffff');
   const st=STAR_TXT+W.picked;if(G.mode!=='ready'){drawPixText(x,st,12,60,2,'#ffd24a');}}
- if(W&&G.mode==='play'&&G.t-G.zoneShown<2.2&&G.lastZone>0){const a=Math.min(1,(2.2-(G.t-G.zoneShown))*2);x.globalAlpha=a;const n=ZONES[G.lastZone%ZONES.length].n;const l1='ZONE '+(G.lastZone+1),s1=3,s2=2;drawPixText(x,l1,Math.round(180-textW(l1,s1)/2),130,s1,'#ffd24a');drawPixText(x,n,Math.round(180-textW(n,s2)/2),160,s2,ZONES[G.lastZone%ZONES.length].neb);x.globalAlpha=1;}
- if(G.mode==='ready'){const a=.6+.4*Math.sin(G.t*6);x.globalAlpha=a;const l='TAP TO FLY';drawPixText(x,l,Math.round(180-textW(l,3)/2),400,3,'#ffffff');x.globalAlpha=1;const l2='TAP / CLICK / SPACE / UP';drawPixText(x,l2,Math.round(180-textW(l2,2)/2),440,2,'#a89f80');
+ if(W&&G.mode==='play'&&G.t-G.zoneShown<2.2&&G.lastZone>0){const a=Math.min(1,(2.2-(G.t-G.zoneShown))*2);x.globalAlpha=a;const n=t(ZONES[G.lastZone%ZONES.length].n);const l1=t('ZONE {n}',{n:G.lastZone+1}),s1=3,s2=2;drawPixText(x,l1,Math.round(180-textW(l1,s1)/2),130,s1,'#ffd24a');drawPixText(x,n,Math.round(180-textW(n,s2)/2),160,s2,ZONES[G.lastZone%ZONES.length].neb);x.globalAlpha=1;}
+ if(G.mode==='ready'){const a=.6+.4*Math.sin(G.t*6);x.globalAlpha=a;const l=t('TAP TO FLY');drawPixText(x,l,Math.round(180-textW(l,3)/2),400,3,'#ffffff');x.globalAlpha=1;const l2=t('TAP / CLICK / SPACE / UP');drawPixText(x,l2,Math.round(180-textW(l2,2)/2),440,2,'#a89f80');
   // finger hint
   const hy=470+Math.round(Math.abs(Math.sin(G.t*5))*8);x.fillStyle='#e8dcb5';x.fillRect(174,hy,12,18);x.fillRect(170,hy+8,4,10);x.fillStyle='#000';x.fillRect(174,hy,12,2);}
- if(G.mode==='play'&&G.paused){x.fillStyle='rgba(0,0,0,.55)';x.fillRect(0,0,360,640);const l='PAUSED';drawPixText(x,l,Math.round(180-textW(l,5)/2),260,5,'#ffffff');const l2='TAP TO RESUME';drawPixText(x,l2,Math.round(180-textW(l2,2)/2),320,2,'#ffd24a');}
+ if(G.mode==='play'&&G.paused){x.fillStyle='rgba(0,0,0,.55)';x.fillRect(0,0,360,640);const l=t('PAUSED');drawPixText(x,l,Math.round(180-textW(l,5)/2),260,5,'#ffffff');const l2=t('TAP TO RESUME');drawPixText(x,l2,Math.round(180-textW(l2,2)/2),320,2,'#ffd24a');}
  if(G.flash>0){x.globalAlpha=G.flash*.7;x.fillStyle='#ffffff';x.fillRect(0,0,360,640);x.globalAlpha=1;}}
 FONT['*']=[4,4,31,14,10,17,0];const STAR_TXT='* ';
 // ================= INPUT =================
@@ -748,81 +985,97 @@ function inputInit(){const st=$('#stage');
 
 // ================= SCREENS =================
 const GAME_NAME='MEOWTEOR';
+// shrink a pixel-text canvas so long translations fit (keeps aspect ratio)
+function fitPix(c,maxW){const w=c.width;if(w>maxW){c.style.width=maxW+'px';}else c.style.width=w+'px';c.style.height='auto';return c;}
 function starsBadge(){return`<span class="stars t">${STAR_ICON} <span class="starn">${fmt(SAVE.stars)}</span></span>`;}
 function refreshStars(){$$('.starn').forEach(e=>e.textContent=fmt(SAVE.stars));}
 function startGame(){sfx('click');ac();newRun();show('play');startMusic('play');}
 function attract(){if(!G.world||G.mode!=='title'){G.world=new World(1);G.mode='title';trailReset();}}
 // ---------- TITLE ----------
 SCREENS.title=(s)=>{attract();$('#pauseb').classList.remove('on');startMusic('title');s.innerHTML='';
- s.appendChild(el('div',{class:'topbar',style:'right:54px'},`<div>${starsBadge()}</div><div class="t small" style="color:#e8dcb5">BEST <span class="gold">${SAVE.best}</span></div>`));
+ s.appendChild(el('div',{class:'topbar',style:'right:54px'},`<div>${starsBadge()}</div><div class="t small" style="color:#e8dcb5">${t('BEST')} <span class="gold">${SAVE.best}</span></div>`));
  const logo=el('div',{class:'col',style:'position:absolute;left:0;right:0;top:92px'});const lt=pixText(GAME_NAME,6,'#ffd24a','#ff7ac8');lt.style.width='300px';logo.appendChild(lt);
- logo.appendChild(el('div',{class:'t',style:'font-size:13px;letter-spacing:3px;color:#bcd3ff;margin-top:4px'},'A SPACE CAT TAP-FLYER'));s.appendChild(logo);
+ logo.appendChild(el('div',{class:'t',style:'font-size:13px;letter-spacing:3px;color:#bcd3ff;margin-top:4px'},t('A SPACE CAT TAP-FLYER')));s.appendChild(logo);
  const b=el('div',{class:'col',style:'position:absolute;left:0;right:0;top:350px'});
- const play=el('div',{class:'btn big green'},'&#9654; PLAY');play.onclick=()=>startGame();b.appendChild(play);
- const w=el('div',{class:'btn wide pink'},'WARDROBE');w.onclick=()=>{sfx('click');show('wardrobe');};b.appendChild(w);
- const r=el('div',{class:'btn wide gold'},'LEADERBOARD');r.onclick=()=>{sfx('click');show('ranks');};b.appendChild(r);
- const h=el('div',{class:'btn sm blue',style:'margin-top:6px'},'HOW TO PLAY');h.onclick=()=>{sfx('click');howTo();};b.appendChild(h);s.appendChild(b);
- s.appendChild(el('div',{class:'t small center',style:'position:absolute;left:0;right:0;bottom:12px;letter-spacing:1px'},`A LOST AURA GAMES PRODUCTION<br>${COSMETIC_COUNT} COSMETICS &middot; ${TRAIL_COUNT} TRAILS &middot; ENDLESS`));
+ const play=el('div',{class:'btn big green'},'&#9654; '+t('PLAY'));play.onclick=()=>startGame();b.appendChild(play);
+ const w=el('div',{class:'btn wide pink'},t('WARDROBE'));w.onclick=()=>{sfx('click');show('wardrobe');};b.appendChild(w);
+ const r=el('div',{class:'btn wide gold'},t('LEADERBOARD'));r.onclick=()=>{sfx('click');show('ranks');};b.appendChild(r);
+ const hr=el('div',{class:'row',style:'display:flex;justify-content:center;flex-wrap:wrap;margin-top:6px'});const h=el('div',{class:'btn sm blue'},t('HOW TO PLAY'));h.onclick=()=>{sfx('click');howTo();};hr.appendChild(h);
+ const lg=el('div',{class:'btn sm purple',id:'langbtn',title:t('Language')});lg.appendChild(globeIcon(1,'#e2c2ff'));lg.appendChild(document.createTextNode(' '+langName(LANG)));lg.onclick=()=>{sfx('click');langPicker();};hr.appendChild(lg);b.appendChild(hr);s.appendChild(b);
+ s.appendChild(el('div',{class:'t small center',style:'position:absolute;left:0;right:0;bottom:12px;letter-spacing:1px'},`${t('A LOST AURA GAMES PRODUCTION')}<br>${t('{n} COSMETICS',{n:COSMETIC_COUNT})} &middot; ${t('{n} TRAILS',{n:TRAIL_COUNT})} &middot; ${t('ENDLESS')}`));
  if(!SAVE.seenHelp){SAVE.seenHelp=true;persist();setTimeout(()=>{if(CUR==='title')howTo();},300);}};
-function howTo(){modal(`<div style="margin-bottom:6px"></div><div class="gold" style="font-size:18px">HOW TO PLAY</div><div style="font-size:13px;text-align:left;line-height:1.5;margin-top:8px">
- &#9654; <b>TAP</b>, <b>CLICK</b>, <b>SPACE</b> or <b>UP</b> to jump. Jumps are short and sharp &mdash; tap a lot!<br>
- &#9654; Fly through the gaps. Every gap passed = <span class="gold">+1</span>.<br>
- &#9654; Grab <span class="gold">${STAR_ICON}</span> stars (blue ones are worth 5). Every point also pays 1 ${STAR_ICON}.<br>
- &#9654; It gets harder the further you go &mdash; and never ends.<br>
- &#9654; Spend stars in the <span class="pinkc">WARDROBE</span> on suits, helmets, hats &amp; trails. Some unlock with high scores.<br>
- &#9654; Beat your best to climb the <span class="gold">LEADERBOARD</span>.<br><span class="small">P / ESC pause &middot; M mute</span></div>`,[{t:"LET'S FLY",c:'green'}]);}
+function howTo(){modal(`<div style="margin-bottom:6px"></div><div class="gold" style="font-size:18px">${t('HOW TO PLAY')}</div><div style="font-size:13px;text-align:left;line-height:1.5;margin-top:8px">
+ &#9654; ${t('<b>TAP</b>, <b>CLICK</b>, <b>SPACE</b> or <b>UP</b> to jump. Jumps are short and sharp &mdash; tap a lot!')}<br>
+ &#9654; ${t('Fly through the gaps. Every gap passed = <span class="gold">+1</span>.')}<br>
+ &#9654; ${t('Grab <span class="gold">{star}</span> stars (blue ones are worth 5). Every point also pays 1 {star}.',{star:STAR_ICON})}<br>
+ &#9654; ${t('It gets harder the further you go &mdash; and never ends.')}<br>
+ &#9654; ${t('Spend stars in the <span class="pinkc">WARDROBE</span> on suits, helmets, hats &amp; trails. Some unlock with high scores.')}<br>
+ &#9654; ${t('Beat your best to climb the <span class="gold">LEADERBOARD</span>.')}<br><span class="small">${t('P / ESC pause &middot; M mute')}</span></div>`,[{t:t("LET'S FLY"),c:'green'}],{redo:howTo});}
+// ---------- LANGUAGE PICKER (shared lag.lang setting) ----------
+function langPicker(){const w=el('div',{});const hd=el('div',{class:'gold',style:'font-size:18px;display:flex;align-items:center;justify-content:center;gap:8px'});hd.appendChild(globeIcon(2,'#ffd24a'));hd.appendChild(document.createTextNode(t('LANGUAGE')));w.appendChild(hd);
+ w.appendChild(el('div',{class:'small',style:'margin:6px 0 8px'},t('Also changes the language on the Lost Aura Games website and in the other games.')));
+ const g=el('div',{class:'col',id:'langlist'});for(const [c,n] of LAG_LANGS){const b=el('div',{class:'btn wide'+(c===LANG?' on':''),'data-lang':c},esc(n)+(c===LANG?' &#10003;':''));b.onclick=()=>{sfx('click');setLang(c);};g.appendChild(b);}w.appendChild(g);
+ modal(w,[{t:t('DONE'),c:'green'}],{redo:langPicker});}
+// re-render whatever is on screen when the language changes (here or from another tab / the website)
+I18N_HOOKS.push(()=>{try{$('#pauseb').title=t('Pause');$('#mute').title=t('Mute / unmute (M)');}catch(e){}
+ const redo=MODAL_OPEN?MODAL_REDO:null;const s=$('#s-'+CUR);
+ if(CUR==='title'||CUR==='wardrobe'||CUR==='ranks'){if(CUR==='ranks')RK.scrolled=false;SCREENS[CUR](s);}else if(CUR==='over')SCREENS.over(s,G.result,true);
+ if(redo)redo();});
 // ---------- PLAY ----------
 SCREENS.play=(s)=>{s.innerHTML='';const pb=$('#pauseb');pb.innerHTML='';pb.appendChild(pauseIcon());pb.classList.add('on');};
 LEAVE.play=()=>{$('#pauseb').classList.remove('on');};
 // ---------- GAME OVER ----------
 let OVER_READY=false;
-SCREENS.over=(s,res)=>{OVER_READY=false;setTimeout(()=>{OVER_READY=true;},450);res=res||G.result;startMusic('menu');s.innerHTML='';
- const p=el('div',{class:'panel',id:'gopanel'});const t=pixText('GAME OVER',4,'#ff4a5a');t.style.width='232px';p.appendChild(t);
+let OVER_RANK=null;
+SCREENS.over=(s,res,redraw)=>{if(!redraw){OVER_READY=false;OVER_RANK=null;setTimeout(()=>{OVER_READY=true;},450);}res=res||G.result;startMusic('menu');s.innerHTML='';
+ const p=el('div',{class:'panel',id:'gopanel'});const tt=pixText(t('GAME OVER'),4,'#ff4a5a');tt.style.width='232px';tt.style.maxWidth='100%';p.appendChild(tt);
  const m=medalFor(res.score);const mrow=el('div',{style:'display:flex;align-items:center;justify-content:center;gap:10px;margin:6px 0 2px;min-height:64px'});
- if(m){mrow.appendChild(medalCanvas(m));mrow.appendChild(el('div',{style:`color:${m.c};font-size:14px`},m.n+'<br>MEDAL'));}else mrow.appendChild(el('div',{class:'small',style:'max-width:220px'},res.score<10?'Reach 10 for a bronze medal!':''));
+ if(m){mrow.appendChild(medalCanvas(m));mrow.appendChild(el('div',{style:`color:${m.c};font-size:14px;max-width:150px`},t(m.n+' MEDAL')));}else mrow.appendChild(el('div',{class:'small',style:'max-width:220px'},res.score<10?t('Reach 10 for a bronze medal!'):''));
  p.appendChild(mrow);
- p.appendChild(el('div',{class:'gorow'},`<span>SCORE</span><span style="font-size:28px;color:#fff">${res.score}</span>`));
- p.appendChild(el('div',{class:'gorow'},`<span>BEST</span><span class="gold" style="font-size:22px">${res.best}</span>`));
- if(res.isBest&&res.score>0)p.appendChild(el('div',{class:'newbest'},'&#9733; NEW BEST! &#9733;'));
- p.appendChild(el('div',{class:'gorow',style:'font-size:13px'},`<span>STARS EARNED</span><span class="gold">+${res.earned} ${STAR_ICON}</span>`));
- p.appendChild(el('div',{class:'small',id:'gorank',style:'min-height:14px;margin:2px 0'},''));
- for(const u of res.unlocked||[])p.appendChild(el('div',{class:'green',style:'font-size:12px'},'UNLOCKED: '+u.name.toUpperCase()));
- const retry=el('div',{class:'btn big green',id:'retry'},'&#8635; RETRY');retry.onclick=()=>{if(OVER_READY)startGame();};p.appendChild(retry);
- const row=el('div',{});const mb=el('div',{class:'btn sm'},'MENU');mb.onclick=()=>{sfx('click');show('title');};const wb=el('div',{class:'btn sm pink'},'WARDROBE');wb.onclick=()=>{sfx('click');show('wardrobe');};const rb=el('div',{class:'btn sm gold'},'RANKS');rb.onclick=()=>{sfx('click');show('ranks');};
- row.append(mb,wb,rb);p.appendChild(row);s.appendChild(p);
- if(res.isBest&&res.score>0)sfx('best');for(const u of res.unlocked||[]){toast('UNLOCKED: '+esc(u.name),'#3cff5a');}
+ p.appendChild(el('div',{class:'gorow'},`<span>${t('SCORE')}</span><span style="font-size:28px;color:#fff">${res.score}</span>`));
+ p.appendChild(el('div',{class:'gorow'},`<span>${t('BEST')}</span><span class="gold" style="font-size:22px">${res.best}</span>`));
+ if(res.isBest&&res.score>0)p.appendChild(el('div',{class:'newbest'},'&#9733; '+t('NEW BEST!')+' &#9733;'));
+ p.appendChild(el('div',{class:'gorow',style:'font-size:13px'},`<span>${t('STARS EARNED')}</span><span class="gold">+${res.earned} ${STAR_ICON}</span>`));
+ p.appendChild(el('div',{class:'small',id:'gorank',style:'min-height:14px;margin:2px 0'},overRankHtml()));
+ for(const u of res.unlocked||[])p.appendChild(el('div',{class:'green',style:'font-size:12px'},t('UNLOCKED: {item}',{item:esc(t(u.name)).toUpperCase()})));
+ const retry=el('div',{class:'btn big green',id:'retry'},'&#8635; '+t('RETRY'));retry.onclick=()=>{if(OVER_READY)startGame();};p.appendChild(retry);
+ const row=el('div',{});const mb=el('div',{class:'btn sm'},t('MENU'));mb.onclick=()=>{sfx('click');show('title');};const wb=el('div',{class:'btn sm pink'},t('WARDROBE'));wb.onclick=()=>{sfx('click');show('wardrobe');};const rb=el('div',{class:'btn sm gold'},t('RANKS'));rb.onclick=()=>{sfx('click');show('ranks');};
+ row.append(mb,wb,rb);p.appendChild(row);s.appendChild(p);if(redraw)return;
+ if(res.isBest&&res.score>0)sfx('best');for(const u of res.unlocked||[]){toast(t('UNLOCKED: {item}',{item:esc(t(u.name))}),'#3cff5a');}
  // leaderboard: ask for a name the first time the player gets a score; submit only on a new best
  if(res.score>0&&!SAVE.name&&(!SAVE.askedName||res.isBest)){SAVE.askedName=true;persist();setTimeout(()=>askName(()=>submitFromOver()),500);}
  else if(SAVE.name&&SAVE.best>SAVE.lbBest)submitFromOver();};
-async function submitFromOver(){const g=$('#gorank');if(g)g.textContent='Submitting to leaderboard...';try{const r=await lbMaybeSubmit();const g2=$('#gorank');if(!g2)return;
- if(r&&r.rank)g2.innerHTML=`<span class="green">LEADERBOARD RANK #${r.rank}</span>`;else if(r&&r.offline)g2.textContent='Offline: will upload your best later.';else g2.textContent='';}catch(e){const g2=$('#gorank');if(g2)g2.textContent='';}}
-function askName(after,isChange){const wrap=el('div',{});wrap.appendChild(el('div',{class:'gold',style:'font-size:18px'},isChange?'CHANGE NAME':'YOU SCORED!'));
- wrap.appendChild(el('div',{style:'font-size:13px;margin:6px 0 10px'},isChange?'Pick a new leaderboard name.':'Enter a name for the leaderboard.'));
- const inp=el('input',{class:'name',maxlength:'12',placeholder:'SPACE CAT',autocomplete:'off',autocapitalize:'characters',spellcheck:'false',id:'nameinp'});inp.value=SAVE.name||'';wrap.appendChild(inp);
- wrap.appendChild(el('div',{class:'small',style:'margin-top:4px'},'3-12 letters, numbers, space, _ - .'));const err=el('div',{class:'err',id:'nameerr'},'');wrap.appendChild(err);
+function overRankHtml(){const o=OVER_RANK;if(!o)return'';if(o.k==='sending')return esc(t('Submitting to leaderboard...'));if(o.k==='rank')return`<span class="green">${t('LEADERBOARD RANK #{n}',{n:o.rank})}</span>`;if(o.k==='offline')return esc(t('Offline: will upload your best later.'));return'';}
+function setOverRank(o){OVER_RANK=o;const g=$('#gorank');if(g)g.innerHTML=overRankHtml();}
+async function submitFromOver(){setOverRank({k:'sending'});try{const r=await lbMaybeSubmit();
+ if(r&&r.rank)setOverRank({k:'rank',rank:r.rank});else if(r&&r.offline)setOverRank({k:'offline'});else setOverRank(null);}catch(e){setOverRank(null);}}
+function askName(after,isChange){const wrap=el('div',{});wrap.appendChild(el('div',{class:'gold',style:'font-size:18px'},isChange?t('CHANGE NAME'):t('YOU SCORED!')));
+ wrap.appendChild(el('div',{style:'font-size:13px;margin:6px 0 10px'},isChange?t('Pick a new leaderboard name.'):t('Enter a name for the leaderboard.')));
+ const inp=el('input',{class:'name',maxlength:'12',placeholder:t('SPACE CAT'),autocomplete:'off',autocapitalize:'characters',spellcheck:'false',id:'nameinp'});inp.value=SAVE.name||'';wrap.appendChild(inp);
+ wrap.appendChild(el('div',{class:'small',style:'margin-top:4px'},t('3-12 letters, numbers, space, _ - .')));const err=el('div',{class:'err',id:'nameerr'},'');wrap.appendChild(err);
  const ok=()=>{const v=validateName(inp.value);if(!v.ok){err.textContent=v.err;sfx('err');return;}SAVE.name=v.name;persist();closeModal();sfx('buy');after&&after();};
  inp.addEventListener('keydown',e=>{e.stopPropagation();if(e.key==='Enter')ok();});
- modal(wrap,[{t:'SAVE',c:'green',keep:true,f:ok},{t:isChange?'CANCEL':'LATER',c:''}]);setTimeout(()=>{try{inp.focus();}catch(e){}},60);}
+ modal(wrap,[{t:t('SAVE'),c:'green',keep:true,f:ok},{t:isChange?t('CANCEL'):t('LATER'),c:''}]);setTimeout(()=>{try{inp.focus();}catch(e){}},60);}
 // ---------- WARDROBE ----------
 const WD={tab:'fur',timer:null,pc:null,px:null,t:0,raf:0};
 SCREENS.wardrobe=(s,tab)=>{if(tab)WD.tab=tab;startMusic('menu');s.innerHTML='';s.style.background='#050806';
- const tb=el('div',{class:'topbar'});const back=el('div',{class:'btn sm'},'&lt; BACK');back.onclick=()=>{sfx('click');show('title');};tb.appendChild(back);const tt=pixText('WARDROBE',3,BONE,'#ff7ac8');tb.appendChild(tt);tb.appendChild(el('div',{},starsBadge()));s.appendChild(tb);
+ const tb=el('div',{class:'topbar'});const back=el('div',{class:'btn sm'},'&lt; '+t('BACK'));back.onclick=()=>{sfx('click');show('title');};tb.appendChild(back);const tt=pixText(t('WARDROBE'),3,BONE,'#ff7ac8');fitPix(tt,128);tb.appendChild(tt);tb.appendChild(el('div',{},starsBadge()));s.appendChild(tb);
  const [pc,pxx]=mkCanvas(120,50);pc.id='wprev';s.appendChild(pc);WD.pc=pc;WD.px=pxx;
- const tabs=el('div',{class:'tabs'});for(const sl of SLOTS){const b=el('div',{class:'btn'+(WD.tab===sl.id?' on':''),'data-tab':sl.id},sl.id==='head'?'HEAD':sl.name.toUpperCase());b.onclick=()=>{sfx('click');WD.tab=sl.id;$$('.tabs .btn').forEach(e=>e.classList.toggle('on',e.dataset.tab===sl.id));renderGrid();};tabs.appendChild(b);}s.appendChild(tabs);
+ const tabs=el('div',{class:'tabs'});for(const sl of SLOTS){const b=el('div',{class:'btn'+(WD.tab===sl.id?' on':''),'data-tab':sl.id},sl.id==='head'?t('HEAD'):t(sl.name).toUpperCase());b.onclick=()=>{sfx('click');WD.tab=sl.id;$$('.tabs .btn').forEach(e=>e.classList.toggle('on',e.dataset.tab===sl.id));renderGrid();};tabs.appendChild(b);}s.appendChild(tabs);
  s.appendChild(el('div',{id:'wgrid'}));
  s.appendChild(el('div',{class:'wfoot small',id:'wfoot'},''));
  trailReset();renderGrid();};
 LEAVE.wardrobe=()=>{$('#s-wardrobe').style.background='';trailReset();};
 function renderGrid(){const g=$('#wgrid');if(!g)return;g.innerHTML='';const items=ITEMS.filter(i=>i.slot===WD.tab);const owned=items.filter(i=>SAVE.owned[i.id]).length;
- $('#wfoot').innerHTML=`${SLOTS.find(s=>s.id===WD.tab).name.toUpperCase()}: ${owned}/${items.length} OWNED &middot; ALL: ${ITEMS.filter(i=>SAVE.owned[i.id]&&!/_none$/.test(i.id)).length}/${ITEMS.filter(i=>!/_none$/.test(i.id)).length}`;
+ $('#wfoot').innerHTML=`${t(SLOTS.find(s=>s.id===WD.tab).name).toUpperCase()}: ${t('{a}/{b} OWNED',{a:owned,b:items.length})} &middot; ${t('ALL: {a}/{b}',{a:ITEMS.filter(i=>SAVE.owned[i.id]&&!/_none$/.test(i.id)).length,b:ITEMS.filter(i=>!/_none$/.test(i.id)).length})}`;
  for(const it of items){const own=!!SAVE.owned[it.id],on=SAVE.eq[it.slot]===it.id;const afford=!own&&it.price&&SAVE.stars>=it.price;
-  const d=el('div',{class:'item'+(on?' on':'')+(own?'':' lock')+(!own&&!it.price?' req':'')+(afford?' afford':''),'data-id':it.id});d.appendChild(itemIcon(it));d.appendChild(el('div',{class:'nm'},esc(it.name.toUpperCase())));
-  d.appendChild(el('div',{class:'pr '+(own?'green':(it.price?'gold':'pinkc'))},on?'EQUIPPED':own?'OWNED':(it.price?reqText(it):'&#128274; '+reqText(it))));
+  const d=el('div',{class:'item'+(on?' on':'')+(own?'':' lock')+(!own&&!it.price?' req':'')+(afford?' afford':''),'data-id':it.id});d.appendChild(itemIcon(it));d.appendChild(el('div',{class:'nm'},esc(t(it.name).toUpperCase())));
+  d.appendChild(el('div',{class:'pr '+(own?'green':(it.price?'gold':'pinkc'))},on?t('EQUIPPED'):own?t('OWNED'):(it.price?reqText(it):'&#128274; '+reqText(it))));
   d.onclick=()=>clickItem(it);g.appendChild(d);}}
 function clickItem(it){if(SAVE.owned[it.id]){SAVE.eq[it.slot]=it.id;persist();sfx('equip');renderGrid();return;}
- if(it.price){if(SAVE.stars<it.price){sfx('err');toast(`Need ${STAR_ICON} ${it.price-SAVE.stars} more for ${esc(it.name)}`,'#ff4a5a');return;}
-  modal(`<div class="gold" style="font-size:16px">BUY ${esc(it.name.toUpperCase())}?</div><div style="margin:8px 0">Cost: <span class="gold">${STAR_ICON} ${it.price}</span><br><span class="small">You have ${STAR_ICON} ${fmt(SAVE.stars)}</span></div>`,
-   [{t:'BUY & WEAR',c:'green',f:()=>{if(SAVE.stars<it.price)return;SAVE.stars-=it.price;SAVE.owned[it.id]=1;SAVE.eq[it.slot]=it.id;persist();sfx('buy');toast('NEW: '+esc(it.name),'#3cff5a');refreshStars();renderGrid();}},{t:'CANCEL'}]);return;}
+ if(it.price){if(SAVE.stars<it.price){sfx('err');toast(t('Need {star} {n} more for {item}',{star:STAR_ICON,n:it.price-SAVE.stars,item:esc(t(it.name))}),'#ff4a5a');return;}
+  modal(`<div class="gold" style="font-size:16px">${t('BUY {item}?',{item:esc(t(it.name).toUpperCase())})}</div><div style="margin:8px 0">${t('Cost:')} <span class="gold">${STAR_ICON} ${it.price}</span><br><span class="small">${t('You have {star} {n}',{star:STAR_ICON,n:fmt(SAVE.stars)})}</span></div>`,
+   [{t:t('BUY & WEAR'),c:'green',f:()=>{if(SAVE.stars<it.price)return;SAVE.stars-=it.price;SAVE.owned[it.id]=1;SAVE.eq[it.slot]=it.id;persist();sfx('buy');toast(t('NEW: {item}',{item:esc(t(it.name))}),'#3cff5a');refreshStars();renderGrid();}},{t:t('CANCEL')}]);return;}
  sfx('err');const prog=it.best?`${SAVE.best}/${it.best}`:it.runs?`${SAVE.runs}/${it.runs}`:`${SAVE.total}/${it.total}`;toast(`&#128274; ${esc(reqLong(it))} (${prog})`,'#ff7ac8');}
 function wardrobeFrame(dt){if(!WD.px)return;const x=WD.px;WD.t+=dt;x.setTransform(1,0,0,1,0,0);x.drawImage(BGX.sky[2],0,150,120,50,0,0,120,50);
  const sc=WD.t*45;x.fillStyle='#9fb4ff';for(const s of BGX.stars[1]){let X=(s.x-sc*.4)%180;if(X<0)X+=180;x.fillRect(X|0,(s.y/6)|0,1,1);}
@@ -831,26 +1084,26 @@ function wardrobeFrame(dt){if(!WD.px)return;const x=WD.px;WD.t+=dt;x.setTransfor
 // ---------- LEADERBOARD ----------
 const RK={timer:null,busy:false,last:null};
 SCREENS.ranks=(s)=>{startMusic('menu');s.innerHTML='';s.style.background='#050806';
- const tb=el('div',{class:'topbar'});const back=el('div',{class:'btn sm'},'&lt; BACK');back.onclick=()=>{sfx('click');show('title');};tb.appendChild(back);const tt=pixText('TOP 100',3,BONE,'#ffd24a');tb.appendChild(tt);tb.appendChild(el('div',{style:'width:40px'}));s.appendChild(tb);
- s.appendChild(el('div',{id:'lbhead'},`<span id="lbstat"><span class="live off"></span>LOADING...</span><span id="lbtime" class="dim"></span>`));
- s.appendChild(el('div',{id:'lblist'},'<div class="lbcolh"><span class="rk">#</span><span class="nm">NAME</span><span class="sc">SCORE</span></div><div id="lbrows"><div class="small center" style="padding:20px">Loading...</div></div>'));
+ const tb=el('div',{class:'topbar'});const back=el('div',{class:'btn sm'},'&lt; '+t('BACK'));back.onclick=()=>{sfx('click');show('title');};tb.appendChild(back);const tt=pixText(t('TOP 100'),3,BONE,'#ffd24a');fitPix(tt,170);tb.appendChild(tt);tb.appendChild(el('div',{style:'width:40px'}));s.appendChild(tb);
+ s.appendChild(el('div',{id:'lbhead'},`<span id="lbstat"><span class="live off"></span>${t('LOADING...')}</span><span id="lbtime" class="dim"></span>`));
+ s.appendChild(el('div',{id:'lblist'},`<div class="lbcolh"><span class="rk">#</span><span class="nm">${t('NAME')}</span><span class="sc">${t('SCORE')}</span></div><div id="lbrows"><div class="small center" style="padding:20px">${t('Loading...')}</div></div>`));
  s.appendChild(el('div',{id:'lbpin'}));
- const f=el('div',{class:'wfoot'});const nb=el('div',{class:'btn sm gold'},SAVE.name?'CHANGE NAME':'SET NAME');nb.onclick=()=>{sfx('click');askName(async()=>{await forceRename();refreshRanks();},!!SAVE.name);};
- const rf=el('div',{class:'btn sm'},'REFRESH');rf.onclick=()=>{sfx('click');refreshRanks();};const pl=el('div',{class:'btn sm green'},'PLAY');pl.onclick=()=>startGame();f.append(nb,rf,pl);s.appendChild(f);
+ const f=el('div',{class:'wfoot'});const nb=el('div',{class:'btn sm gold'},SAVE.name?t('CHANGE NAME'):t('SET NAME'));nb.onclick=()=>{sfx('click');askName(async()=>{await forceRename();refreshRanks();},!!SAVE.name);};
+ const rf=el('div',{class:'btn sm'},t('REFRESH'));rf.onclick=()=>{sfx('click');refreshRanks();};const pl=el('div',{class:'btn sm green'},t('PLAY'));pl.onclick=()=>startGame();f.append(nb,rf,pl);s.appendChild(f);
  refreshRanks();clearInterval(RK.timer);RK.timer=setInterval(()=>{if(CUR==='ranks'&&!document.hidden)refreshRanks();},LB_REFRESH_MS);};
 LEAVE.ranks=()=>{clearInterval(RK.timer);RK.timer=null;$('#s-ranks').style.background='';};
 // renaming re-sends the current best under the new name (server keeps the higher score; equal score updates the name)
 async function forceRename(){if(!SAVE.name||SAVE.best<=0)return;try{await LB.submitScore(SAVE.name,SAVE.best);SAVE.lbBest=SAVE.best;persist();}catch(e){}}
 async function refreshRanks(){if(RK.busy)return;RK.busy=true;try{await lbMaybeSubmit();const pid=LB.playerId();const [rows,me]=await Promise.all([LB.fetchTop(100),LB.fetchMyRank(pid)]);if(CUR!=='ranks')return;renderRanks(rows,me);}catch(e){console.warn(e);}finally{RK.busy=false;}}
-function rowHtml(r,me){return`<div class="lbrow${me?' me':''}${r.rank<=3?' r'+r.rank:''}"><span class="rk">${r.rank<=3?['','&#9733;1','&#9733;2','&#9733;3'][r.rank]:'#'+r.rank}</span><span class="nm">${esc(r.name)}${me?' (YOU)':''}</span><span class="sc">${fmt(r.score)}</span></div>`;}
-function renderRanks(rows,me){const st=$('#lbstat');if(st)st.innerHTML=LB.status==='live'?'<span class="live"></span><span class="green">LIVE</span> &middot; GLOBAL':(LB.status==='offline'?'<span class="live off"></span><span class="gold">OFFLINE</span> &middot; LOCAL BOARD':'<span class="live off"></span><span class="gold">LOCAL BOARD</span>');
- const tm=$('#lbtime');if(tm)tm.textContent='UPDATED '+new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'});
+function rowHtml(r,me){return`<div class="lbrow${me?' me':''}${r.rank<=3?' r'+r.rank:''}"><span class="rk">${r.rank<=3?['','&#9733;1','&#9733;2','&#9733;3'][r.rank]:'#'+r.rank}</span><span class="nm">${esc(r.name)}${me?' ('+t('YOU')+')':''}</span><span class="sc">${fmt(r.score)}</span></div>`;}
+function renderRanks(rows,me){const st=$('#lbstat');if(st)st.innerHTML=LB.status==='live'?`<span class="live"></span><span class="green">${t('LIVE')}</span> &middot; ${t('GLOBAL')}`:(LB.status==='offline'?`<span class="live off"></span><span class="gold">${t('OFFLINE')}</span> &middot; ${t('LOCAL BOARD')}`:`<span class="live off"></span><span class="gold">${t('LOCAL BOARD')}</span>`);
+ const tm=$('#lbtime');if(tm)tm.textContent=t('UPDATED {time}',{time:new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'})});
  const box=$('#lbrows');if(!box)return;const inTop=rows.some(r=>r.me);
- box.innerHTML=rows.length?rows.map(r=>rowHtml(r,r.me)).join(''):'<div class="small center" style="padding:20px">No scores yet. Be the first!</div>';
+ box.innerHTML=rows.length?rows.map(r=>rowHtml(r,r.me)).join(''):`<div class="small center" style="padding:20px">${t('No scores yet. Be the first!')}</div>`;
  const pin=$('#lbpin');if(!pin)return;
- if(me&&!inTop){pin.innerHTML='<div class="small" style="margin-bottom:2px">YOUR POSITION</div>'+rowHtml({rank:me.rank,name:me.name,score:me.score},true);}
- else if(!me){pin.innerHTML='<div class="small" style="margin-bottom:2px">YOUR POSITION</div>'+`<div class="lbrow me"><span class="rk">--</span><span class="nm">${SAVE.name?esc(SAVE.name):'YOU'}</span><span class="sc">${SAVE.best}</span></div>`+`<div class="small center" style="margin-top:2px">${SAVE.name?(SAVE.best>0?'Uploading your best...':'Score a point to get ranked!'):'Score a point and set a name to get ranked!'}</div>`;}
- else pin.innerHTML=`<div class="small center" style="padding-top:12px">You're #${me.rank} in the top 100! Your row is highlighted.</div>`;
+ if(me&&!inTop){pin.innerHTML=`<div class="small" style="margin-bottom:2px">${t('YOUR POSITION')}</div>`+rowHtml({rank:me.rank,name:me.name,score:me.score},true);}
+ else if(!me){pin.innerHTML=`<div class="small" style="margin-bottom:2px">${t('YOUR POSITION')}</div>`+`<div class="lbrow me"><span class="rk">--</span><span class="nm">${SAVE.name?esc(SAVE.name):t('YOU')}</span><span class="sc">${SAVE.best}</span></div>`+`<div class="small center" style="margin-top:2px">${SAVE.name?(SAVE.best>0?t('Uploading your best...'):t('Score a point to get ranked!')):t('Score a point and set a name to get ranked!')}</div>`;}
+ else pin.innerHTML=`<div class="small center" style="padding-top:12px">${t("You're #{n} in the top 100! Your row is highlighted.",{n:me.rank})}</div>`;
  const meRow=box.querySelector('.lbrow.me');if(meRow&&!RK.scrolled){RK.scrolled=true;}}
 
 // ================= BOOT =================
@@ -863,6 +1116,7 @@ addEventListener('pointerdown',unlockAudio,{passive:true});addEventListener('key
 window.addEventListener('load',()=>{loadSave();LB.init();fit();bgInit();gameInit();inputInit();drawMuteIcon();
  $('#mute').addEventListener('click',e=>{e.stopPropagation();setMuted(!SAVE.muted);sfx('click');});
  $('#pauseb').addEventListener('click',e=>{e.stopPropagation();if(G.paused)resumeGame();else pauseGame();});
+ $('#pauseb').title=t('Pause');$('#mute').title=t('Mute / unmute (M)');
  show('title');requestAnimationFrame(loop);
  setTimeout(()=>{lbMaybeSubmit().catch(()=>{});},1500);});
 // test hooks (harmless for players)

@@ -97,6 +97,277 @@ canvas.px{image-rendering:pixelated;image-rendering:crisp-edges}
  <div id="toast"></div>
 </div>
 <script>
+// ================= I18N (shared by Lost Aura Games titles) =================
+// One language setting for the whole site and every game: localStorage "lag.lang".
+// Strings are looked up by their English text: t('PLAY') -> 'JUGAR'. {name} placeholders are filled from vars.
+// Missing translations fall back to English and are logged once (console.info + I18N_MISS) so tests can catch them.
+const LAG_LANGS=[['en','English'],['es','Español'],['fr','Français'],['de','Deutsch'],['pt','Português'],['it','Italiano']];
+const LAG_LANG_KEY='lag.lang';
+const LAG_LANG_CODES=LAG_LANGS.map(l=>l[0]);
+function lagDetectLang(){let v=null;try{v=localStorage.getItem(LAG_LANG_KEY);}catch(e){}if(v&&LAG_LANG_CODES.includes(v))return v;
+ const navs=(navigator.languages&&navigator.languages.length?navigator.languages:[navigator.language||'en']);
+ for(const n of navs){const c=String(n||'').toLowerCase().slice(0,2);if(LAG_LANG_CODES.includes(c))return c;}return'en';}
+let LANG=lagDetectLang();
+const I18N={};for(const c of LAG_LANG_CODES)I18N[c]={};
+const I18N_MISS=new Set();
+// rows: [english, es, fr, de, pt, it]
+function i18nRows(rows){for(const r of rows){for(let i=1;i<LAG_LANG_CODES.length;i++){if(r[i]!=null)I18N[LAG_LANG_CODES[i]][r[0]]=r[i];}}}
+function t(key,vars){let s=key;if(LANG!=='en'){const d=I18N[LANG];if(d&&Object.prototype.hasOwnProperty.call(d,key))s=d[key];else if(!I18N_MISS.has(LANG+'|'+key)){I18N_MISS.add(LANG+'|'+key);try{console.info('[i18n] missing '+LANG+': '+key);}catch(e){}}}
+ if(vars)s=String(s).replace(/\{(\w+)\}/g,(m,k)=>vars[k]!=null?vars[k]:m);return s;}
+const I18N_HOOKS=[];
+function langName(c){const l=LAG_LANGS.find(x=>x[0]===c);return l?l[1]:c;}
+function setLang(c,fromStorage){if(!LAG_LANG_CODES.includes(c))return;const changed=c!==LANG;LANG=c;try{document.documentElement.lang=c;}catch(e){}
+ if(!fromStorage){try{localStorage.setItem(LAG_LANG_KEY,c);}catch(e){}}
+ if(changed)for(const f of I18N_HOOKS){try{f(c);}catch(e){console.error(e);}}}
+addEventListener('storage',e=>{if(e.key===LAG_LANG_KEY&&e.newValue&&e.newValue!==LANG)setLang(e.newValue,true);});
+try{document.documentElement.lang=LANG;}catch(e){}
+// Accented capitals for 5x7 bitmap fonts. Accented glyphs have 9 rows: row 0 is drawn one pixel row ABOVE the
+// normal cell, rows 1..7 are the normal 7 rows, row 8 is one row below (for the cedilla).
+function i18nFontExt(F){const sq=(g,drop)=>g.filter((_,i)=>i!==drop);
+ const AC={acute:[2,4],grave:[8,4],circ:[4,10],tilde:[13,22],uml:[10,0],ring:[4,10]};
+ const mk=(base,acc,drop)=>{const g=F[base];if(!g)return;const s=sq(g,drop==null?2:drop);return[AC[acc][0],AC[acc][1],...s,0];};
+ const map={'Á':['A','acute'],'À':['A','grave'],'Â':['A','circ'],'Ã':['A','tilde'],'Ä':['A','uml'],'É':['E','acute'],'È':['E','grave'],'Ê':['E','circ'],'Ë':['E','uml'],
+  'Í':['I','acute'],'Ì':['I','grave'],'Î':['I','circ'],'Ï':['I','uml'],'Ó':['O','acute'],'Ò':['O','grave'],'Ô':['O','circ'],'Õ':['O','tilde'],'Ö':['O','uml'],
+  'Ú':['U','acute'],'Ù':['U','grave'],'Û':['U','circ'],'Ü':['U','uml'],'Ñ':['N','tilde',1]};
+ for(const k in map){if(F[k])continue;const v=map[k];const g=mk(v[0],v[1],v[2]);if(g)F[k]=g;}
+ if(!F['Ç']&&F.C)F['Ç']=[0,...F.C,4];
+ if(!F['¿'])F['¿']=[4,0,4,8,16,17,14];if(!F['¡'])F['¡']=[4,0,4,4,4,4,4];
+ if(!F[','])F[',']=[0,0,0,0,0,4,8];if(!F['/'])F['/']=[1,1,2,4,8,16,16];if(!F['('])F['(']=[2,4,8,8,8,4,2];if(!F[')'])F[')']=[8,4,2,2,2,4,8];
+ if(!F['%'])F['%']=[24,25,2,4,8,19,3];if(!F['+'])F['+']=[0,4,4,31,4,4,0];if(!F['"'])F['"']=[10,10,0,0,0,0,0];if(!F['«'])F['«']=[0,5,10,20,10,5,0];if(!F['»'])F['»']=[0,20,10,5,10,20,0];
+ if(!F['Œ']&&F.O)F['Œ']=[15,20,20,23,20,20,15];return F;}
+// glyph row helper for font renderers: returns [rows, yOffset]
+function glyphRows(g){return g&&g.length===9?[g,-1]:[g,0];}
+// Upper-case for the pixel fonts: keep ß as SS (toUpperCase does that) and fold anything unknown to its base letter.
+function pixUpper(s,F){s=String(s).toUpperCase();if(!F)return s;let o='';for(const ch of s){if(F[ch]){o+=ch;continue;}const b=ch.normalize('NFD').replace(/[\u0300-\u036f]/g,'');o+=F[b]?b:ch;}return o;}
+// tiny pixel globe icon (12x12, scaled) for the language buttons
+function globeIcon(px=2,col='#9fc0ff'){const c=document.createElement('canvas');c.width=12*px;c.height=12*px;c.className='px';const x=c.getContext('2d');x.fillStyle=col;
+ const R=['....####....','..##.#..##..','.#..#..#..#.','.#..#..#..#.','############','#...#..#...#','#...#..#...#','############','.#..#..#..#.','.#..#..#..#.','..##.#..##..','....####....'];
+ for(let j=0;j<12;j++)for(let i=0;i<12;i++)if(R[j][i]==='#')x.fillRect(i*px,j*px,px,px);c.style.verticalAlign='middle';return c;}
+
+// ================= TRANSLATIONS (en, es, fr, de, pt, it) =================
+// Generated from the translation table; one row per English string.
+i18nRows([
+["Back", "Volver", "Retour", "Zurück", "Voltar", "Indietro"],
+["GAS", "GAS", "GAZ", "GAS", "ACELERA", "GAS"],
+["BRAKE", "FRENO", "FREIN", "BREMSE", "FREIO", "FRENO"],
+["Pause (Esc)", "Pausa (Esc)", "Pause (Échap)", "Pause (Esc)", "Pausa (Esc)", "Pausa (Esc)"],
+["Gas pedal", "Pedal de gas", "Pédale d'accélérateur", "Gaspedal", "Pedal do acelerador", "Pedale del gas"],
+["Brake pedal", "Pedal de freno", "Pédale de frein", "Bremspedal", "Pedal do freio", "Pedale del freno"],
+["START", "SALIDA", "DÉPART", "START", "LARGADA", "VIA"],
+["GO!", "¡YA!", "PARTEZ !", "LOS!", "VAI!", "VIA!"],
+["Resume", "Seguir", "Reprendre", "Weiter", "Continuar", "Riprendi"],
+["Restart", "Reiniciar", "Recommencer", "Neustart", "Reiniciar", "Ricomincia"],
+["End Run", "Terminar", "Terminer", "Fahrt beenden", "Encerrar", "Termina"],
+["PAUSED", "EN PAUSA", "EN PAUSE", "PAUSE", "PAUSADO", "IN PAUSA"],
+["Restart or End Run banks the credits earned so far.", "Reiniciar o Terminar guarda los créditos ganados hasta ahora.", "Recommencer ou Terminer encaisse les crédits gagnés jusqu'ici.", "Neustart oder Fahrt beenden sichert die bisher verdienten Credits.", "Reiniciar ou Encerrar guarda os créditos ganhos até agora.", "Ricomincia o Termina incassano i crediti guadagnati finora."],
+["FUEL REFILLED", "¡DEPÓSITO LLENO!", "PLEIN FAIT !", "VOLLGETANKT!", "TANQUE CHEIO!", "PIENO FATTO!"],
+["AIR {s}S", "AIRE {s}S", "AIR {s}S", "AIR {s}S", "AR {s}S", "ARIA {s}S"],
+["{n}X FLIP", "{n}X VUELTA", "{n}X SALTO", "{n}X FLIP", "{n}X GIRO", "{n}X GIRO"],
+["FLIP", "VUELTA", "SALTO", "FLIP", "GIRO", "GIRO"],
+["BACKFLIP!", "¡MORTAL ATRÁS!", "SALTO ARRIÈRE !", "RÜCKWÄRTSSALTO!", "MORTAL PRA TRÁS!", "SALTO INDIETRO!"],
+["FRONTFLIP!", "¡MORTAL ADELANTE!", "SALTO AVANT !", "VORWÄRTSSALTO!", "MORTAL PRA FRENTE!", "SALTO IN AVANTI!"],
+["NEW BEST!", "¡NUEVO RÉCORD!", "NOUVEAU RECORD !", "NEUER REKORD!", "NOVO RECORDE!", "NUOVO RECORD!"],
+["BEST", "RÉCORD", "RECORD", "REKORD", "RECORDE", "RECORD"],
+["FUEL", "GASOLINA", "ESSENCE", "SPRIT", "COMBUSTÍVEL", "BENZINA"],
+["LOW FUEL!", "¡POCA GASOLINA!", "RÉSERVE !", "SPRIT KNAPP!", "RESERVA!", "RISERVA!"],
+["NO FUEL", "SIN GASOLINA", "PANNE SÈCHE", "KEIN SPRIT", "SEM COMBUSTÍVEL", "A SECCO"],
+["BEST {n}M", "RÉCORD {n}M", "RECORD {n}M", "REKORD {n}M", "RECORDE {n}M", "RECORD {n}M"],
+["A GALAXY CLIMB RACER", "CARRERAS DE ESCALADA GALÁCTICAS", "COURSE DE CÔTES GALACTIQUE", "GALAKTISCHES BERGRENNEN", "CORRIDA DE ESCALADA GALÁCTICA", "CORSE IN SALITA GALATTICHE"],
+["Race {world}", "Correr en {world}", "Rouler sur {world}", "Fahren: {world}", "Correr em {world}", "Corri su {world}"],
+["Race", "Correr", "Rouler", "Fahren", "Correr", "Corri"],
+["Worlds", "Mundos", "Mondes", "Welten", "Mundos", "Mondi"],
+["Garage", "Garaje", "Garage", "Garage", "Garagem", "Garage"],
+["How to Play", "Cómo jugar", "Comment jouer", "Anleitung", "Como jogar", "Come si gioca"],
+["Settings", "Ajustes", "Options", "Optionen", "Ajustes", "Opzioni"],
+["Language", "Idioma", "Langue", "Sprache", "Idioma", "Lingua"],
+["Done", "Listo", "OK", "Fertig", "Pronto", "Fatto"],
+["Also changes the language on the Lost Aura Games website and in the other games.", "También cambia el idioma de la web de Lost Aura Games y de los demás juegos.", "Change aussi la langue du site Lost Aura Games et des autres jeux.", "Ändert auch die Sprache der Lost-Aura-Games-Website und der anderen Spiele.", "Também muda o idioma do site da Lost Aura Games e dos outros jogos.", "Cambia la lingua anche sul sito di Lost Aura Games e negli altri giochi."],
+["Rotate your device to landscape for the best view (tap to dismiss)", "Gira el dispositivo en horizontal para verlo mejor (toca para cerrar)", "Tourne ton appareil en paysage pour un meilleur affichage (touche pour fermer)", "Dreh dein Gerät ins Querformat für die beste Ansicht (tippen zum Schließen)", "Gire o aparelho na horizontal para ver melhor (toque para fechar)", "Ruota il dispositivo in orizzontale per vederlo meglio (tocca per chiudere)"],
+["A LOST AURA GAMES PRODUCTION &middot; HOLD GAS (&rarr;/D) &middot; BRAKE (&larr;/A)", "UNA PRODUCCIÓN DE LOST AURA GAMES &middot; MANTÉN GAS (&rarr;/D) &middot; FRENO (&larr;/A)", "UNE PRODUCTION LOST AURA GAMES &middot; GAZ MAINTENU (&rarr;/D) &middot; FREIN (&larr;/A)", "EINE PRODUKTION VON LOST AURA GAMES &middot; GAS HALTEN (&rarr;/D) &middot; BREMSE (&larr;/A)", "UMA PRODUÇÃO LOST AURA GAMES &middot; SEGURE ACELERAR (&rarr;/D) &middot; FREIO (&larr;/A)", "UNA PRODUZIONE LOST AURA GAMES &middot; TIENI GAS (&rarr;/D) &middot; FRENO (&larr;/A)"],
+["SELECT WORLD", "ELIGE MUNDO", "CHOISIS UN MONDE", "WELT WÄHLEN", "ESCOLHA O MUNDO", "SCEGLI IL MONDO"],
+["GARAGE", "GARAJE", "GARAGE", "GARAGE", "GARAGEM", "GARAGE"],
+["SETTINGS", "AJUSTES", "OPTIONS", "OPTIONEN", "AJUSTES", "OPZIONI"],
+["HOW TO PLAY", "CÓMO JUGAR", "COMMENT JOUER", "ANLEITUNG", "COMO JOGAR", "COME SI GIOCA"],
+["GRAV {g}G &middot; GRIP {p}%", "GRAV {g}G &middot; AGARRE {p}%", "GRAV {g}G &middot; ADHÉRENCE {p}%", "GRAV {g}G &middot; GRIP {p}%", "GRAV {g}G &middot; ADERÊNCIA {p}%", "GRAV {g}G &middot; ADERENZA {p}%"],
+["BEST: {n} M", "RÉCORD: {n} M", "RECORD : {n} M", "REKORD: {n} M", "RECORDE: {n} M", "RECORD: {n} M"],
+["BEST: {n} m", "Récord: {n} m", "Record : {n} m", "Rekord: {n} m", "Recorde: {n} m", "Record: {n} m"],
+["LOCKED", "BLOQUEADO", "VERROUILLÉ", "GESPERRT", "BLOQUEADO", "BLOCCATO"],
+["Need {c} {n} more credits for {item}", "Te faltan {c} {n} créditos para {item}", "Il te manque {c} {n} crédits pour {item}", "Dir fehlen {c} {n} Credits für {item}", "Faltam {c} {n} créditos para {item}", "Ti mancano {c} {n} crediti per {item}"],
+["Unlock {item}?", "¿Desbloquear {item}?", "Débloquer {item} ?", "{item} freischalten?", "Desbloquear {item}?", "Sbloccare {item}?"],
+["Price:", "Precio:", "Prix :", "Preis:", "Preço:", "Prezzo:"],
+["(you have {n})", "(tienes {n})", "(tu as {n})", "(du hast {n})", "(você tem {n})", "(ne hai {n})"],
+["Buy", "Comprar", "Acheter", "Kaufen", "Comprar", "Compra"],
+["Not enough credits", "No tienes créditos suficientes", "Pas assez de crédits", "Nicht genug Credits", "Créditos insuficientes", "Crediti insufficienti"],
+["{item} unlocked!", "¡{item} desbloqueado!", "{item} débloqué !", "{item} freigeschaltet!", "{item} desbloqueado!", "{item} sbloccato!"],
+["Cancel", "Cancelar", "Annuler", "Abbrechen", "Cancelar", "Annulla"],
+["DRIVING", "AL VOLANTE", "AU VOLANT", "IM EINSATZ", "DIRIGINDO", "IN GUIDA"],
+["OWNED", "TUYO", "POSSÉDÉ", "GEKAUFT", "SEU", "TUO"],
+["POWER", "POTENCIA", "PUISSANCE", "LEISTUNG", "POTÊNCIA", "POTENZA"],
+["TOP SPEED", "VEL. MÁX.", "VIT. MAX", "V-MAX", "VEL. MÁX.", "VEL. MAX"],
+["GRIP", "AGARRE", "ADHÉRENCE", "GRIP", "ADERÊNCIA", "ADERENZA"],
+["AIR CTRL", "CTRL AIRE", "CTRL AIR", "LUFTKONTR.", "CTRL AR", "CTRL ARIA"],
+["SHOCKS", "AMORTIG.", "SUSPENS.", "DÄMPFER", "AMORTEC.", "AMMORT."],
+["Thrusters: hold GAS in the air", "Propulsores: mantén GAS en el aire", "Propulseurs : garde GAZ en l'air", "Triebwerke: in der Luft GAS halten", "Propulsores: segure ACELERA no ar", "Propulsori: tieni GAS in aria"],
+["Rocket boost while holding GAS", "Turbo cohete mientras mantienes GAS", "Boost fusée en maintenant GAZ", "Raketenschub, solange du GAS hältst", "Turbo foguete enquanto segura ACELERA", "Spinta a razzo tenendo premuto GAS"],
+["Buy for {c} {n}", "Comprar por {c} {n}", "Acheter pour {c} {n}", "Kaufen für {c} {n}", "Comprar por {c} {n}", "Compra per {c} {n}"],
+["Drive this", "Conducir este", "Conduire celui-ci", "Diesen fahren", "Dirigir este", "Guida questo"],
+["Upgrades", "Mejoras", "Améliorations", "Upgrades", "Melhorias", "Potenziamenti"],
+["Cosmetics", "Estética", "Cosmétiques", "Kosmetik", "Visual", "Estetica"],
+["Buy this car to upgrade it. Upgrades are per car.", "Compra este coche para mejorarlo. Las mejoras son por coche.", "Achète ce véhicule pour l'améliorer. Les améliorations sont propres à chaque véhicule.", "Kauf dieses Auto, um es aufzurüsten. Upgrades gelten pro Auto.", "Compre este carro para melhorá-lo. As melhorias são por carro.", "Compra quest'auto per potenziarla. I potenziamenti valgono per singola auto."],
+["MAX", "MÁX.", "MAX", "MAX", "MÁX.", "MAX"],
+["Buy this car first. Cosmetics you own work on every car.", "Primero compra este coche. La estética que tengas sirve para todos.", "Achète d'abord ce véhicule. Tes cosmétiques vont sur tous les véhicules.", "Kauf zuerst dieses Auto. Deine Kosmetik passt auf jedes Auto.", "Compre este carro primeiro. O visual que você tem serve em todos.", "Prima compra quest'auto. L'estetica che possiedi vale su tutte."],
+["EQUIPPED", "EQUIPADO", "ÉQUIPÉ", "AUSGERÜSTET", "EQUIPADO", "EQUIPAGGIATO"],
+["Buy the {item}?", "¿Comprar el {item}?", "Acheter : {item} ?", "{item} kaufen?", "Comprar o {item}?", "Comprare {item}?"],
+["{item} is yours!", "¡{item} es tuyo!", "{item} est à toi !", "{item} gehört dir!", "{item} é seu!", "{item} è tuo!"],
+["Buy {item}?", "¿Comprar {item}?", "Acheter {item} ?", "{item} kaufen?", "Comprar {item}?", "Comprare {item}?"],
+["Owned cosmetics can be equipped on every car.", "La estética comprada se puede equipar en todos los coches.", "Les cosmétiques achetés s'équipent sur tous les véhicules.", "Gekaufte Kosmetik kann auf jedes Auto.", "O visual comprado pode ser usado em todos os carros.", "L'estetica acquistata si può montare su tutte le auto."],
+["NEW BEST! (was {n} m)", "¡NUEVO RÉCORD! (antes {n} m)", "NOUVEAU RECORD ! (avant {n} m)", "NEUER REKORD! (vorher {n} m)", "NOVO RECORDE! (antes {n} m)", "NUOVO RECORD! (prima {n} m)"],
+["Distance", "Distancia", "Distance", "Strecke", "Distância", "Distanza"],
+["Coins collected", "Monedas recogidas", "Pièces ramassées", "Gesammelte Münzen", "Moedas coletadas", "Monete raccolte"],
+["Air &amp; flip bonus (1 flip)", "Bonus de aire y vueltas (1 vuelta)", "Bonus air &amp; saltos (1 salto)", "Luft- &amp; Flip-Bonus (1 Flip)", "Bônus de ar e giros (1 giro)", "Bonus aria e giri (1 giro)"],
+["Air &amp; flip bonus ({n} flips)", "Bonus de aire y vueltas ({n} vueltas)", "Bonus air &amp; saltos ({n} saltos)", "Luft- &amp; Flip-Bonus ({n} Flips)", "Bônus de ar e giros ({n} giros)", "Bonus aria e giri ({n} giri)"],
+["CREDITS EARNED", "CRÉDITOS GANADOS", "CRÉDITS GAGNÉS", "VERDIENTE CREDITS", "CRÉDITOS GANHOS", "CREDITI GUADAGNATI"],
+["Balance", "Saldo", "Solde", "Kontostand", "Saldo", "Saldo"],
+["You can afford an upgrade! ({item} {c} {n})", "¡Te llega para una mejora! ({item} {c} {n})", "Tu peux t'offrir une amélioration ! ({item} {c} {n})", "Ein Upgrade ist drin! ({item} {c} {n})", "Dá pra comprar uma melhoria! ({item} {c} {n})", "Puoi permetterti un potenziamento! ({item} {c} {n})"],
+["Next upgrade: {item} for {c} {n} ({left} to go)", "Próxima mejora: {item} por {c} {n} (te faltan {left})", "Prochaine amélioration : {item} pour {c} {n} (encore {left})", "Nächstes Upgrade: {item} für {c} {n} (noch {left})", "Próxima melhoria: {item} por {c} {n} (faltam {left})", "Prossimo potenziamento: {item} per {c} {n} (mancano {left})"],
+["Retry", "Reintentar", "Rejouer", "Nochmal", "De novo", "Riprova"],
+["Title", "Inicio", "Accueil", "Titel", "Início", "Titolo"],
+["ON", "SÍ", "OUI", "AN", "SIM", "SÌ"],
+["OFF", "NO", "NON", "AUS", "NÃO", "NO"],
+["Sound FX", "Efectos", "Effets sonores", "Soundeffekte", "Efeitos sonoros", "Effetti sonori"],
+["Music", "Música", "Musique", "Musik", "Música", "Musica"],
+["Screen Shake", "Temblor de pantalla", "Tremblement d'écran", "Bildschirmwackeln", "Tremor de tela", "Scossa schermo"],
+["CRT Grain", "Grano CRT", "Grain CRT", "CRT-Körnung", "Granulado CRT", "Grana CRT"],
+["Save data lives in this browser (localStorage). Export it to back up or move to another device.", "La partida se guarda en este navegador (localStorage). Expórtala para hacer copia o pasarla a otro dispositivo.", "La sauvegarde est stockée dans ce navigateur (localStorage). Exporte-la pour la garder ou la passer sur un autre appareil.", "Der Spielstand liegt in diesem Browser (localStorage). Exportiere ihn als Sicherung oder für ein anderes Gerät.", "O progresso fica salvo neste navegador (localStorage). Exporte para fazer backup ou levar para outro aparelho.", "I salvataggi restano in questo browser (localStorage). Esportali per un backup o per un altro dispositivo."],
+["Export Save", "Exportar partida", "Exporter", "Exportieren", "Exportar progresso", "Esporta"],
+["Your save code (copy it somewhere safe):", "Tu código de partida (guárdalo en un sitio seguro):", "Ton code de sauvegarde (garde-le en lieu sûr) :", "Dein Speichercode (bewahre ihn sicher auf):", "Seu código de progresso (guarde em um lugar seguro):", "Il tuo codice di salvataggio (tienilo al sicuro):"],
+["Copy", "Copiar", "Copier", "Kopieren", "Copiar", "Copia"],
+["Copied!", "¡Copiado!", "Copié !", "Kopiert!", "Copiado!", "Copiato!"],
+["Close", "Cerrar", "Fermer", "Schließen", "Fechar", "Chiudi"],
+["Import Save", "Importar partida", "Importer", "Importieren", "Importar progresso", "Importa"],
+["Paste a save code:", "Pega un código de partida:", "Colle un code de sauvegarde :", "Speichercode einfügen:", "Cole um código de progresso:", "Incolla un codice di salvataggio:"],
+["Load", "Cargar", "Charger", "Laden", "Carregar", "Carica"],
+["Save imported!", "¡Partida importada!", "Sauvegarde importée !", "Spielstand importiert!", "Progresso importado!", "Salvataggio importato!"],
+["That code is not valid", "Ese código no es válido", "Ce code n'est pas valide", "Dieser Code ist ungültig", "Esse código não é válido", "Codice non valido"],
+["Reset All Progress", "Borrar todo el progreso", "Tout réinitialiser", "Fortschritt löschen", "Apagar todo o progresso", "Azzera i progressi"],
+["Erase ALL credits, cars, worlds and records?", "¿Borrar TODOS los créditos, coches, mundos y récords?", "Effacer TOUS les crédits, véhicules, mondes et records ?", "ALLE Credits, Autos, Welten und Rekorde löschen?", "Apagar TODOS os créditos, carros, mundos e recordes?", "Cancellare TUTTI crediti, auto, mondi e record?"],
+["This cannot be undone.", "No se puede deshacer.", "C'est irréversible.", "Das kann nicht rückgängig gemacht werden.", "Não dá para desfazer.", "Non si può annullare."],
+["Erase", "Borrar", "Effacer", "Löschen", "Apagar", "Cancella"],
+["Progress reset", "Progreso borrado", "Progression réinitialisée", "Fortschritt gelöscht", "Progresso apagado", "Progressi azzerati"],
+["Runs: {runs} &middot; Total distance: {dist} m &middot; Flips: {flips} &middot; Credits earned: {earned} &middot; Longest air: {air}s", "Carreras: {runs} &middot; Distancia total: {dist} m &middot; Vueltas: {flips} &middot; Créditos ganados: {earned} &middot; Mayor vuelo: {air}s", "Courses : {runs} &middot; Distance totale : {dist} m &middot; Saltos : {flips} &middot; Crédits gagnés : {earned} &middot; Plus long vol : {air}s", "Fahrten: {runs} &middot; Gesamtstrecke: {dist} m &middot; Flips: {flips} &middot; Verdiente Credits: {earned} &middot; Längste Luftzeit: {air}s", "Corridas: {runs} &middot; Distância total: {dist} m &middot; Giros: {flips} &middot; Créditos ganhos: {earned} &middot; Maior voo: {air}s", "Corse: {runs} &middot; Distanza totale: {dist} m &middot; Giri: {flips} &middot; Crediti guadagnati: {earned} &middot; Volo più lungo: {air}s"],
+["IN THE AIR", "EN EL AIRE", "EN L'AIR", "IN DER LUFT", "NO AR", "IN ARIA"],
+["CREDITS", "CRÉDITOS", "CRÉDITS", "CREDITS", "CRÉDITOS", "CREDITI"],
+["CRASHES", "ACCIDENTES", "ACCIDENTS", "CRASHS", "ACIDENTES", "INCIDENTI"],
+["SLICK PATCHES", "ZONAS RESBALADIZAS", "ZONES GLISSANTES", "RUTSCHIGE STELLEN", "TRECHOS ESCORREGADIOS", "TRATTI SCIVOLOSI"],
+["Hold the green pedal, <b>&rarr;</b> or <b>D</b> to drive forward.", "Mantén el pedal verde, <b>&rarr;</b> o <b>D</b> para avanzar.", "Maintiens la pédale verte, <b>&rarr;</b> ou <b>D</b> pour avancer.", "Halte das grüne Pedal, <b>&rarr;</b> oder <b>D</b>, um vorwärts zu fahren.", "Segure o pedal verde, <b>&rarr;</b> ou <b>D</b> para avançar.", "Tieni premuto il pedale verde, <b>&rarr;</b> o <b>D</b> per avanzare."],
+["Hold the red pedal, <b>&larr;</b> or <b>A</b> to brake, then reverse.", "Mantén el pedal rojo, <b>&larr;</b> o <b>A</b> para frenar y luego dar marcha atrás.", "Maintiens la pédale rouge, <b>&larr;</b> ou <b>A</b> pour freiner, puis reculer.", "Halte das rote Pedal, <b>&larr;</b> oder <b>A</b>, um zu bremsen und dann rückwärts zu fahren.", "Segure o pedal vermelho, <b>&larr;</b> ou <b>A</b> para frear e depois dar ré.", "Tieni premuto il pedale rosso, <b>&larr;</b> o <b>A</b> per frenare e poi andare in retro."],
+["Gas tilts the nose up (backflip); brake tips it down (frontflip). Land on your wheels!", "El gas levanta el morro (mortal atrás); el freno lo baja (mortal adelante). ¡Aterriza sobre las ruedas!", "Le gaz lève le nez (salto arrière) ; le frein le baisse (salto avant). Retombe sur tes roues !", "Gas hebt die Nase (Rückwärtssalto), Bremse senkt sie (Vorwärtssalto). Lande auf den Rädern!", "Acelerar levanta o bico (mortal pra trás); frear abaixa (mortal pra frente). Pouse nas rodas!", "Il gas alza il muso (salto indietro); il freno lo abbassa (salto in avanti). Atterra sulle ruote!"],
+["Earn credits for distance, coins and air time / flips. Harder worlds pay more.", "Gana créditos por distancia, monedas y tiempo en el aire / vueltas. Los mundos difíciles pagan más.", "Gagne des crédits avec la distance, les pièces et le temps en l'air / saltos. Les mondes durs paient plus.", "Verdiene Credits für Strecke, Münzen und Luftzeit / Flips. Schwerere Welten zahlen mehr.", "Ganhe créditos por distância, moedas e tempo no ar / giros. Mundos mais difíceis pagam mais.", "Guadagni crediti con distanza, monete e tempo in aria / giri. I mondi più duri pagano di più."],
+["Your tank drains while you drive. Grab red canisters to refill. Out of fuel and stopped = run over.", "El depósito se vacía al conducir. Coge bidones rojos para rellenar. Sin gasolina y parado = se acabó.", "Ton réservoir se vide en roulant. Prends les bidons rouges pour refaire le plein. Panne sèche et à l'arrêt = fin de course.", "Dein Tank leert sich beim Fahren. Schnapp dir rote Kanister zum Auftanken. Kein Sprit und Stillstand = Fahrt vorbei.", "O tanque esvazia enquanto você dirige. Pegue galões vermelhos para reabastecer. Sem combustível e parado = fim da corrida.", "Il serbatoio si svuota mentre guidi. Prendi le taniche rosse per fare il pieno. A secco e fermo = corsa finita."],
+["Touch the ground with your roof and the run ends. Fall into a gap and the void takes you.", "Si tocas el suelo con el techo, se acaba. Si caes en un hueco, te traga el vacío.", "Touche le sol avec le toit et c'est fini. Tombe dans un trou et le vide t'avale.", "Berührst du mit dem Dach den Boden, ist die Fahrt vorbei. Fällst du in eine Lücke, holt dich die Leere.", "Encostou o teto no chão, acabou. Caiu num buraco, o vazio te engole.", "Tocchi terra col tetto e la corsa finisce. Cadi in un buco e il vuoto ti inghiotte."],
+["Shiny, light-colored ground (ice, oil, loose sand, slime...) has very little grip. Keep momentum and feather the gas.", "El suelo brillante y claro (hielo, aceite, arena suelta, baba...) agarra muy poco. Mantén la inercia y dosifica el gas.", "Le sol brillant et clair (glace, huile, sable meuble, slime...) n'accroche presque pas. Garde ton élan et dose le gaz.", "Glänzender, heller Boden (Eis, Öl, loser Sand, Schleim ...) hat kaum Grip. Halte den Schwung und dosiere das Gas.", "Chão brilhante e claro (gelo, óleo, areia fofa, gosma...) quase não tem aderência. Mantenha o embalo e dose o acelerador.", "Il terreno lucido e chiaro (ghiaccio, olio, sabbia, melma...) ha pochissima aderenza. Mantieni lo slancio e dosa il gas."],
+["Upgrade Engine, Fuel Tank, Suspension, Tires and Air Control. Steep hills need power and momentum; long runs need fuel. Buy new cars and worlds as long-term goals.", "Mejora Motor, Depósito, Suspensión, Neumáticos y Control aéreo. Las cuestas empinadas piden potencia e inercia; los trayectos largos, gasolina. Comprar coches y mundos nuevos son metas a largo plazo.", "Améliore Moteur, Réservoir, Suspension, Pneus et Contrôle aérien. Les pentes raides demandent puissance et élan ; les longues courses, de l'essence. Nouveaux véhicules et mondes : tes objectifs à long terme.", "Rüste Motor, Tank, Federung, Reifen und Luftkontrolle auf. Steile Hügel brauchen Kraft und Schwung, lange Fahrten Sprit. Neue Autos und Welten sind deine Langzeitziele.", "Melhore Motor, Tanque, Suspensão, Pneus e Controle no ar. Subidas íngremes pedem potência e embalo; corridas longas, combustível. Carros e mundos novos são metas de longo prazo.", "Potenzia Motore, Serbatoio, Sospensioni, Gomme e Controllo in aria. Le salite ripide vogliono potenza e slancio; le corse lunghe, benzina. Nuove auto e mondi sono obiettivi a lungo termine."],
+["Esc / P pauses. Enter / R retries from the results screen.", "Esc / P pausa. Enter / R reintenta desde la pantalla de resultados.", "Échap / P met en pause. Entrée / R rejoue depuis l'écran des résultats.", "Esc / P pausiert. Enter / R startet im Ergebnisbildschirm neu.", "Esc / P pausa. Enter / R tenta de novo na tela de resultados.", "Esc / P mette in pausa. Invio / R riprova dalla schermata dei risultati."],
+["Let's drive!", "¡A rodar!", "En route !", "Los geht's!", "Bora acelerar!", "Si parte!"],
+["FLIPPED!", "¡VOLCADO!", "RETOURNÉ !", "ÜBERSCHLAGEN!", "CAPOTOU!", "RIBALTATO!"],
+["OUT OF FUEL", "SIN GASOLINA", "PANNE SÈCHE", "SPRIT ALLE", "SEM COMBUSTÍVEL", "A SECCO"],
+["LOST IN THE VOID", "PERDIDO EN EL VACÍO", "PERDU DANS LE VIDE", "IM NICHTS VERLOREN", "PERDIDO NO VAZIO", "PERSO NEL VUOTO"],
+["RUN ENDED", "FIN DE LA CARRERA", "COURSE TERMINÉE", "FAHRT BEENDET", "FIM DA CORRIDA", "CORSA FINITA"],
+["You landed on your roof. Upgrade suspension & air control, and ease off the gas on steep climbs.", "Caíste de techo. Mejora la suspensión y el control aéreo, y suelta gas en las subidas empinadas.", "Tu es retombé sur le toit. Améliore la suspension et le contrôle aérien, et lève le pied dans les montées raides.", "Du bist aufs Dach gefallen. Rüste Federung & Luftkontrolle auf und geh an steilen Hängen vom Gas.", "Você caiu de teto. Melhore a suspensão e o controle no ar, e alivie o acelerador nas subidas íngremes.", "Sei atterrato sul tetto. Potenzia sospensioni e controllo in aria, e molla il gas nelle salite ripide."],
+["Your tank ran dry. A bigger Fuel Tank and a stronger Engine reach the next canister.", "Te quedaste seco. Con un depósito más grande y un motor más fuerte llegarás al siguiente bidón.", "Réservoir à sec. Un plus gros réservoir et un moteur plus costaud atteindront le prochain bidon.", "Der Tank ist leer. Mit größerem Tank und stärkerem Motor schaffst du es zum nächsten Kanister.", "O tanque secou. Um tanque maior e um motor mais forte alcançam o próximo galão.", "Serbatoio a secco. Con un serbatoio più grande e un motore più forte arrivi alla prossima tanica."],
+["You fell into a gap. More speed off the ramp clears longer jumps.", "Caíste en un hueco. Con más velocidad en la rampa salvarás saltos más largos.", "Tu es tombé dans un trou. Plus de vitesse sur le tremplin = des sauts plus longs.", "Du bist in eine Lücke gefallen. Mehr Tempo an der Rampe schafft längere Sprünge.", "Você caiu num buraco. Mais velocidade na rampa vence saltos mais longos.", "Sei caduto in un buco. Più velocità sulla rampa supera salti più lunghi."],
+["Credits earned so far were banked.", "Los créditos ganados hasta ahora están a salvo.", "Les crédits gagnés jusqu'ici sont encaissés.", "Bisher verdiente Credits wurden gesichert.", "Os créditos ganhos até agora foram guardados.", "I crediti guadagnati finora sono stati incassati."],
+["Home sweet hills", "Dulces colinas de casa", "Douces collines natales", "Trautes Hügelland", "Doces colinas de casa", "Dolci colline di casa"],
+["Low-gravity moon", "Luna de baja gravedad", "Lune à faible gravité", "Mond mit wenig Schwerkraft", "Lua de baixa gravidade", "Luna a bassa gravità"],
+["Twin-sun desert", "Desierto de dos soles", "Désert aux deux soleils", "Wüste mit zwei Sonnen", "Deserto de dois sóis", "Deserto dai due soli"],
+["Slippery ice moon", "Luna de hielo resbaladiza", "Lune de glace glissante", "Rutschiger Eismond", "Lua de gelo escorregadia", "Luna di ghiaccio scivolosa"],
+["Lava planet", "Planeta de lava", "Planète de lave", "Lavaplanet", "Planeta de lava", "Pianeta di lava"],
+["Alien jungle", "Jungla alienígena", "Jungle extraterrestre", "Alien-Dschungel", "Selva alienígena", "Giungla aliena"],
+["Crystal world", "Mundo de cristal", "Monde de cristal", "Kristallwelt", "Mundo de cristal", "Mondo di cristallo"],
+["Cyber megacity", "Megaciudad ciber", "Cyber-mégapole", "Cyber-Megastadt", "Megacidade cyber", "Megalopoli cyber"],
+["Gas giant cloudtops", "Nubes de un gigante gaseoso", "Nuages d'une géante gazeuse", "Wolken eines Gasriesen", "Nuvens de um gigante gasoso", "Nubi di un gigante gassoso"],
+["Black hole edge", "Al borde de un agujero negro", "Au bord d'un trou noir", "Am Rand eines Schwarzen Lochs", "Borda de um buraco negro", "Sull'orlo di un buco nero"],
+["Rolling green hills under a big blue sky. Drive far enough and day turns to a starry night.", "Colinas verdes bajo un gran cielo azul. Llega lo bastante lejos y el día se volverá noche estrellada.", "Des collines verdoyantes sous un grand ciel bleu. Roule assez loin et le jour laisse place à une nuit étoilée.", "Sanfte grüne Hügel unter blauem Himmel. Fahr weit genug, und der Tag wird zur Sternennacht.", "Colinas verdes sob um imenso céu azul. Vá longe o bastante e o dia vira noite estrelada.", "Dolci colline verdi sotto un grande cielo azzurro. Vai abbastanza lontano e il giorno diventa notte stellata."],
+["A quiet grey moon. Gravity is weak: huge jumps, long flips, and slow landings.", "Una luna gris y tranquila. La gravedad es débil: saltos enormes, vueltas largas y aterrizajes lentos.", "Une lune grise et paisible. Gravité faible : sauts énormes, longs saltos et atterrissages lents.", "Ein stiller grauer Mond. Schwache Schwerkraft: riesige Sprünge, lange Flips, sanfte Landungen.", "Uma lua cinza e calma. Gravidade fraca: saltos enormes, giros longos e pousos lentos.", "Una tranquilla luna grigia. Gravità debole: salti enormi, giri lunghi e atterraggi lenti."],
+["Endless sand dunes beneath twin suns. Sand is loose, so wheels slip on steep slopes.", "Dunas infinitas bajo dos soles. La arena está suelta y las ruedas patinan en las cuestas.", "Des dunes sans fin sous deux soleils. Le sable est meuble : les roues patinent dans les pentes.", "Endlose Dünen unter zwei Sonnen. Der Sand ist locker, an steilen Hängen drehen die Räder durch.", "Dunas sem fim sob dois sóis. A areia é fofa, então as rodas patinam nas subidas.", "Dune infinite sotto due soli. La sabbia è smossa: in salita le ruote slittano."],
+["A frozen moon under a dancing aurora. Ice is slick: feather the gas and keep momentum.", "Una luna helada bajo una aurora danzante. El hielo resbala: dosifica el gas y mantén la inercia.", "Une lune gelée sous une aurore dansante. La glace glisse : dose le gaz et garde ton élan.", "Ein gefrorener Mond unter tanzenden Polarlichtern. Eis ist glatt: dosiere das Gas, halte den Schwung.", "Uma lua congelada sob uma aurora dançante. O gelo escorrega: dose o acelerador e mantenha o embalo.", "Una luna gelata sotto un'aurora danzante. Il ghiaccio scivola: dosa il gas e mantieni lo slancio."],
+["A volcanic world of black rock and rivers of lava. Steep, jagged and very hot.", "Un mundo volcánico de roca negra y ríos de lava. Empinado, abrupto y ardiente.", "Un monde volcanique de roche noire et de rivières de lave. Raide, déchiqueté et brûlant.", "Eine Vulkanwelt aus schwarzem Fels und Lavaströmen. Steil, zerklüftet und glühend heiß.", "Um mundo vulcânico de rocha negra e rios de lava. Íngreme, irregular e muito quente.", "Un mondo vulcanico di roccia nera e fiumi di lava. Ripido, frastagliato e rovente."],
+["A bioluminescent jungle with giant glowing fungi. Very bumpy, sticky ground.", "Una jungla bioluminiscente con hongos gigantes brillantes. Suelo muy irregular y pegajoso.", "Une jungle bioluminescente aux champignons géants lumineux. Sol très bosselé et collant.", "Ein biolumineszenter Dschungel mit riesigen Leuchtpilzen. Sehr holpriger, klebriger Boden.", "Uma selva bioluminescente com fungos gigantes brilhantes. Chão muito irregular e grudento.", "Una giungla bioluminescente con funghi giganti luminosi. Terreno accidentato e appiccicoso."],
+["Fields of humming crystal spires. Grippy glass ground, tall sharp hills.", "Campos de agujas de cristal que zumban. Suelo de vidrio con agarre y colinas altas y afiladas.", "Des champs de flèches de cristal bourdonnantes. Sol de verre adhérent, collines hautes et pointues.", "Felder summender Kristallspitzen. Griffiger Glasboden, hohe spitze Hügel.", "Campos de torres de cristal zumbindo. Chão de vidro com aderência, morros altos e pontudos.", "Distese di guglie di cristallo ronzanti. Vetro con aderenza, colline alte e aguzze."],
+["A synthwave highway over a sleepless city. Big ramps and lots of gaps to jump.", "Una autopista synthwave sobre una ciudad que nunca duerme. Rampas enormes y muchos huecos que saltar.", "Une autoroute synthwave au-dessus d'une ville qui ne dort jamais. Grands tremplins et plein de trous à sauter.", "Ein Synthwave-Highway über einer schlaflosen Stadt. Große Rampen und viele Lücken zum Springen.", "Uma rodovia synthwave sobre uma cidade que nunca dorme. Rampas enormes e muitos buracos para saltar.", "Un'autostrada synthwave sopra una città insonne. Grandi rampe e tanti buchi da saltare."],
+["Floating cloud platforms high above a ringed gas giant. Do not miss a jump.", "Plataformas de nubes flotando sobre un gigante gaseoso con anillos. No falles ni un salto.", "Des plateformes de nuages au-dessus d'une géante gazeuse à anneaux. Ne rate aucun saut.", "Schwebende Wolkenplattformen hoch über einem beringten Gasriesen. Verpass keinen Sprung.", "Plataformas de nuvens flutuando sobre um gigante gasoso com anéis. Não erre nenhum salto.", "Piattaforme di nuvole sospese sopra un gigante gassoso con anelli. Non sbagliare un salto."],
+["The ragged edge of a black hole. Crushing gravity, warped space, the hardest ride in the galaxy.", "El borde irregular de un agujero negro. Gravedad aplastante, espacio deformado: el viaje más duro de la galaxia.", "Le bord déchiqueté d'un trou noir. Gravité écrasante, espace tordu : la course la plus dure de la galaxie.", "Der zerfranste Rand eines Schwarzen Lochs. Erdrückende Schwerkraft, verzerrter Raum, die härteste Fahrt der Galaxie.", "A borda irregular de um buraco negro. Gravidade esmagadora, espaço distorcido: a corrida mais difícil da galáxia.", "Il bordo frastagliato di un buco nero. Gravità schiacciante, spazio distorto: la corsa più dura della galassia."],
+["Pixel Buggy", "Buggy Píxel", "Buggy Pixel", "Pixel-Buggy", "Buggy Pixel", "Buggy Pixel"],
+["Rover Truck", "Camión Rover", "Camion Rover", "Rover-Truck", "Caminhão Rover", "Camion Rover"],
+["Hover-Rover", "Hover-Rover", "Hover-Rover", "Hover-Rover", "Hover-Rover", "Hover-Rover"],
+["Monster Truck", "Monster Truck", "Monster Truck", "Monstertruck", "Monster Truck", "Monster Truck"],
+["Moon Lander", "Módulo Lunar", "Module Lunaire", "Mondlander", "Módulo Lunar", "Modulo Lunare"],
+["Rocket Car", "Coche Cohete", "Voiture-Fusée", "Raketenauto", "Carro-Foguete", "Auto Razzo"],
+["Comet Bike", "Moto Cometa", "Moto Comète", "Kometen-Bike", "Moto Cometa", "Moto Cometa"],
+["Light, simple and forgiving. The perfect first ride.", "Ligero, sencillo y permisivo. El primer coche perfecto.", "Léger, simple et indulgent. Le premier bolide idéal.", "Leicht, simpel und gutmütig. Das perfekte erste Gefährt.", "Leve, simples e tolerante. O primeiro carro perfeito.", "Leggero, semplice e indulgente. La prima auto perfetta."],
+["Heavy pickup with a big tank and 4x4 drive. Climbs like a goat.", "Pickup pesada con depósito grande y tracción 4x4. Trepa como una cabra.", "Pick-up lourd avec gros réservoir et 4x4. Grimpe comme une chèvre.", "Schwerer Pick-up mit großem Tank und Allrad. Klettert wie eine Gämse.", "Picape pesada com tanque grande e tração 4x4. Sobe feito cabrito.", "Pick-up pesante con serbatoio grande e 4x4. Si arrampica come uno stambecco."],
+["Glides on plasma pads. Soft landings and excellent air control.", "Se desliza sobre almohadillas de plasma. Aterrizajes suaves y gran control aéreo.", "Glisse sur des patins à plasma. Atterrissages doux et excellent contrôle aérien.", "Gleitet auf Plasmapolstern. Weiche Landungen und top Luftkontrolle.", "Desliza sobre almofadas de plasma. Pousos suaves e ótimo controle no ar.", "Scivola su cuscinetti al plasma. Atterraggi morbidi e ottimo controllo in aria."],
+["Giant wheels eat bumps for breakfast. Tall, so watch your balance.", "Sus ruedas gigantes desayunan baches. Es alto, así que cuida el equilibrio.", "Ses roues géantes avalent les bosses au petit-déj. Il est haut : attention à l'équilibre.", "Riesenräder fressen Buckel zum Frühstück. Hoch gebaut, also achte aufs Gleichgewicht.", "Rodas gigantes comem buracos no café da manhã. É alto, então cuidado com o equilíbrio.", "Ruote giganti che si mangiano le buche a colazione. È alto: occhio all'equilibrio."],
+["Retro thrusters fire when you hold gas in the air. Float over gaps.", "Sus retropropulsores se encienden si mantienes gas en el aire. Flota sobre los huecos.", "Ses rétrofusées s'allument si tu gardes le gaz en l'air. Plane au-dessus des trous.", "Bremsdüsen zünden, wenn du in der Luft Gas hältst. Schweb über Lücken.", "Retrofoguetes disparam quando você acelera no ar. Flutue sobre os buracos.", "I retrorazzi si accendono se tieni il gas in aria. Plana sopra i buchi."],
+["A rocket strapped to a chassis. Blistering top speed, thirsty for fuel.", "Un cohete atado a un chasis. Velocidad punta brutal y sediento de gasolina.", "Une fusée sanglée sur un châssis. Vitesse de pointe folle, assoiffée d'essence.", "Eine Rakete auf einem Fahrgestell. Irre Spitze, durstig nach Sprit.", "Um foguete preso a um chassi. Velocidade máxima absurda, beberrão de combustível.", "Un razzo legato a un telaio. Velocità di punta folle, assetato di benzina."],
+["A featherweight star-bike. Amazing air control, flips for days.", "Una moto estelar ultraligera. Control aéreo increíble y vueltas sin fin.", "Une moto stellaire poids plume. Contrôle aérien incroyable, saltos à gogo.", "Ein federleichtes Sternenbike. Wahnsinnige Luftkontrolle, Flips ohne Ende.", "Uma moto estelar peso-pena. Controle no ar incrível, giros sem fim.", "Una moto stellare leggerissima. Controllo in aria pazzesco, giri a volontà."],
+["Engine", "Motor", "Moteur", "Motor", "Motor", "Motore"],
+["Fuel Tank", "Depósito", "Réservoir", "Tank", "Tanque", "Serbatoio"],
+["Suspension", "Suspensión", "Suspension", "Federung", "Suspensão", "Sospensioni"],
+["Tires", "Neumáticos", "Pneus", "Reifen", "Pneus", "Gomme"],
+["Air Control", "Control aéreo", "Contrôle aérien", "Luftkontrolle", "Controle no ar", "Controllo in aria"],
+["More torque and top speed", "Más par y velocidad punta", "Plus de couple et de vitesse", "Mehr Drehmoment und Spitze", "Mais torque e velocidade máxima", "Più coppia e velocità massima"],
+["Bigger tank, longer runs", "Depósito mayor, carreras más largas", "Plus gros réservoir, courses plus longues", "Größerer Tank, längere Fahrten", "Tanque maior, corridas mais longas", "Serbatoio più grande, corse più lunghe"],
+["Stiffer, longer travel shocks", "Amortiguadores más firmes y con más recorrido", "Amortisseurs plus fermes, plus de débattement", "Straffere Dämpfer mit mehr Federweg", "Amortecedores mais firmes e com mais curso", "Ammortizzatori più rigidi e con più escursione"],
+["More grip on steep slopes", "Más agarre en cuestas empinadas", "Plus d'adhérence dans les pentes raides", "Mehr Grip an steilen Hängen", "Mais aderência em subidas íngremes", "Più aderenza sulle salite ripide"],
+["Rotate faster in the air", "Gira más rápido en el aire", "Tourne plus vite en l'air", "Schneller drehen in der Luft", "Gire mais rápido no ar", "Ruota più veloce in aria"],
+["Paint", "Pintura", "Peinture", "Lack", "Pintura", "Vernice"],
+["Pattern", "Diseño", "Motif", "Muster", "Padrão", "Motivo"],
+["Decal", "Pegatina", "Sticker", "Aufkleber", "Adesivo", "Adesivo"],
+["Wheels", "Ruedas", "Roues", "Räder", "Rodas", "Ruote"],
+["Trail", "Estela", "Traînée", "Spur", "Rastro", "Scia"],
+["Topper", "Techo", "Toit", "Dachdeko", "Teto", "Tetto"],
+["Factory", "De fábrica", "D'usine", "Werkslack", "De fábrica", "Di serie"],
+["Aura Purple", "Morado Aura", "Violet Aura", "Aura-Lila", "Roxo Aura", "Viola Aura"],
+["Laser Lime", "Lima Láser", "Citron Laser", "Laser-Limette", "Lima Laser", "Lime Laser"],
+["Bone", "Hueso", "Os", "Knochen", "Osso", "Osso"],
+["Nebula Blue", "Azul Nebulosa", "Bleu Nébuleuse", "Nebelblau", "Azul Nebulosa", "Blu Nebulosa"],
+["Gold Rush", "Fiebre del Oro", "Ruée vers l'or", "Goldrausch", "Corrida do Ouro", "Febbre dell'oro"],
+["Midnight", "Medianoche", "Minuit", "Mitternacht", "Meia-noite", "Mezzanotte"],
+["Lava Red", "Rojo Lava", "Rouge Lave", "Lavarot", "Vermelho Lava", "Rosso Lava"],
+["Bubblegum", "Chicle", "Chewing-gum", "Kaugummi", "Chiclete", "Gomma da masticare"],
+["Stealth", "Sigilo", "Furtif", "Tarnkappe", "Furtivo", "Stealth"],
+["Aurora", "Aurora", "Aurore", "Polarlicht", "Aurora", "Aurora"],
+["Plain", "Liso", "Uni", "Schlicht", "Liso", "Tinta unita"],
+["Race Stripe", "Franja de carreras", "Bande de course", "Rennstreifen", "Faixa de corrida", "Striscia racing"],
+["Checker", "Cuadros", "Damier", "Karo", "Xadrez", "Scacchi"],
+["Flames", "Llamas", "Flammes", "Flammen", "Chamas", "Fiamme"],
+["Starfield", "Campo estelar", "Champ d'étoiles", "Sternenfeld", "Campo estelar", "Campo stellare"],
+["Zigzag", "Zigzag", "Zigzag", "Zickzack", "Zigue-zague", "Zigzag"],
+["None", "Nada", "Aucun", "Keins", "Nenhum", "Nessuno"],
+["Number 7", "Número 7", "Numéro 7", "Nummer 7", "Número 7", "Numero 7"],
+["Bolt", "Rayo", "Éclair", "Blitz", "Raio", "Fulmine"],
+["Planet", "Planeta", "Planète", "Planet", "Planeta", "Pianeta"],
+["Aura Gem", "Gema Aura", "Gemme Aura", "Aura-Juwel", "Gema Aura", "Gemma Aura"],
+["Heart", "Corazón", "Cœur", "Herz", "Coração", "Cuore"],
+["Classic", "Clásicas", "Classiques", "Klassik", "Clássicas", "Classiche"],
+["Chrome", "Cromo", "Chrome", "Chrom", "Cromo", "Cromo"],
+["Neon", "Neón", "Néon", "Neon", "Neon", "Neon"],
+["Gold", "Oro", "Or", "Gold", "Ouro", "Oro"],
+["Star Rims", "Llantas estrella", "Jantes étoile", "Sternfelgen", "Rodas estrela", "Cerchi stella"],
+["Plasma", "Plasma", "Plasma", "Plasma", "Plasma", "Plasma"],
+["Dust", "Polvo", "Poussière", "Staub", "Poeira", "Polvere"],
+["Sparkle", "Destellos", "Paillettes", "Glitzer", "Brilho", "Scintille"],
+["Rainbow", "Arcoíris", "Arc-en-ciel", "Regenbogen", "Arco-íris", "Arcobaleno"],
+["Smoke", "Humo", "Fumée", "Rauch", "Fumaça", "Fumo"],
+["Comet", "Cometa", "Comète", "Komet", "Cometa", "Cometa"],
+["Antenna", "Antena", "Antenne", "Antenne", "Antena", "Antenna"],
+["Aura Flag", "Bandera Aura", "Drapeau Aura", "Aura-Flagge", "Bandeira Aura", "Bandiera Aura"],
+["Sat Dish", "Parabólica", "Parabole", "Satschüssel", "Parabólica", "Parabola"],
+["Tail Fin", "Alerón", "Aileron", "Heckflosse", "Aerofólio", "Alettone"],
+["Cone", "Cono", "Cône", "Pylone", "Cone", "Cono"]
+]);
+
 "use strict";
 // ================= CORE UTILITIES =================
 const $=(s,r=document)=>r.querySelector(s);
@@ -127,8 +398,9 @@ function pMap(x,rows,pal,ox=0,oy=0,s=1){for(let j=0;j<rows.length;j++)for(let i=
 // ================= BITMAP FONT (5x7) =================
 const FONT={A:[14,17,17,31,17,17,17],B:[30,17,17,30,17,17,30],C:[14,17,16,16,16,17,14],D:[30,17,17,17,17,17,30],E:[31,16,16,30,16,16,31],F:[31,16,16,30,16,16,16],G:[14,17,16,23,17,17,15],H:[17,17,17,31,17,17,17],I:[14,4,4,4,4,4,14],J:[7,2,2,2,2,18,12],K:[17,18,20,24,20,18,17],L:[16,16,16,16,16,16,31],M:[17,27,21,21,17,17,17],N:[17,17,25,21,19,17,17],O:[14,17,17,17,17,17,14],P:[30,17,17,30,16,16,16],Q:[14,17,17,17,21,18,13],R:[30,17,17,30,20,18,17],S:[15,16,16,14,1,1,30],T:[31,4,4,4,4,4,4],U:[17,17,17,17,17,17,14],V:[17,17,17,17,17,10,4],W:[17,17,17,21,21,21,10],X:[17,17,10,4,10,17,17],Y:[17,17,10,4,4,4,4],Z:[31,1,2,4,8,16,31],
 '0':[14,17,19,21,25,17,14],'1':[4,12,4,4,4,4,14],'2':[14,17,1,2,4,8,31],'3':[31,2,4,2,1,17,14],'4':[2,6,10,18,31,2,2],'5':[31,16,30,1,1,17,14],'6':[6,8,16,30,17,17,14],'7':[31,1,2,4,8,8,8],'8':[14,17,17,14,17,17,14],'9':[14,17,17,15,1,2,12],'&':[12,18,20,8,21,18,13],'!':[4,4,4,4,4,0,4],'-':[0,0,0,31,0,0,0],"'":[4,4,8,0,0,0,0],'.':[0,0,0,0,0,12,12],'?':[14,17,1,2,4,0,4],':':[0,12,12,0,12,12,0],' ':[0,0,0,0,0,0,0],'/':[1,1,2,4,8,16,16],',':[0,0,0,0,12,4,8],'+':[0,4,4,31,4,4,0],'#':[10,10,31,10,31,10,10],'%':[24,25,2,4,8,19,3],'(':[2,4,8,8,8,4,2],')':[8,4,2,2,2,4,8],'x':[0,17,10,4,10,17,0]};
-function pixText(str,s=4,fill=BONE,glow=null){str=String(str).toUpperCase();const w=str.length*6+2,h=10;const [c,x]=mkCanvas(w*s,h*s);
-  const draw=(ox,oy,col)=>{x.fillStyle=col;for(let k=0;k<str.length;k++){const g=FONT[str[k]]||FONT[' '];for(let r=0;r<7;r++)for(let b=0;b<5;b++)if(g[r]&(16>>b))x.fillRect((1+k*6+b+ox)*s,(1+r+oy)*s,s,s);}};
+i18nFontExt(FONT);
+function pixText(str,s=4,fill=BONE,glow=null){str=pixUpper(str,FONT);const w=str.length*6+2,h=10;const [c,x]=mkCanvas(w*s,h*s);
+  const draw=(ox,oy,col)=>{x.fillStyle=col;for(let k=0;k<str.length;k++){const [g,yo]=glyphRows(FONT[str[k]]||FONT[' ']);for(let r=0;r<g.length;r++)for(let b=0;b<5;b++)if(g[r]&(16>>b))x.fillRect((1+k*6+b+ox)*s,(1+r+yo+oy)*s,s,s);}};
   for(const [dx,dy] of [[-1,0],[1,0],[0,-1],[0,1],[1,1],[2,2]])draw(dx,dy,'#000');
   draw(0,0,fill);
   // highlight top row darker bottom for chunky look
@@ -177,9 +449,10 @@ function bgFrame(){const b=BG.buf,n=b.length,dens=SAVE.settings.fx?.05:.015;BG.t
 // ================= SCREENS =================
 const SCREENS={};let CUR='title';
 function show(id,...args){closeModal();$$('.screen').forEach(s=>s.classList.remove('on'));if(typeof onLeave==='function')onLeave(CUR,id);CUR=id;const s=$('#s-'+id);s.classList.add('on');if(SCREENS[id])SCREENS[id](s,...args);}
-function modal(html,btns){const p=$('#modalp');p.innerHTML=html;const row=el('div',{style:'margin-top:12px'});(btns||[{t:'OK'}]).forEach(b=>{const e=el('div',{class:'btn '+(b.c||'')},b.t);e.onclick=()=>{sfx('click');closeModal();b.f&&b.f();};row.appendChild(e);});p.appendChild(row);$('#modal').classList.add('on');}
-function closeModal(){$('#modal').classList.remove('on');}
-function topBar(title,back='title'){const t=el('div',{class:'topbar'});const b=el('div',{class:'btn sm'},'&lt; Back');b.onclick=()=>{sfx('click');show(back);};t.appendChild(b);const h=el('div',{});h.appendChild(pixText(title,3,BONE,'#b04cff'));t.appendChild(h);t.appendChild(el('div',{class:'coins t',id:'tbcred',style:'font-size:18px;min-width:120px;text-align:right'},'&#9673; '+fmt(SAVE.credits)));return t;}
+let MODAL_REDO=null;
+function modal(html,btns,opts){MODAL_REDO=(opts&&opts.redo)||null;const p=$('#modalp');p.innerHTML=html;const row=el('div',{style:'margin-top:12px'});(btns||[{t:'OK'}]).forEach(b=>{const e=el('div',{class:'btn '+(b.c||'')},b.t);e.onclick=()=>{sfx('click');closeModal();b.f&&b.f();};row.appendChild(e);});p.appendChild(row);$('#modal').classList.add('on');}
+function closeModal(){$('#modal').classList.remove('on');MODAL_REDO=null;}
+function topBar(title,back='title'){const tb=el('div',{class:'topbar'});const b=el('div',{class:'btn sm'},'&lt; '+t('Back'));b.onclick=()=>{sfx('click');show(back);};tb.appendChild(b);const h=el('div',{});const tp=pixText(t(title),3,BONE,'#b04cff');if(tp.width>560)tp.style.width='560px';h.appendChild(tp);tb.appendChild(h);tb.appendChild(el('div',{class:'coins t',id:'tbcred',style:'font-size:18px;min-width:120px;text-align:right'},'&#9673; '+fmt(SAVE.credits)));return tb;}
 
 // ================= FORMAT / SFX EXTRAS =================
 function fmt(n){n=Math.floor(n);return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g,',');}
@@ -478,7 +751,7 @@ class Run{
     else{car.fuel=car.fuelMax;this.fuelGot++;this.fx.push({t:'fuel',x:it.x,y:it.y});}}}
   for(const e of car.events){if(e.t==='land'){let bonus=0;const parts=[];if(e.air>1.1){const a=Math.floor((e.air-1)*15);bonus+=a;parts.push('AIR '+e.air.toFixed(1)+'S');}
     if(e.flips>0){bonus+=e.flips*60*(e.flips>1?e.flips:1);parts.push(e.flips>1?e.flips+'X FLIP':'FLIP');}
-    if(bonus>0){bonus=Math.round(bonus*(1+this.world.idx*.2));this.bonus+=bonus;this.fx.push({t:'bonus',txt:parts.join(' + ')+' +'+bonus});}
+    if(bonus>0){bonus=Math.round(bonus*(1+this.world.idx*.2));this.bonus+=bonus;this.fx.push({t:'bonus',txt:parts.join(' + ')+' +'+bonus,air:e.air>1.1?e.air:0,flips:e.flips||0,bonus});}
     if(e.flips)this.flipsTotal+=e.flips;this.airBest=Math.max(this.airBest,e.air);this.fx.push({t:'land',imp:e.imp,air:e.air});}
    else this.fx.push(e);}
   car.events.length=0;
@@ -491,8 +764,8 @@ function hash2(a,b){let h=(a*374761393+b*668265263)|0;h=(h^(h>>>13))*1274126177|
 function mix(a,b,t){const A=hexToRgb(a),B=hexToRgb(b);return'#'+A.map((v,i)=>Math.round(v+(B[i]-v)*t).toString(16).padStart(2,'0')).join('');}
 function shade(c,f){const A=hexToRgb(c);return'#'+A.map(v=>clamp(Math.round(f>1?v+(255-v)*(f-1):v*f),0,255).toString(16).padStart(2,'0')).join('');}
 // fast pixel text straight onto a ctx
-function ctxText(x,str,px,py,s=1,col=BONE,shadow='#000',align='l'){str=String(str).toUpperCase();const w=str.length*6*s;if(align==='c')px-=w/2;else if(align==='r')px-=w;px=Math.round(px);py=Math.round(py);
- const draw=(ox,oy,c)=>{x.fillStyle=c;for(let k=0;k<str.length;k++){const g=FONT[str[k]]||FONT[' '];for(let r=0;r<7;r++){const row=g[r];if(!row)continue;for(let b=0;b<5;b++)if(row&(16>>b))x.fillRect(px+(k*6+b)*s+ox,py+r*s+oy,s,s);}}};
+function ctxText(x,str,px,py,s=1,col=BONE,shadow='#000',align='l'){str=pixUpper(str,FONT);const w=str.length*6*s;if(align==='c')px-=w/2;else if(align==='r')px-=w;px=Math.round(px);py=Math.round(py);
+ const draw=(ox,oy,c)=>{x.fillStyle=c;for(let k=0;k<str.length;k++){const [g,yo]=glyphRows(FONT[str[k]]||FONT[' ']);for(let r=0;r<g.length;r++){const row=g[r];if(!row)continue;for(let b=0;b<5;b++)if(row&(16>>b))x.fillRect(px+(k*6+b)*s+ox,py+(r+yo)*s+oy,s,s);}}};
  if(shadow){draw(s,s,shadow);draw(-1,0,shadow);draw(0,-1,shadow);}draw(0,0,col);return w;}
 // periodic ridge: fills from curve down to bottom
 function ridge(x,W,H,base,amp,col,r,opt={}){const ks=opt.ks||[1,2,3,5,8],ph=ks.map(()=>r()*6.28),am=ks.map((k,i)=>(.5+r())/Math.pow(k,opt.rough||.8));const sum=am.reduce((a,b)=>a+b,0);
@@ -700,14 +973,14 @@ function pedalCanvas(kind,down){const[c,x]=mkCanvas(75,85);const g=kind==='gas';
  x.fillStyle='#000';x.fillRect(6,8,66,76);x.fillStyle=d;x.fillRect(4,4+oy,64,74);x.fillStyle=m;x.fillRect(4,4+oy,64,68);x.fillStyle=l;x.fillRect(4,4+oy,64,3);
  x.fillStyle=d;for(let i=0;i<5;i++)x.fillRect(12,16+i*9+oy,48,3);
  x.fillStyle='#000';for(let i=0;i<7;i++){const hf=g?6-i:i;x.fillRect(30+i*1.5|0,44-hf+oy,2,hf*2+1);}
- outline(x,75,85,BONE,1);ctxText(x,g?'GAS':'BRAKE',38,60+oy,1,'#ffffff','#000','c');return c;}
+ outline(x,75,85,BONE,1);ctxText(x,g?t('GAS'):t('BRAKE'),38,60+oy,1,'#ffffff','#000','c');return c;}
 
 // ================= RACE SCREEN =================
 const RACE={run:null,ctx:null,c:null,input:{gas:false,brake:false},keys:{gas:false,brake:false},ped:{gas:new Set(),brake:new Set()},acc:0,paused:false,cam:null,parts:[],pops:[],shake:0,t:0,awarded:false,eng:null,lowBeep:0,endShown:false,crashTxt:null};
 function newSeed(){return((Math.random()*4294967296)>>>0)^(Date.now()&0xffffffff);}
 SCREENS.race=function(s,opts={}){s.innerHTML='';const[c,x]=mkCanvas(VW,VH);c.id='rc';s.appendChild(c);RACE.c=c;RACE.ctx=x;
- const pz=el('div',{class:'btn sm',style:'position:absolute;right:8px;top:62px;z-index:8;font-size:16px;padding:4px 10px'},'II');pz.title='Pause (Esc)';pz.onclick=()=>{sfx('click');pauseRace();};s.appendChild(pz);
- for(const k of ['brake','gas']){const p=el('div',{class:'pedal',id:k,'aria-label':k==='gas'?'Gas pedal':'Brake pedal',role:'button'});const pc=pedalCanvas(k,false);p.appendChild(pc);s.appendChild(p);
+ const pz=el('div',{class:'btn sm',style:'position:absolute;right:8px;top:62px;z-index:8;font-size:16px;padding:4px 10px'},'II');pz.title=t('Pause (Esc)');pz.onclick=()=>{sfx('click');pauseRace();};s.appendChild(pz);
+ for(const k of ['brake','gas']){const p=el('div',{class:'pedal',id:k,'aria-label':k==='gas'?t('Gas pedal'):t('Brake pedal'),role:'button'});const pc=pedalCanvas(k,false);p.appendChild(pc);s.appendChild(p);
   const set=RACE.ped[k];const down=e=>{e.preventDefault();ac();set.add(e.pointerId);try{p.setPointerCapture(e.pointerId);}catch(_){}p.classList.add('down');};
   const up=e=>{set.delete(e.pointerId);if(!set.size)p.classList.remove('down');};
   p.addEventListener('pointerdown',down);p.addEventListener('pointerup',up);p.addEventListener('pointercancel',up);p.addEventListener('lostpointercapture',up);p.addEventListener('contextmenu',e=>e.preventDefault());}
@@ -716,11 +989,12 @@ function startRun(worldId,carId,seed){const w=WMAP[worldId];SAVE.world=worldId;S
  RACE.run=new Run(worldId,carId,seed==null?newSeed():seed);RACE.cos=Object.assign({},SAVE.cars[carId].cos);RACE.acc=0;RACE.paused=false;RACE.parts=[];RACE.pops=[];RACE.shake=0;RACE.awarded=false;RACE.endShown=false;RACE.crashTxt=null;RACE.t=0;RACE.lowBeep=0;
  RACE.ped.gas.clear();RACE.ped.brake.clear();$$('.pedal').forEach(p=>p.classList.remove('down'));
  const b=RACE.run.car.b;RACE.cam={x:b.x+3,y:b.y,z:1};RACE.best=SAVE.best[worldId]||0;RACE.bestPassed=false;
- startMusic(w.music||'race');engineStart();SAVE.stats.runs++;persist();addPop('GO!','#3cff5a',2);sfx('go');}
+ startMusic(w.music||'race');engineStart();SAVE.stats.runs++;persist();addPop(t('GO!'),'#3cff5a',2);sfx('go');}
 function addPop(txt,col,sz=2){RACE.pops.push({txt,col,sz,t:0});}
 function pauseRace(){if(!RACE.run||RACE.run.ended||CUR!=='race')return;RACE.paused=true;engineStop();
- modal(`<div style="margin-bottom:8px"></div>`,[{t:'Resume',c:'green',f:()=>{RACE.paused=false;engineStart();}},{t:'Restart',c:'gold',f:()=>{endRun('quit',true);}},{t:'End Run',c:'red',f:()=>{endRun('quit');}}]);
- const p=$('#modalp');p.insertBefore(pixText('PAUSED',5,BONE,'#b04cff'),p.firstChild);p.insertBefore(el('div',{class:'small',style:'margin:6px 0'},'Restart or End Run banks the credits earned so far.'),p.children[1]);}
+ pauseModal();}
+function pauseModal(){modal(`<div style="margin-bottom:8px"></div>`,[{t:t('Resume'),c:'green',f:()=>{RACE.paused=false;engineStart();}},{t:t('Restart'),c:'gold',f:()=>{endRun('quit',true);}},{t:t('End Run'),c:'red',f:()=>{endRun('quit');}}],{redo:pauseModal});
+ const p=$('#modalp');p.insertBefore(pixText(t('PAUSED'),5,BONE,'#b04cff'),p.firstChild);p.insertBefore(el('div',{class:'small',style:'margin:6px 0'},t('Restart or End Run banks the credits earned so far.')),p.children[1]);}
 // award credits exactly once per run, then save immediately
 function awardRun(){const R=RACE.run;if(!R||RACE.awarded)return null;RACE.awarded=true;const w=R.world.id;const dist=Math.floor(R.dist);const prev=SAVE.best[w]||0;const tot=R.total();
  SAVE.credits+=tot;SAVE.stats.earned+=tot;SAVE.stats.dist+=dist;SAVE.stats.flips+=R.flipsTotal;SAVE.stats.coins+=R.coins;SAVE.stats.air=Math.max(SAVE.stats.air,R.airBest);
@@ -757,16 +1031,16 @@ function burst(x,y,n,cols,spd=5,life=.8,size=1.5){for(let i=0;i<n;i++){const a=M
 // ---------- fx events from run ----------
 function handleFx(){const R=RACE.run,car=R.car;for(const e of R.fx){
  if(e.t==='coin'){sfx('coin');burst(e.x,e.y,5,['#ffd24a','#ffffff'],3,.4,1);RACE.pops.push({txt:'+'+e.v,col:'#ffd24a',sz:1,t:0,wx:e.x,wy:e.y});}
- else if(e.t==='fuel'){sfx('fuel');burst(e.x,e.y,14,['#ff4a5a','#ffd24a','#ffffff'],5,.6,1.5);addPop('FUEL REFILLED','#ff4a5a',2);}
- else if(e.t==='bonus'){sfx('flip');addPop(e.txt,'#b04cff',2);}
- else if(e.t==='flip'){addPop(e.back?'BACKFLIP!':'FRONTFLIP!','#3a7bff',2);}
+ else if(e.t==='fuel'){sfx('fuel');burst(e.x,e.y,14,['#ff4a5a','#ffd24a','#ffffff'],5,.6,1.5);addPop(t('FUEL REFILLED'),'#ff4a5a',2);}
+ else if(e.t==='bonus'){sfx('flip');const pp=[];if(e.air)pp.push(t('AIR {s}S',{s:e.air.toFixed(1)}));if(e.flips>0)pp.push(e.flips>1?t('{n}X FLIP',{n:e.flips}):t('FLIP'));addPop(pp.join(' + ')+' +'+e.bonus,'#b04cff',2);}
+ else if(e.t==='flip'){addPop(e.back?t('BACKFLIP!'):t('FRONTFLIP!'),'#3a7bff',2);}
  else if(e.t==='land'){if(e.imp>7){RACE.shake=Math.min(8,e.imp*.6);sfx('land');burst(car.b.x,car.b.y-car.st.hgt*.6,16,[R.world.dust],5,.6,2);}}
  else if(e.t==='spark'){burst(e.x,e.y,4,['#ffd24a','#ffffff','#ff8a2a'],4,.3,1);}
  else if(e.t==='crash'){const r=e.r;if(r==='fuel'){sfx('nofuel');RACE.crashTxt='OUT OF FUEL';}else{sfx('crash');RACE.shake=9;burst(car.b.x,car.b.y,40,['#ffd24a','#ff4a5a','#ffffff',BONE],8,1,2);RACE.crashTxt=r==='void'?'LOST IN THE VOID':'FLIPPED!';}engineStop();}}
  R.fx.length=0;}
 // ---------- frame ----------
 function raceFrame(dt){const R=RACE.run;if(!R)return;if(!RACE.paused){RACE.acc+=Math.min(dt,.1);const I=readInput();let n=0;while(RACE.acc>=PDT&&n<40){R.step(I);RACE.acc-=PDT;n++;}RACE.t+=dt;handleFx();emit(dt);engineUpdate();
-  if(!RACE.bestPassed&&RACE.best>50&&R.dist>RACE.best){RACE.bestPassed=true;addPop('NEW BEST!','#3cff5a',3);sfx('win');}
+  if(!RACE.bestPassed&&RACE.best>50&&R.dist>RACE.best){RACE.bestPassed=true;addPop(t('NEW BEST!'),'#3cff5a',3);sfx('win');}
   if(R.car.fuel<R.car.fuelMax*.2&&R.car.fuel>0){RACE.lowBeep-=dt;if(RACE.lowBeep<=0){RACE.lowBeep=1;tone(880,.06,'square',.03);}}
   if(R.ended&&!RACE.endShown){RACE.endShown=true;const res=awardRun();setTimeout(()=>{if(CUR==='race'&&RACE.run===R)show('results',res);},600);}}
  renderRace(dt);}
@@ -781,9 +1055,9 @@ function renderRace(dt){const R=RACE.run,x=RACE.ctx,car=R.car,b=car.b,w=R.world;
  const xL=cam.x-cx0/sc-2,xR=cam.x+(VW-cx0)/sc+2,ter=R.ter;
  // start line, distance markers, best flag
  for(let m=Math.max(0,Math.ceil(xL/100)*100);m<=xR;m+=100){if(ter.isPit(m))continue;const gy=SY(ter.h(m)),px=Math.round(SX(m));x.fillStyle='#000';x.fillRect(px-1,gy-28*cam.z,3,28*cam.z);x.fillStyle=BONE;x.fillRect(px,gy-28*cam.z,1,28*cam.z);
-  const lbl=m===0?'START':m+'M';const tw=lbl.length*6+4;x.fillStyle='#000';x.fillRect(px-tw/2-1,gy-40*cam.z-1,tw+2,12);x.fillStyle='#0b110d';x.fillRect(px-tw/2,gy-40*cam.z,tw,10);x.fillStyle=BONE;x.fillRect(px-tw/2,gy-40*cam.z,tw,1);ctxText(x,lbl,px+1,gy-40*cam.z+2,1,m===0?'#3cff5a':BONE,null,'c');}
+  const lbl=m===0?t('START'):m+'M';const tw=lbl.length*6+4;x.fillStyle='#000';x.fillRect(px-tw/2-1,gy-40*cam.z-1,tw+2,12);x.fillStyle='#0b110d';x.fillRect(px-tw/2,gy-40*cam.z,tw,10);x.fillStyle=BONE;x.fillRect(px-tw/2,gy-40*cam.z,tw,1);ctxText(x,lbl,px+1,gy-40*cam.z+2,1,m===0?'#3cff5a':BONE,null,'c');}
  if(RACE.best>0&&RACE.best>xL&&RACE.best<xR){const m=RACE.best,gy=SY(ter.isPit(m)?ter.h(m)-PIT:ter.h(m)),px=Math.round(SX(m));x.fillStyle='#000';x.fillRect(px-1,gy-46*cam.z,3,46*cam.z);x.fillStyle='#c8c8c8';x.fillRect(px,gy-46*cam.z,1,46*cam.z);
-  const wv=Math.sin(RACE.t*6);for(let i=0;i<5;i++)for(let j=0;j<3;j++){x.fillStyle=(i+j)%2?'#000':'#ffffff';x.fillRect(px+1+i*3,gy-46*cam.z+j*3+Math.round(wv*(i/5)),3,3);}ctxText(x,'BEST',px+1,gy-56*cam.z,1,'#3cff5a','#000','c');}
+  const wv=Math.sin(RACE.t*6);for(let i=0;i<5;i++)for(let j=0;j<3;j++){x.fillStyle=(i+j)%2?'#000':'#ffffff';x.fillRect(px+1+i*3,gy-46*cam.z+j*3+Math.round(wv*(i/5)),3,3);}ctxText(x,t('BEST'),px+1,gy-56*cam.z,1,'#3cff5a','#000','c');}
  // items
  for(const it of ter.items){if(it.got||it.x<xL||it.x>xR)continue;const px=SX(it.x),py=SY(it.y+Math.sin(RACE.t*3+it.x)*.12);
   if(it.t==='coin'){const s=coinSpr(it.v,((RACE.t*10+it.x*2)|0)%6);x.drawImage(s,Math.round(px-6),Math.round(py-6));}else{const s=fuelSpr();x.globalAlpha=.4+.3*Math.sin(RACE.t*6);pEll(x,px,py,10,10,'#ff4a5a');x.globalAlpha=1;x.drawImage(s,Math.round(px-8),Math.round(py-9));}}
@@ -799,15 +1073,15 @@ function renderRace(dt){const R=RACE.run,x=RACE.ctx,car=R.car,b=car.b,w=R.world;
  let py=92;for(const p of RACE.pops){p.t+=dt;if(p.wx!=null){const a=1-p.t/.8;if(a<=0)continue;x.globalAlpha=a;ctxText(x,p.txt,SX(p.wx),SY(p.wy)-12-p.t*20,1,p.col,'#000','c');x.globalAlpha=1;continue;}
   const a=p.t<1.6?1:1-(p.t-1.6)/.4;if(a<=0)continue;x.globalAlpha=a;const s=p.sz;const bounce=p.t<.15?(1+(.15-p.t)*4):1;ctxText(x,p.txt,VW/2,py-(p.t*6),Math.max(1,Math.round(s*bounce)),p.col,'#000','c');x.globalAlpha=1;py+=s*9+4;}
  RACE.pops=RACE.pops.filter(p=>p.t<(p.wx!=null?.8:2));
- if(RACE.crashTxt){const s=4;x.fillStyle='#0008';x.fillRect(0,VH/2-30,VW,44);ctxText(x,RACE.crashTxt,VW/2,VH/2-22,s,RACE.crashTxt==='OUT OF FUEL'?'#ffd24a':'#ff4a5a','#000','c');}}
+ if(RACE.crashTxt){const s=4;x.fillStyle='#0008';x.fillRect(0,VH/2-30,VW,44);ctxText(x,t(RACE.crashTxt),VW/2,VH/2-22,s,RACE.crashTxt==='OUT OF FUEL'?'#ffd24a':'#ff4a5a','#000','c');}}
 function drawHud(x,R){const car=R.car;
  // fuel gauge
  x.drawImage(fuelSpr(),6,6);const f=car.fuel/car.fuelMax,low=f<.2;x.fillStyle='#000';x.fillRect(24,9,94,12);x.fillStyle=BONE;x.fillRect(25,10,92,10);x.fillStyle='#000';x.fillRect(26,11,90,8);
  const segs=15;for(let i=0;i<segs;i++){if(i/segs<f){x.fillStyle=low?((RACE.t*4|0)%2?'#ff4a5a':'#7a1a1a'):f<.5?'#ffd24a':'#3cff5a';x.fillRect(27+i*6,12,5,6);}}
- ctxText(x,'FUEL',26,23,1,low?'#ff4a5a':BONE);if(low&&car.fuel>0&&(RACE.t*3|0)%2)ctxText(x,'LOW FUEL!',60,23,1,'#ff4a5a');
- if(car.fuel<=0&&!car.crashed)ctxText(x,'NO FUEL',60,23,1,'#ff4a5a');
+ const fl=t('FUEL'),lx=Math.max(60,26+pixUpper(fl,FONT).length*6+8);ctxText(x,fl,26,23,1,low?'#ff4a5a':BONE);if(low&&car.fuel>0&&(RACE.t*3|0)%2)ctxText(x,t('LOW FUEL!'),lx,23,1,'#ff4a5a');
+ if(car.fuel<=0&&!car.crashed)ctxText(x,t('NO FUEL'),Math.max(60,26+pixUpper(t('FUEL'),FONT).length*6+8),23,1,'#ff4a5a');
  // distance
- const d=Math.floor(R.dist);ctxText(x,d+'M',VW/2,6,3,'#ffffff','#000','c');ctxText(x,'BEST '+Math.max(RACE.best,0)+'M',VW/2,30,1,R.dist>RACE.best&&RACE.best>0?'#3cff5a':'#bcd3ff','#000','c');
+ const d=Math.floor(R.dist);ctxText(x,d+'M',VW/2,6,3,'#ffffff','#000','c');ctxText(x,t('BEST {n}M',{n:Math.max(RACE.best,0)}),VW/2,30,1,R.dist>RACE.best&&RACE.best>0?'#3cff5a':'#bcd3ff','#000','c');
  // world & speed
  const kmh=Math.round(Math.abs(car.b.vx)*3.6);ctxText(x,kmh+' KM/H',VW-60,8,1,BONE,'#000','r');
  x.drawImage(coinSpr(25,0),VW-60-6,18);ctxText(x,fmt(R.total()),VW-60,20,1,'#ffd24a','#000','r');
@@ -827,14 +1101,15 @@ SCREENS.title=function(s){s.innerHTML='';const[c,x]=mkCanvas(VW,VH);c.id='rc';c.
  const b=RACE.run.car.b;RACE.cam={x:b.x,y:b.y,z:1};RACE.demoT=0;
  const ov=el('div',{style:'position:absolute;inset:0;background:linear-gradient(to bottom,#0008,#0000 40%,#0000 60%,#000a)'});s.appendChild(ov);
  const lg=el('div',{style:'position:absolute;left:0;right:0;top:46px;text-align:center'});lg.appendChild(logoCanvas('ORBIT HILLS',9));s.appendChild(lg);
- const sub=el('div',{style:'position:absolute;left:0;right:0;top:150px;text-align:center'});sub.appendChild(pixText('A GALAXY CLIMB RACER',3,'#bcd3ff','#3a7bff'));s.appendChild(sub);
+ const sub=el('div',{style:'position:absolute;left:0;right:0;top:150px;text-align:center'});const sp=pixText(t('A GALAXY CLIMB RACER'),3,'#bcd3ff','#3a7bff');if(sp.width>900)sp.style.width='900px';sub.appendChild(sp);s.appendChild(sub);
  const m=el('div',{style:'position:absolute;left:50%;top:220px;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:2px'});
- const B=(t,c,f,w=280)=>{const e=el('div',{class:'btn '+c,style:`width:${w}px;font-size:20px;padding:10px`},t);e.onclick=()=>{ac();sfx('click');f();};m.appendChild(e);return e;};
- B('&#9654; Race '+WMAP[SAVE.world].name,'green',()=>show('race'));B('Worlds','blue',()=>show('worlds'));B('Garage','purple',()=>show('garage'));
- const row=el('div',{style:'display:flex;gap:4px'});m.appendChild(row);for(const[t,id]of[['How to Play','howto'],['Settings','settings']]){const e=el('div',{class:'btn',style:'width:136px;font-size:13px'},t);e.onclick=()=>{ac();sfx('click');show(id);};row.appendChild(e);}
+ const B=(lb,c,f,w=280)=>{const e=el('div',{class:'btn '+c,style:`width:${w}px;font-size:20px;padding:10px`},lb);e.onclick=()=>{ac();sfx('click');f();};m.appendChild(e);return e;};
+ B('&#9654; '+t('Race {world}',{world:WMAP[SAVE.world].name}),'green',()=>show('race'));B(t('Worlds'),'blue',()=>show('worlds'));B(t('Garage'),'purple',()=>show('garage'));
+ const row=el('div',{style:'display:flex;gap:4px'});m.appendChild(row);for(const[lb,id]of[['How to Play','howto'],['Settings','settings']]){const e=el('div',{class:'btn',style:'width:136px;font-size:13px'},t(lb));e.onclick=()=>{ac();sfx('click');show(id);};row.appendChild(e);}
+ const lgb=el('div',{class:'btn purple',id:'langbtn',style:'font-size:13px;white-space:nowrap',title:t('Language')});lgb.appendChild(globeIcon(1,'#e2c2ff'));lgb.appendChild(document.createTextNode(' '+langName(LANG)));lgb.onclick=()=>{ac();sfx('click');langPicker();};row.appendChild(lgb);
  s.appendChild(m);
  s.appendChild(el('div',{class:'coins t',style:'position:absolute;right:16px;top:12px;font-size:20px'},'&#9673; '+fmt(SAVE.credits)));
- s.appendChild(el('div',{class:'t small',style:'position:absolute;left:0;right:0;bottom:12px;text-align:center;color:#a89f80;font-size:12px;letter-spacing:2px'},'A LOST AURA GAMES PRODUCTION &middot; HOLD GAS (&rarr;/D) &middot; BRAKE (&larr;/A)'));
+ s.appendChild(el('div',{class:'t small',style:'position:absolute;left:0;right:0;bottom:12px;text-align:center;color:#a89f80;font-size:12px;letter-spacing:2px'},t('A LOST AURA GAMES PRODUCTION &middot; HOLD GAS (&rarr;/D) &middot; BRAKE (&larr;/A)')));
  startMusic('title');
  if(!SAVE.seen.howto){SAVE.seen.howto=true;persist();setTimeout(()=>{if(CUR==='title')howtoModal();},400);}};
 TICKS.title=function(dt){const R=RACE.run;if(!R||!RACE.demo)return;RACE.acc+=Math.min(dt,.1);let n=0;while(RACE.acc>=PDT&&n<40){R.step(autopilot(R.car));RACE.acc-=PDT;n++;}RACE.t+=dt;R.fx.length=0;RACE.crashTxt=null;emitDemo(dt);
@@ -851,15 +1126,15 @@ SCREENS.worlds=function(s){s.innerHTML='';s.appendChild(topBar('SELECT WORLD','t
  const g=el('div',{style:'position:absolute;left:10px;right:10px;top:62px;bottom:8px;text-align:center'});s.appendChild(g);
  for(const w of WORLDS){const own=!!SAVE.worlds[w.id];const card=el('div',{class:'wcard'+(own?'':' lock'),style:SAVE.world===w.id&&own?'border-color:var(--green);box-shadow:0 0 10px var(--green),4px 4px 0 #000':''});
   const pv=worldPreview(w.id);const cc=document.createElement('canvas');cc.width=240;cc.height=150;cc.className='px';cc.getContext('2d').drawImage(pv,0,0);card.appendChild(cc);
-  card.appendChild(el('div',{class:'nm t'},(w.idx+1)+'. '+w.name.toUpperCase()));card.appendChild(el('div',{class:'small'},w.sub));
-  card.appendChild(el('div',{class:'small',style:'color:#bcd3ff;margin-top:2px'},`GRAV ${(w.g/13*1).toFixed(1)}G &middot; GRIP ${Math.round(w.grip*100)}%`));
-  card.appendChild(el('div',{class:'small',style:'color:#3cff5a'},'BEST: '+(SAVE.best[w.id]||0)+' M'));
-  if(own){const b=el('div',{class:'btn green sm',style:'margin-top:4px'},'&#9654; Race');b.onclick=e=>{e.stopPropagation();sfx('click');SAVE.world=w.id;persist();show('race',{world:w.id});};card.appendChild(b);card.onclick=()=>{sfx('click');SAVE.world=w.id;persist();show('race',{world:w.id});};}
-  else{card.appendChild(el('div',{class:'lk'},'&#9632; LOCKED'));const can=SAVE.credits>=w.price;const b=el('div',{class:'btn gold sm'+(can?'':' dis'),style:'margin-top:4px'},'&#9673; '+fmt(w.price));b.onclick=e=>{e.stopPropagation();buyWorld(w);};card.appendChild(b);card.onclick=()=>{if(can)buyWorld(w);else{sfx('lock');toast('Need &#9673; '+fmt(w.price-SAVE.credits)+' more credits for '+w.name);}};}
-  card.title=w.desc;g.appendChild(card);}
+  card.appendChild(el('div',{class:'nm t'},(w.idx+1)+'. '+w.name.toUpperCase()));card.appendChild(el('div',{class:'small'},t(w.sub)));
+  card.appendChild(el('div',{class:'small',style:'color:#bcd3ff;margin-top:2px'},t('GRAV {g}G &middot; GRIP {p}%',{g:(w.g/13*1).toFixed(1),p:Math.round(w.grip*100)})));
+  card.appendChild(el('div',{class:'small',style:'color:#3cff5a'},t('BEST: {n} M',{n:SAVE.best[w.id]||0})));
+  if(own){const b=el('div',{class:'btn green sm',style:'margin-top:4px'},'&#9654; '+t('Race'));b.onclick=e=>{e.stopPropagation();sfx('click');SAVE.world=w.id;persist();show('race',{world:w.id});};card.appendChild(b);card.onclick=()=>{sfx('click');SAVE.world=w.id;persist();show('race',{world:w.id});};}
+  else{card.appendChild(el('div',{class:'lk'},'&#9632; '+t('LOCKED')));const can=SAVE.credits>=w.price;const b=el('div',{class:'btn gold sm'+(can?'':' dis'),style:'margin-top:4px'},'&#9673; '+fmt(w.price));b.onclick=e=>{e.stopPropagation();buyWorld(w);};card.appendChild(b);card.onclick=()=>{if(can)buyWorld(w);else{sfx('lock');toast(t('Need {c} {n} more credits for {item}',{c:'&#9673;',n:fmt(w.price-SAVE.credits),item:w.name}));}};}
+  card.title=t(w.desc);g.appendChild(card);}
  startMusic('menu');};
-function buyWorld(w){if(SAVE.worlds[w.id])return;modal(`<div class="t" style="font-size:20px;margin-bottom:8px">Unlock ${w.name}?</div><div class="small" style="max-width:420px;margin:0 auto 8px">${w.desc}</div><div class="coins" style="font-size:18px">Price: &#9673; ${fmt(w.price)} &nbsp; <span class="small">(you have ${fmt(SAVE.credits)})</span></div>`,
- [{t:'Buy',c:'gold',f:()=>{if(SAVE.worlds[w.id])return;if(!spend(w.price)){toast('Not enough credits');return;}SAVE.worlds[w.id]=true;SAVE.world=w.id;persist();sfx('buy');toast(w.name+' unlocked!','#3cff5a');SCREENS.worlds($('#s-worlds'));}},{t:'Cancel'}]);}
+function buyWorld(w){if(SAVE.worlds[w.id])return;modal(`<div class="t" style="font-size:20px;margin-bottom:8px">${t('Unlock {item}?',{item:w.name})}</div><div class="small" style="max-width:420px;margin:0 auto 8px">${t(w.desc)}</div><div class="coins" style="font-size:18px">${t('Price:')} &#9673; ${fmt(w.price)} &nbsp; <span class="small">${t('(you have {n})',{n:fmt(SAVE.credits)})}</span></div>`,
+ [{t:t('Buy'),c:'gold',f:()=>{if(SAVE.worlds[w.id])return;if(!spend(w.price)){toast(t('Not enough credits'));return;}SAVE.worlds[w.id]=true;SAVE.world=w.id;persist();sfx('buy');toast(t('{item} unlocked!',{item:w.name}),'#3cff5a');SCREENS.worlds($('#s-worlds'));}},{t:t('Cancel')}]);}
 // ---------- GARAGE ----------
 let GTAB='up',GCAT='paint',GSEL=null;
 function carPreviewCanvas(id,cos,w=96,h=48,frame=0){const[c,x]=mkCanvas(w,h);const C=CMAP[id];const sp=carSprite(id,cos);const sc=1;const cy=h/2+2;
@@ -867,7 +1142,7 @@ function carPreviewCanvas(id,cos,w=96,h=48,frame=0){const[c,x]=mkCanvas(w,h);con
 SCREENS.garage=function(s){s.innerHTML='';s.appendChild(topBar('GARAGE','title'));if(!GSEL)GSEL=SAVE.car;const car=CMAP[GSEL];const own=!!SAVE.cars[GSEL];
  const left=el('div',{class:'scroll',style:'position:absolute;left:10px;top:62px;width:250px;bottom:10px;padding-right:4px'});s.appendChild(left);
  for(const C of CARS){const o=!!SAVE.cars[C.id];const cc=el('div',{class:'carcard'+(GSEL===C.id?' on':'')+(o?'':' lock')});cc.appendChild(carPreviewCanvas(C.id,o?SAVE.cars[C.id].cos:{paint:'p0',pattern:'none',decal:'none',wheels:'w0',trail:'t0',topper:'none'}));
-  cc.appendChild(el('div',{},`<div class="t" style="font-size:13px;color:#fff">${C.name}</div>`+(o?(SAVE.car===C.id?'<div style="color:#3cff5a">&#9654; DRIVING</div>':'<div class="small">OWNED</div>'):`<div class="coins">&#9673; ${fmt(C.price)}</div>`)));
+  cc.appendChild(el('div',{},`<div class="t" style="font-size:13px;color:#fff">${t(C.name)}</div>`+(o?(SAVE.car===C.id?`<div style="color:#3cff5a">&#9654; ${t('DRIVING')}</div>`:`<div class="small">${t('OWNED')}</div>`):`<div class="coins">&#9673; ${fmt(C.price)}</div>`)));
   cc.onclick=()=>{sfx('click');GSEL=C.id;if(SAVE.cars[C.id]){SAVE.car=C.id;persist();}SCREENS.garage(s);};left.appendChild(cc);}
  const R=el('div',{style:'position:absolute;left:272px;right:10px;top:62px;bottom:10px'});s.appendChild(R);
  const top=el('div',{class:'panel',style:'height:206px;display:flex;gap:12px;padding:8px'});R.appendChild(top);
@@ -879,78 +1154,91 @@ SCREENS.garage=function(s){s.innerHTML='';s.appendChild(topBar('GARAGE','title')
   for(const w of wh){px.fillStyle='#5a5a60';px.fillRect(Math.round(w.sx),Math.round(by+C.hgt*PPM*.1),1,Math.round(wy-by));}drawCarAt(px,C,cos,85,by,0,1,wh,gt);
   if(cos.trail!=='t0'&&TRAILCOL[cos.trail]){const cols=TRAILCOL[cos.trail];for(let i=0;i<10;i++){px.fillStyle=cols[(i+(gt*10|0))%cols.length];px.globalAlpha=1-i/10;px.fillRect(Math.round(85-C.len*PPM/2-4-i*4-(gt*40)%4),Math.round(by+((i*7)%3)-1),2,2);}px.globalAlpha=1;}};
  const st=carStats(GSEL);const info=el('div',{style:'flex:1;font-size:12px'});top.appendChild(info);
- info.appendChild(el('div',{class:'t',style:'font-size:20px;color:#fff;margin-bottom:2px'},car.name.toUpperCase()));info.appendChild(el('div',{class:'small',style:'margin-bottom:6px'},car.desc));
+ info.appendChild(el('div',{class:'t',style:'font-size:20px;color:#fff;margin-bottom:2px'},t(car.name).toUpperCase()));info.appendChild(el('div',{class:'small',style:'margin-bottom:6px'},t(car.desc)));
  const bars=[['POWER',st.power/st.mass,14],['TOP SPEED',st.vmax,40],['FUEL',st.fuel,110],['GRIP',st.grip,1.9],['AIR CTRL',st.air,24],['SHOCKS',st.travel*st.k/st.mass,80]];
- for(const[n,v,mx]of bars){const r=el('div',{style:'display:flex;align-items:center;gap:6px;margin:2px 0'});r.appendChild(el('div',{style:'width:80px'},n));const bb=el('div',{style:'flex:1;height:10px;background:#000;border:2px solid #a89f80'});bb.appendChild(el('div',{style:`height:100%;width:${clamp(v/mx*100,4,100)}%;background:var(--green);box-shadow:inset 0 -2px 0 #1a9a3a`}));r.appendChild(bb);info.appendChild(r);}
- if(car.thrust)info.appendChild(el('div',{style:'color:#ffd24a;margin-top:3px'},'&#9733; Thrusters: hold GAS in the air'));if(car.rocket)info.appendChild(el('div',{style:'color:#ffd24a;margin-top:3px'},'&#9733; Rocket boost while holding GAS'));
- if(!own){const can=SAVE.credits>=car.price;const b=el('div',{class:'btn gold'+(can?'':' dis'),style:'margin-top:6px'},'Buy for &#9673; '+fmt(car.price));b.onclick=()=>buyCar(car);info.appendChild(b);}
- else if(SAVE.car!==GSEL){const b=el('div',{class:'btn green sm',style:'margin-top:6px'},'Drive this');b.onclick=()=>{SAVE.car=GSEL;persist();SCREENS.garage(s);};info.appendChild(b);}
- else{const b=el('div',{class:'btn green sm',style:'margin-top:6px'},'&#9654; Race '+WMAP[SAVE.world].name);b.onclick=()=>{sfx('click');show('race');};info.appendChild(b);}
- const tabs=el('div',{class:'tabs',style:'margin:8px 0 4px'});R.appendChild(tabs);for(const[id,t]of[['up','Upgrades'],['cos','Cosmetics']]){const b=el('div',{class:'btn'+(GTAB===id?' on':'')},t);b.onclick=()=>{sfx('click');GTAB=id;SCREENS.garage(s);};tabs.appendChild(b);}
+ for(const[n,v,mx]of bars){const r=el('div',{style:'display:flex;align-items:center;gap:6px;margin:2px 0'});r.appendChild(el('div',{style:'width:92px;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis'},t(n)));const bb=el('div',{style:'flex:1;height:10px;background:#000;border:2px solid #a89f80'});bb.appendChild(el('div',{style:`height:100%;width:${clamp(v/mx*100,4,100)}%;background:var(--green);box-shadow:inset 0 -2px 0 #1a9a3a`}));r.appendChild(bb);info.appendChild(r);}
+ if(car.thrust)info.appendChild(el('div',{style:'color:#ffd24a;margin-top:3px'},'&#9733; '+t('Thrusters: hold GAS in the air')));if(car.rocket)info.appendChild(el('div',{style:'color:#ffd24a;margin-top:3px'},'&#9733; '+t('Rocket boost while holding GAS')));
+ if(!own){const can=SAVE.credits>=car.price;const b=el('div',{class:'btn gold'+(can?'':' dis'),style:'margin-top:6px'},t('Buy for {c} {n}',{c:'&#9673;',n:fmt(car.price)}));b.onclick=()=>buyCar(car);info.appendChild(b);}
+ else if(SAVE.car!==GSEL){const b=el('div',{class:'btn green sm',style:'margin-top:6px'},t('Drive this'));b.onclick=()=>{SAVE.car=GSEL;persist();SCREENS.garage(s);};info.appendChild(b);}
+ else{const b=el('div',{class:'btn green sm',style:'margin-top:6px'},'&#9654; '+t('Race {world}',{world:WMAP[SAVE.world].name}));b.onclick=()=>{sfx('click');show('race');};info.appendChild(b);}
+ const tabs=el('div',{class:'tabs',style:'margin:8px 0 4px'});R.appendChild(tabs);for(const[id,lb]of[['up','Upgrades'],['cos','Cosmetics']]){const b=el('div',{class:'btn'+(GTAB===id?' on':'')},t(lb));b.onclick=()=>{sfx('click');GTAB=id;SCREENS.garage(s);};tabs.appendChild(b);}
  const body=el('div',{class:'panel scroll',style:'position:absolute;left:0;right:0;top:262px;bottom:0;padding:8px'});R.appendChild(body);
- if(GTAB==='up'){if(!own)body.appendChild(el('div',{class:'small',style:'margin-bottom:6px;color:#ffd24a'},'Buy this car to upgrade it. Upgrades are per car.'));
-  for(const U of UPGRADES){const lv=own?SAVE.cars[GSEL].up[U.id]:0;const r=el('div',{class:'uprow'});r.appendChild(el('div',{class:'nm t'},U.name.toUpperCase()));const L=el('div',{class:'lvl'});for(let i=0;i<MAXLV;i++)L.appendChild(el('i',{class:i<lv?'f':''}));r.appendChild(L);
-   r.appendChild(el('div',{class:'small',style:'flex:1'},U.desc));
-   if(lv>=MAXLV)r.appendChild(el('div',{class:'btn sm dis',style:'width:130px'},'MAX'));else{const cost=upCost(car,lv);const can=own&&SAVE.credits>=cost;const b=el('div',{class:'btn sm gold'+(can?'':' dis'),style:'width:130px'},'&#9673; '+fmt(cost));b.onclick=()=>buyUpgrade(GSEL,U.id);r.appendChild(b);}
+ if(GTAB==='up'){if(!own)body.appendChild(el('div',{class:'small',style:'margin-bottom:6px;color:#ffd24a'},t('Buy this car to upgrade it. Upgrades are per car.')));
+  for(const U of UPGRADES){const lv=own?SAVE.cars[GSEL].up[U.id]:0;const r=el('div',{class:'uprow'});r.appendChild(el('div',{class:'nm t'},t(U.name).toUpperCase()));const L=el('div',{class:'lvl'});for(let i=0;i<MAXLV;i++)L.appendChild(el('i',{class:i<lv?'f':''}));r.appendChild(L);
+   r.appendChild(el('div',{class:'small',style:'flex:1'},t(U.desc)));
+   if(lv>=MAXLV)r.appendChild(el('div',{class:'btn sm dis',style:'width:130px'},t('MAX')));else{const cost=upCost(car,lv);const can=own&&SAVE.credits>=cost;const b=el('div',{class:'btn sm gold'+(can?'':' dis'),style:'width:130px'},'&#9673; '+fmt(cost));b.onclick=()=>buyUpgrade(GSEL,U.id);r.appendChild(b);}
    body.appendChild(r);}}
- else{const ct=el('div',{class:'tabs',style:'margin-bottom:4px'});for(const[id,t]of COSCAT){const b=el('div',{class:'btn sm'+(GCAT===id?' on':'')},t);b.onclick=()=>{sfx('click');GCAT=id;SCREENS.garage(s);};ct.appendChild(b);}body.appendChild(ct);
-  if(!own)body.appendChild(el('div',{class:'small',style:'color:#ffd24a'},'Buy this car first. Cosmetics you own work on every car.'));
+ else{const ct=el('div',{class:'tabs',style:'margin-bottom:4px'});for(const[id,lb]of COSCAT){const b=el('div',{class:'btn sm'+(GCAT===id?' on':'')},t(lb));b.onclick=()=>{sfx('click');GCAT=id;SCREENS.garage(s);};ct.appendChild(b);}body.appendChild(ct);
+  if(!own)body.appendChild(el('div',{class:'small',style:'color:#ffd24a'},t('Buy this car first. Cosmetics you own work on every car.')));
   for(const it of COS[GCAT]){const has=SAVE.cosOwned.includes(it.id);const on=cos[GCAT]===it.id;const d=el('div',{class:'cos'+(on?' on':'')+(has?'':' lock')});
-   const pc2=Object.assign({},cos,{[GCAT]:it.id});const cv=GCAT==='wheels'?wheelPrev(it.id):GCAT==='trail'?trailPrev(it.id):carPreviewCanvas(GSEL,pc2,72,36);d.appendChild(cv);d.appendChild(el('div',{},it.name));d.appendChild(el('div',{class:has?'small':'coins'},has?(on?'EQUIPPED':'OWNED'):'&#9673; '+fmt(it.price)));
+   const pc2=Object.assign({},cos,{[GCAT]:it.id});const cv=GCAT==='wheels'?wheelPrev(it.id):GCAT==='trail'?trailPrev(it.id):carPreviewCanvas(GSEL,pc2,72,36);d.appendChild(cv);d.appendChild(el('div',{},t(it.name)));d.appendChild(el('div',{class:has?'small':'coins'},has?(on?t('EQUIPPED'):t('OWNED')):'&#9673; '+fmt(it.price)));
    d.onclick=()=>{if(!own){sfx('lock');return;}if(has){sfx('click');SAVE.cars[GSEL].cos[GCAT]=it.id;persist();SCREENS.garage(s);}else buyCos(GCAT,it);};body.appendChild(d);}}
  startMusic('menu');};
 function wheelPrev(id){const[c,x]=mkCanvas(72,36);for(let i=0;i<2;i++){const ws=wheelSprite(.6,id,i*3);x.drawImage(ws.c,18+i*30-ws.o,18-ws.o);}return c;}
 function trailPrev(id){const[c,x]=mkCanvas(72,36);const cols=TRAILCOL[id]||['#c8a070','#a88050'];for(let i=0;i<16;i++){x.globalAlpha=1-i/16;x.fillStyle=cols[i%cols.length];const s=id==='t4'?3:2;x.fillRect(64-i*4,16+Math.round(Math.sin(i*.8)*(id==='t0'?4:2)),s,s);}x.globalAlpha=1;return c;}
-function buyCar(car){if(SAVE.cars[car.id])return;modal(`<div class="t" style="font-size:20px;margin-bottom:6px">Buy the ${car.name}?</div><div class="small" style="margin-bottom:8px">${car.desc}</div><div class="coins" style="font-size:18px">Price: &#9673; ${fmt(car.price)} &nbsp;<span class="small">(you have ${fmt(SAVE.credits)})</span></div>`,
- [{t:'Buy',c:'gold',f:()=>{if(SAVE.cars[car.id])return;if(!spend(car.price)){toast('Not enough credits');return;}SAVE.cars[car.id]={up:{engine:0,fuel:0,susp:0,tires:0,air:0},cos:{paint:'p0',pattern:'none',decal:'none',wheels:'w0',trail:'t0',topper:'none'}};SAVE.car=car.id;persist();sfx('buy');toast(car.name+' is yours!','#3cff5a');SCREENS.garage($('#s-garage'));}},{t:'Cancel'}]);}
-function buyUpgrade(id,u){const c=SAVE.cars[id];if(!c)return;const lv=c.up[u];if(lv>=MAXLV)return;const cost=upCost(CMAP[id],lv);if(!spend(cost)){toast('Not enough credits');return;}c.up[u]=lv+1;persist();sfx('buy');SCREENS.garage($('#s-garage'));}
-function buyCos(cat,it){if(SAVE.cosOwned.includes(it.id))return;modal(`<div class="t" style="font-size:18px;margin-bottom:6px">Buy ${it.name}?</div><div class="small">Owned cosmetics can be equipped on every car.</div><div class="coins" style="font-size:18px;margin-top:6px">&#9673; ${fmt(it.price)}</div>`,
- [{t:'Buy',c:'gold',f:()=>{if(SAVE.cosOwned.includes(it.id))return;if(!spend(it.price)){toast('Not enough credits');return;}SAVE.cosOwned.push(it.id);if(SAVE.cars[GSEL])SAVE.cars[GSEL].cos[cat]=it.id;persist();sfx('buy');SCREENS.garage($('#s-garage'));}},{t:'Cancel'}]);}
+function buyCar(car){if(SAVE.cars[car.id])return;modal(`<div class="t" style="font-size:20px;margin-bottom:6px">${t('Buy the {item}?',{item:t(car.name)})}</div><div class="small" style="margin-bottom:8px">${t(car.desc)}</div><div class="coins" style="font-size:18px">${t('Price:')} &#9673; ${fmt(car.price)} &nbsp;<span class="small">${t('(you have {n})',{n:fmt(SAVE.credits)})}</span></div>`,
+ [{t:t('Buy'),c:'gold',f:()=>{if(SAVE.cars[car.id])return;if(!spend(car.price)){toast(t('Not enough credits'));return;}SAVE.cars[car.id]={up:{engine:0,fuel:0,susp:0,tires:0,air:0},cos:{paint:'p0',pattern:'none',decal:'none',wheels:'w0',trail:'t0',topper:'none'}};SAVE.car=car.id;persist();sfx('buy');toast(t('{item} is yours!',{item:t(car.name)}),'#3cff5a');SCREENS.garage($('#s-garage'));}},{t:t('Cancel')}]);}
+function buyUpgrade(id,u){const c=SAVE.cars[id];if(!c)return;const lv=c.up[u];if(lv>=MAXLV)return;const cost=upCost(CMAP[id],lv);if(!spend(cost)){toast(t('Not enough credits'));return;}c.up[u]=lv+1;persist();sfx('buy');SCREENS.garage($('#s-garage'));}
+function buyCos(cat,it){if(SAVE.cosOwned.includes(it.id))return;modal(`<div class="t" style="font-size:18px;margin-bottom:6px">${t('Buy {item}?',{item:t(it.name)})}</div><div class="small">${t('Owned cosmetics can be equipped on every car.')}</div><div class="coins" style="font-size:18px;margin-top:6px">&#9673; ${fmt(it.price)}</div>`,
+ [{t:t('Buy'),c:'gold',f:()=>{if(SAVE.cosOwned.includes(it.id))return;if(!spend(it.price)){toast(t('Not enough credits'));return;}SAVE.cosOwned.push(it.id);if(SAVE.cars[GSEL])SAVE.cars[GSEL].cos[cat]=it.id;persist();sfx('buy');SCREENS.garage($('#s-garage'));}},{t:t('Cancel')}]);}
 // ---------- RESULTS ----------
 const REASON={flip:['FLIPPED!','#ff4a5a','You landed on your roof. Upgrade suspension & air control, and ease off the gas on steep climbs.'],fuel:['OUT OF FUEL','#ffd24a','Your tank ran dry. A bigger Fuel Tank and a stronger Engine reach the next canister.'],void:['LOST IN THE VOID','#b04cff','You fell into a gap. More speed off the ramp clears longer jumps.'],quit:['RUN ENDED','#bcd3ff','Credits earned so far were banked.']};
 let LASTRES=null;
-SCREENS.results=function(s,res){res=res||LASTRES;LASTRES=res;s.innerHTML='';if(!res){show('title');return;}const[t,col,tip]=REASON[res.reason]||REASON.quit;const w=WMAP[res.world];
+SCREENS.results=function(s,res){res=res||LASTRES;LASTRES=res;s.innerHTML='';if(!res){show('title');return;}const[ttl,col,tip]=REASON[res.reason]||REASON.quit;const w=WMAP[res.world];
  const p=el('div',{class:'panel',style:'position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:560px;text-align:center;padding:16px'});s.appendChild(p);
- p.appendChild(pixText(t,6,col,col));p.appendChild(el('div',{class:'small',style:'margin:2px 0 8px'},w.name.toUpperCase()+' &middot; '+CMAP[res.car].name.toUpperCase()));
+ const rt=pixText(t(ttl),6,col,col);if(rt.width>520)rt.style.width='520px';p.appendChild(rt);p.appendChild(el('div',{class:'small',style:'margin:2px 0 8px'},w.name.toUpperCase()+' &middot; '+t(CMAP[res.car].name).toUpperCase()));
  const d=el('div',{});d.appendChild(pixText(res.dist+' M',7,'#ffffff','#3a7bff'));p.appendChild(d);
- p.appendChild(el('div',{style:'margin:4px 0 10px;font-size:15px;color:'+(res.newBest?'#3cff5a':'#bcd3ff')},res.newBest?'&#9733; NEW BEST! (was '+res.prev+' m) &#9733;':'BEST: '+Math.max(res.prev,res.dist)+' m'));
+ p.appendChild(el('div',{style:'margin:4px 0 10px;font-size:15px;color:'+(res.newBest?'#3cff5a':'#bcd3ff')},res.newBest?'&#9733; '+t('NEW BEST! (was {n} m)',{n:res.prev})+' &#9733;':t('BEST: {n} m',{n:Math.max(res.prev,res.dist)})));
  const tb=el('div',{style:'display:inline-block;text-align:left;font-size:14px;min-width:330px'});const line=(a,b,c='')=>tb.appendChild(el('div',{style:'display:flex;justify-content:space-between;gap:20px;margin:2px 0;'+c},`<span>${a}</span><span class="coins">${b}</span>`));
- line('Distance',`+${fmt(res.distC)}`);line('Coins collected',`+${fmt(res.coins)}`);line(`Air &amp; flip bonus (${res.flips} flip${res.flips===1?'':'s'})`,`+${fmt(res.bonus)}`);
- tb.appendChild(el('div',{style:'border-top:3px solid var(--bone2);margin:6px 0'}));line('CREDITS EARNED',`&#9673; ${fmt(res.total)}`,'font-size:18px');line('Balance',`&#9673; ${fmt(SAVE.credits)}`,'font-size:12px;color:#a89f80');p.appendChild(tb);
- p.appendChild(el('div',{class:'small',style:'margin:10px 20px 4px;color:#c8c0a0'},tip));
+ line(t('Distance'),`+${fmt(res.distC)}`);line(t('Coins collected'),`+${fmt(res.coins)}`);line(res.flips===1?t('Air &amp; flip bonus (1 flip)'):t('Air &amp; flip bonus ({n} flips)',{n:res.flips}),`+${fmt(res.bonus)}`);
+ tb.appendChild(el('div',{style:'border-top:3px solid var(--bone2);margin:6px 0'}));line(t('CREDITS EARNED'),`&#9673; ${fmt(res.total)}`,'font-size:18px');line(t('Balance'),`&#9673; ${fmt(SAVE.credits)}`,'font-size:12px;color:#a89f80');p.appendChild(tb);
+ p.appendChild(el('div',{class:'small',style:'margin:10px 20px 4px;color:#c8c0a0'},t(tip)));
  // suggest next affordable upgrade
  const c=SAVE.cars[res.car];const ups=UPGRADES.filter(u=>c.up[u.id]<MAXLV).map(u=>({u,cost:upCost(CMAP[res.car],c.up[u.id])})).sort((a,b)=>a.cost-b.cost);
- if(ups.length){const n=ups[0];p.appendChild(el('div',{class:'small',style:'color:'+(SAVE.credits>=n.cost?'#3cff5a':'#a89f80')},SAVE.credits>=n.cost?`&#9650; You can afford an upgrade! (${n.u.name} &#9673; ${fmt(n.cost)})`:`Next upgrade: ${n.u.name} for &#9673; ${fmt(n.cost)} (${fmt(n.cost-SAVE.credits)} to go)`));}
+ if(ups.length){const n=ups[0];p.appendChild(el('div',{class:'small',style:'color:'+(SAVE.credits>=n.cost?'#3cff5a':'#a89f80')},SAVE.credits>=n.cost?'&#9650; '+t('You can afford an upgrade! ({item} {c} {n})',{item:t(n.u.name),c:'&#9673;',n:fmt(n.cost)}):t('Next upgrade: {item} for {c} {n} ({left} to go)',{item:t(n.u.name),c:'&#9673;',n:fmt(n.cost),left:fmt(n.cost-SAVE.credits)})));}
  const row=el('div',{style:'margin-top:10px'});p.appendChild(row);
- const B=(t,c,f)=>{const e=el('div',{class:'btn '+c},t);e.onclick=()=>{sfx('click');f();};row.appendChild(e);};
- B('&#8635; Retry','green',()=>show('race',{world:res.world,car:res.car}));B('Garage','purple',()=>{GSEL=res.car;show('garage');});B('Worlds','blue',()=>show('worlds'));B('Title','',()=>show('title'));
+ const B=(lb,c,f)=>{const e=el('div',{class:'btn '+c},lb);e.onclick=()=>{sfx('click');f();};row.appendChild(e);};
+ B('&#8635; '+t('Retry'),'green',()=>show('race',{world:res.world,car:res.car}));B(t('Garage'),'purple',()=>{GSEL=res.car;show('garage');});B(t('Worlds'),'blue',()=>show('worlds'));B(t('Title'),'',()=>show('title'));
  startMusic('menu');};
 addEventListener('keydown',e=>{if(CUR==='results'&&!$('#modal').classList.contains('on')&&(e.key==='Enter'||e.key===' '||e.key.toLowerCase()==='r')){e.preventDefault();const r=LASTRES;if(r)show('race',{world:r.world,car:r.car});}
  if(e.key==='Escape'&&CUR!=='race'&&CUR!=='title'){if($('#modal').classList.contains('on'))closeModal();else show('title');}});
 // ---------- SETTINGS ----------
 SCREENS.settings=function(s){s.innerHTML='';s.appendChild(topBar('SETTINGS','title'));const S=SAVE.settings;const g=el('div',{class:'panel',style:'position:absolute;left:50%;top:80px;transform:translateX(-50%);width:560px;text-align:center'});s.appendChild(g);
- const tog=(k,l)=>{const b=el('div',{class:'btn'+(S[k]?' gold':''),style:'width:300px'},`${l}: ${S[k]?'ON':'OFF'}`);b.onclick=()=>{S[k]=!S[k];persist();if(k==='music'){if(S.music){MUSIC.track=null;startMusic(MUSIC.want||'title');}else stopMusic();}sfx('click');SCREENS.settings(s);};g.appendChild(b);g.appendChild(el('br'));};
+ const tog=(k,l)=>{const b=el('div',{class:'btn'+(S[k]?' gold':''),style:'width:340px'},`${t(l)}: ${S[k]?t('ON'):t('OFF')}`);b.onclick=()=>{S[k]=!S[k];persist();if(k==='music'){if(S.music){MUSIC.track=null;startMusic(MUSIC.want||'title');}else stopMusic();}sfx('click');SCREENS.settings(s);};g.appendChild(b);g.appendChild(el('br'));};
  tog('sound','Sound FX');tog('music','Music');tog('shake','Screen Shake');tog('fx','CRT Grain');
- g.appendChild(el('div',{class:'small',style:'margin:10px 0 4px'},'Save data lives in this browser (localStorage). Export it to back up or move to another device.'));
- const ex=el('div',{class:'btn blue'},'Export Save');ex.onclick=()=>{const code=btoa(unescape(encodeURIComponent(JSON.stringify(SAVE))));modal(`<div class="t" style="margin-bottom:6px">Your save code (copy it somewhere safe):</div><textarea id="excode" readonly style="width:600px;height:120px;background:#000;color:#3cff5a;border:3px solid #a89f80;font:11px monospace">${code}</textarea>`,[{t:'Copy',c:'green',f:()=>{try{navigator.clipboard.writeText(code);toast('Copied!');}catch(e){}}},{t:'Close'}]);setTimeout(()=>{const t=$('#excode');t&&t.select();},50);};g.appendChild(ex);
- const im=el('div',{class:'btn blue'},'Import Save');im.onclick=()=>{modal(`<div class="t" style="margin-bottom:6px">Paste a save code:</div><textarea id="imcode" style="width:600px;height:120px;background:#000;color:#3cff5a;border:3px solid #a89f80;font:11px monospace"></textarea>`,[{t:'Load',c:'gold',f:()=>{try{const o=JSON.parse(decodeURIComponent(escape(atob($('#imcode').value.trim()))));if(!o||typeof o!=='object'||!('credits' in o))throw 0;SAVE=mergeSave(o);persist();toast('Save imported!','#3cff5a');show('title');}catch(e){toast('That code is not valid','#ff4a5a');}}},{t:'Cancel'}]);};g.appendChild(im);
- g.appendChild(el('br'));const rs=el('div',{class:'btn red',style:'margin-top:10px'},'Reset All Progress');rs.onclick=()=>modal('<div class="t" style="font-size:18px">Erase ALL credits, cars, worlds and records?</div><div class="small">This cannot be undone.</div>',[{t:'Erase',c:'red',f:()=>{const st=SAVE.settings;SAVE=defaultSave();SAVE.settings=st;SAVE.seen.howto=true;persist();toast('Progress reset');show('title');}},{t:'Cancel'}]);g.appendChild(rs);
- const st=SAVE.stats;g.appendChild(el('div',{class:'small',style:'margin-top:12px;line-height:1.6'},`Runs: ${fmt(st.runs)} &middot; Total distance: ${fmt(st.dist)} m &middot; Flips: ${fmt(st.flips)} &middot; Credits earned: ${fmt(st.earned)} &middot; Longest air: ${st.air.toFixed(1)}s`));
+ const lgs=el('div',{class:'btn purple',id:'setlang',style:'width:340px'});lgs.appendChild(globeIcon(2,'#e2c2ff'));lgs.appendChild(document.createTextNode(' '+t('Language')+': '+langName(LANG)));lgs.onclick=()=>{sfx('click');langPicker();};g.appendChild(lgs);g.appendChild(el('br'));
+ g.appendChild(el('div',{class:'small',style:'margin:10px 0 4px'},t('Save data lives in this browser (localStorage). Export it to back up or move to another device.')));
+ const ex=el('div',{class:'btn blue'},t('Export Save'));ex.onclick=()=>{const code=btoa(unescape(encodeURIComponent(JSON.stringify(SAVE))));modal(`<div class="t" style="margin-bottom:6px">${t('Your save code (copy it somewhere safe):')}</div><textarea id="excode" readonly style="width:600px;height:120px;background:#000;color:#3cff5a;border:3px solid #a89f80;font:11px monospace">${code}</textarea>`,[{t:t('Copy'),c:'green',f:()=>{try{navigator.clipboard.writeText(code);toast(t('Copied!'));}catch(e){}}},{t:t('Close')}]);setTimeout(()=>{const t=$('#excode');t&&t.select();},50);};g.appendChild(ex);
+ const im=el('div',{class:'btn blue'},t('Import Save'));im.onclick=()=>{modal(`<div class="t" style="margin-bottom:6px">${t('Paste a save code:')}</div><textarea id="imcode" style="width:600px;height:120px;background:#000;color:#3cff5a;border:3px solid #a89f80;font:11px monospace"></textarea>`,[{t:t('Load'),c:'gold',f:()=>{try{const o=JSON.parse(decodeURIComponent(escape(atob($('#imcode').value.trim()))));if(!o||typeof o!=='object'||!('credits' in o))throw 0;SAVE=mergeSave(o);persist();toast(t('Save imported!'),'#3cff5a');show('title');}catch(e){toast(t('That code is not valid'),'#ff4a5a');}}},{t:t('Cancel')}]);};g.appendChild(im);
+ g.appendChild(el('br'));const rs=el('div',{class:'btn red',style:'margin-top:10px'},t('Reset All Progress'));rs.onclick=()=>modal(`<div class="t" style="font-size:18px">${t('Erase ALL credits, cars, worlds and records?')}</div><div class="small">${t('This cannot be undone.')}</div>`,[{t:t('Erase'),c:'red',f:()=>{const st=SAVE.settings;SAVE=defaultSave();SAVE.settings=st;SAVE.seen.howto=true;persist();toast(t('Progress reset'));show('title');}},{t:t('Cancel')}]);g.appendChild(rs);
+ const st=SAVE.stats;g.appendChild(el('div',{class:'small',style:'margin-top:12px;line-height:1.6'},t('Runs: {runs} &middot; Total distance: {dist} m &middot; Flips: {flips} &middot; Credits earned: {earned} &middot; Longest air: {air}s',{runs:fmt(st.runs),dist:fmt(st.dist),flips:fmt(st.flips),earned:fmt(st.earned),air:st.air.toFixed(1)})));
  startMusic('menu');};
 // ---------- HOW TO PLAY ----------
-const HOWTO=`<div style="text-align:left;font-size:13px;line-height:1.55;max-width:640px">
-<div style="color:#3cff5a">&#9654; GAS</div> Hold the green pedal, <b>&rarr;</b> or <b>D</b> to drive forward.<br>
-<div style="color:#ff4a5a;margin-top:4px">&#9664; BRAKE</div> Hold the red pedal, <b>&larr;</b> or <b>A</b> to brake, then reverse.<br>
-<div style="color:#bcd3ff;margin-top:4px">&#8635; IN THE AIR</div> Gas tilts the nose up (backflip); brake tips it down (frontflip). Land on your wheels!<br>
-<div style="color:#ffd24a;margin-top:4px">&#9673; CREDITS</div> Earn credits for distance, coins and air time / flips. Harder worlds pay more.<br>
-<div style="color:#ff8a3a;margin-top:4px">&#9650; FUEL</div> Your tank drains while you drive. Grab red canisters to refill. Out of fuel and stopped = run over.<br>
-<div style="color:#b04cff;margin-top:4px">&#10006; CRASHES</div> Touch the ground with your roof and the run ends. Fall into a gap and the void takes you.<br>
-<div style="color:#8affff;margin-top:4px">&#10052; SLICK PATCHES</div> Shiny, light-colored ground (ice, oil, loose sand, slime...) has very little grip. Keep momentum and feather the gas.<br>
-<div style="color:#e8dcb5;margin-top:4px">&#9881; GARAGE</div> Upgrade Engine, Fuel Tank, Suspension, Tires and Air Control. Steep hills need power and momentum; long runs need fuel. Buy new cars and worlds as long-term goals.<br>
-<div class="small" style="margin-top:6px">Esc / P pauses. Enter / R retries from the results screen.</div></div>`;
-function howtoModal(){modal('<div class="t" style="font-size:22px;margin-bottom:8px;color:#fff">HOW TO PLAY</div>'+HOWTO,[{t:'Let\'s drive!',c:'green'}]);}
-SCREENS.howto=function(s){s.innerHTML='';s.appendChild(topBar('HOW TO PLAY','title'));const p=el('div',{class:'panel',style:'position:absolute;left:50%;top:70px;transform:translateX(-50%);width:700px'},HOWTO);s.appendChild(p);
- const b=el('div',{class:'btn green',style:'position:absolute;left:50%;bottom:24px;transform:translateX(-50%)'},'&#9654; Race');b.onclick=()=>{sfx('click');show('race');};s.appendChild(b);startMusic('menu');};
+function HOWTOH(){const L=(col,ic,lb,tx,mt)=>`<div style="color:${col}${mt?';margin-top:4px':''}">${ic} ${t(lb)}</div> ${t(tx)}<br>`;
+return `<div style="text-align:left;font-size:13px;line-height:1.55;max-width:640px">`+
+L('#3cff5a','&#9654;','GAS','Hold the green pedal, <b>&rarr;</b> or <b>D</b> to drive forward.')+
+L('#ff4a5a','&#9664;','BRAKE','Hold the red pedal, <b>&larr;</b> or <b>A</b> to brake, then reverse.',1)+
+L('#bcd3ff','&#8635;','IN THE AIR','Gas tilts the nose up (backflip); brake tips it down (frontflip). Land on your wheels!',1)+
+L('#ffd24a','&#9673;','CREDITS','Earn credits for distance, coins and air time / flips. Harder worlds pay more.',1)+
+L('#ff8a3a','&#9650;','FUEL','Your tank drains while you drive. Grab red canisters to refill. Out of fuel and stopped = run over.',1)+
+L('#b04cff','&#10006;','CRASHES','Touch the ground with your roof and the run ends. Fall into a gap and the void takes you.',1)+
+L('#8affff','&#10052;','SLICK PATCHES','Shiny, light-colored ground (ice, oil, loose sand, slime...) has very little grip. Keep momentum and feather the gas.',1)+
+L('#e8dcb5','&#9881;','GARAGE','Upgrade Engine, Fuel Tank, Suspension, Tires and Air Control. Steep hills need power and momentum; long runs need fuel. Buy new cars and worlds as long-term goals.',1)+
+`<div class="small" style="margin-top:6px">${t('Esc / P pauses. Enter / R retries from the results screen.')}</div></div>`;}
+function howtoModal(){modal('<div class="t" style="font-size:22px;margin-bottom:8px;color:#fff">'+t('HOW TO PLAY')+'</div>'+HOWTOH(),[{t:t("Let's drive!"),c:'green'}],{redo:howtoModal});}
+SCREENS.howto=function(s){s.innerHTML='';s.appendChild(topBar('HOW TO PLAY','title'));const p=el('div',{class:'panel',style:'position:absolute;left:50%;top:70px;transform:translateX(-50%);width:700px'},HOWTOH());s.appendChild(p);
+ const b=el('div',{class:'btn green',style:'position:absolute;left:50%;bottom:24px;transform:translateX(-50%)'},'&#9654; '+t('Race'));b.onclick=()=>{sfx('click');show('race');};s.appendChild(b);startMusic('menu');};
+// ---------- LANGUAGE ----------
+function langPicker(){let h='<div class="t" style="font-size:22px;margin-bottom:8px;color:#fff">'+t('Language')+'</div><div id="langlist" style="display:flex;flex-wrap:wrap;justify-content:center;max-width:520px;margin:0 auto">';
+ for(const[c,n]of LAG_LANGS)h+=`<div class="btn${c===LANG?' green':''}" data-l="${c}" style="min-width:200px;margin:3px">${n}</div>`;
+ h+='</div><div class="small" style="margin-top:8px;max-width:520px;margin-left:auto;margin-right:auto">'+t('Also changes the language on the Lost Aura Games website and in the other games.')+'</div>';
+ modal(h,[{t:t('Done'),c:'gold'}],{redo:langPicker});
+ for(const b of $$('#langlist .btn'))b.onclick=()=>{sfx('click');setLang(b.dataset.l);};}
+function applyStaticLang(){const r=$('#rot');if(r)r.innerHTML='&#8635; '+t('Rotate your device to landscape for the best view (tap to dismiss)');}
+I18N_HOOKS.push(()=>{applyStaticLang();const redo=MODAL_REDO;
+ if(CUR==='race'){const pz=$('#s-race .btn.sm');if(pz)pz.title=t('Pause (Esc)');for(const k of['brake','gas']){const p=$('#'+k);if(p){p.setAttribute('aria-label',k==='gas'?t('Gas pedal'):t('Brake pedal'));const c=p.querySelector('canvas');if(c)c.replaceWith(pedalCanvas(k,false));}}}
+ else if(SCREENS[CUR]){const s=$('#s-'+CUR);if(CUR==='title'){/* keep the attract drive running: rebuild only the menu */const keep=RACE.run,cam=RACE.cam,parts=RACE.parts;SCREENS.title(s);RACE.run=keep;RACE.cam=cam;RACE.parts=parts;}else SCREENS[CUR](s);}
+ if(redo){closeModal();redo();}});
 
 // ================= BOOT =================
 let LAST=0,FR=0;
@@ -960,7 +1248,7 @@ function loop(now){const dt=Math.min(.1,(now-(LAST||now))/1000);LAST=now;FR++;
 addEventListener('pointerdown',()=>{ac();if(MUSIC.want&&!MUSIC.timer&&SAVE.settings.music)startMusic(MUSIC.want);},{passive:true});
 addEventListener('keydown',()=>{ac();if(MUSIC.want&&!MUSIC.timer&&SAVE.settings.music)startMusic(MUSIC.want);});
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&CUR==='race'&&RACE.run&&!RACE.run.ended&&!RACE.paused)pauseRace();});
-window.addEventListener('load',()=>{loadSave();fit();bgInit();show('title');requestAnimationFrame(loop);});
+window.addEventListener('load',()=>{loadSave();fit();bgInit();applyStaticLang();show('title');requestAnimationFrame(loop);});
 // test hooks (harmless for players)
 window.DEBUG={race:()=>RACE,save:()=>SAVE,force:(g,b)=>{RACE.forced=(g==null)?null:{gas:!!g,brake:!!b};},
  sim:(sec,fn)=>{const R=RACE.run;const n=Math.round(sec/PDT);for(let i=0;i<n&&!R.ended;i++){R.step(fn?fn(R.car):readInput());}handleFx();return{x:R.car.b.x,y:R.car.b.y,a:R.car.b.a,fuel:R.car.fuel,ended:R.ended,crashed:R.car.crashed,dist:R.dist};},

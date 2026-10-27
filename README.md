@@ -16,7 +16,8 @@ games/croak-and-dagger/        The game itself (one self-contained index.html)
 assets/css/site.css            All the site styling
 assets/js/games.js             >>> THE GAME LIST <<< (the home page grid is built from this)
 assets/js/site.js              Draws the background and logos, and builds the game grid
-assets/js/pixel.js             Pixel font, logo and emblem drawing, CRT/star background
+assets/js/pixel.js             Pixel font, logo and emblem drawing, animated background
+assets/js/keyart-croak.js      Animated pixel key art for Croak & Dagger (wakes up on hover/focus/tap)
 assets/img/                    Favicons, social share image (og.png), game pictures
 CNAME                          Tells GitHub Pages to use lostauragames.com
 .nojekyll                      Tells GitHub Pages to serve the files as-is
@@ -54,6 +55,7 @@ You can also double-click `index.html`. Use the local server to be sure everythi
      play: "games/my-new-game/",         // leave "" if it isn't playable yet
      info: "",                           // optional info page, e.g. "games/my-new-game.html"
      image: "assets/img/games/my-new-game/cover.png",
+     // art: "my-new-game",               // optional: an animated canvas key art script instead of the picture
      tags: ["Single player", "Browser"],
      featured: false                     // set true to show it in the big Featured box instead
    }
@@ -63,6 +65,9 @@ You can also double-click `index.html`. Use the local server to be sure everythi
    and change the text, screenshots and Play link. Then put that path in `info` in step 3.
 5. **(Optional) Tell search engines.** Add the new pages to `sitemap.xml`, copying an existing `<url>` line.
 6. Preview it locally (see above), then commit and push.
+
+Croak & Dagger's cover is animated pixel key art, drawn in code by `assets/js/keyart-croak.js` (`art: "croak-and-dagger"`).
+It stays still until a visitor hovers, focuses or taps it. A new game can use a normal picture instead: just leave out `art`.
 
 Only one game should have `featured: true`. If none do, the first game in the list is featured.
 

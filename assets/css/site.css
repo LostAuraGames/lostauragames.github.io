@@ -116,3 +116,11 @@ ul.pix li:before{content:"";position:absolute;left:4px;top:.55em;width:8px;heigh
 .features.three{grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}
 .shots{grid-template-columns:repeat(auto-fit,minmax(320px,1fr))}
 @media (max-width:520px){.features.three,.shots{grid-template-columns:1fr}}
+/* animated key art */
+canvas.keyart{display:block;width:100%;height:auto;aspect-ratio:16/9;image-rendering:pixelated;image-rendering:crisp-edges;background:#07061a}
+.game-card .thumb,.feat-img{position:relative}
+.ka-frame{border:var(--px) solid #000;box-shadow:0 0 0 3px var(--bone),6px 6px 0 3px #000;line-height:0}
+.ka-hint{position:absolute;right:8px;bottom:8px;font-size:12px;line-height:1;letter-spacing:1px;text-transform:uppercase;color:var(--bone);background:rgba(0,0,0,.7);border:2px solid var(--bone2);padding:4px 7px;pointer-events:none;transition:opacity .2s}
+.awake .ka-hint{opacity:0}
+.awake .ka-frame,.game-card.awake{box-shadow:0 0 0 3px var(--purple),6px 6px 0 3px #000,0 0 24px rgba(176,76,255,.55)}
+.game-card.awake{border-color:var(--purple)}

@@ -14,7 +14,9 @@ window.LAG_GAMES = [
     status: "Play now",                          // e.g. "Play now", "Coming soon", "Demo"
     play: "games/croak-and-dagger/",             // where the Play button goes (leave "" if not playable yet)
     info: "games/croak-and-dagger.html",         // the game's info page (optional, "" for none)
-    image: "assets/img/games/croak-and-dagger/cover-battle.png", // card picture, 16:9 works best
+    image: "assets/img/games/croak-and-dagger/cover.png", // card picture, 16:9 works best (used if there is no animated art)
+    art: "croak-and-dagger",                     // optional animated pixel key art (assets/js/keyart-croak.js); remove to use the image
+    artAlt: "Croak & Dagger key art: a hooded hero with a dagger faces a top-hatted frog on a lily pad under a full moon",
     tags: ["Single player", "Browser", "Mouse / Touch / Keyboard"],
     featured: true                               // true = shown in the big "Featured" box on the home page
   }

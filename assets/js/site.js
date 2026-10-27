@@ -23,10 +23,11 @@ if(P&&logos.length){drawLogos(0);window.addEventListener('resize',function(){log
 
 // game grid + featured
 var games=window.LAG_GAMES||[];
+function artCanvas(g){return '<canvas class="keyart" data-art="'+esc(g.art)+'" width="320" height="180" role="img" aria-label="'+esc(g.artAlt||g.title)+'"></canvas><span class="ka-hint" aria-hidden="true">'+(window.matchMedia&&matchMedia('(hover: none)').matches?'Tap to wake':'Hover to wake')+'</span>';}
 function card(g){var play=url(g.play),info=url(g.info);var main=info||play;
-  var h='<article class="game-card">'+
+  var h='<article class="game-card"'+(g.art?' data-keyart-trigger':'')+'>'+
    (main?'<a class="thumb" href="'+esc(main)+'" tabindex="-1" aria-hidden="true">':'<div class="thumb">')+
-   (g.image?'<img src="'+esc(url(g.image))+'" alt="" loading="lazy" width="640" height="360">':'<div class="thumb-empty">?</div>')+
+   (g.art?artCanvas(g):g.image?'<img src="'+esc(url(g.image))+'" alt="" loading="lazy" width="640" height="360">':'<div class="thumb-empty">?</div>')+
    (main?'</a>':'</div>')+
    '<div class="body"><span class="badge">'+esc(g.status||'')+'</span>'+
    '<h3>'+(main?'<a href="'+esc(main)+'">'+esc(g.title)+'</a>':esc(g.title))+'</h3>'+
@@ -40,8 +41,9 @@ if(grid){grid.innerHTML=games.map(card).join('')+'<article class="game-card soon
   [].slice.call(grid.querySelectorAll('canvas.pixel-emblem')).forEach(function(c){var s=3;c.width=c.height=96;P.emblem(c.getContext('2d'),0,0,s,1);});}
 var feat=document.getElementById('featured');
 if(feat){var f=games.filter(function(g){return g.featured;})[0]||games[0];
-  if(f){feat.innerHTML='<div class="feat-img">'+(f.image?'<img src="'+esc(url(f.image))+'" alt="Screenshot of '+esc(f.title)+'" width="640" height="360">':'')+'</div>'+
+  if(f){if(f.art)feat.setAttribute('data-keyart-trigger','');feat.innerHTML='<div class="feat-img'+(f.art?' ka-frame':'')+'">'+(f.art?artCanvas(f):f.image?'<img src="'+esc(url(f.image))+'" alt="'+esc(f.title)+'" width="640" height="360">':'')+'</div>'+
    '<div class="feat-body"><p class="kicker">Featured game</p><h2 id="featured-title">'+esc(f.title)+'</h2>'+(f.subtitle?'<p class="sub">'+esc(f.subtitle)+'</p>':'')+
    '<p>'+esc(f.blurb)+'</p>'+(f.tags&&f.tags.length?'<ul class="tags">'+f.tags.map(function(t){return '<li>'+esc(t)+'</li>';}).join('')+'</ul>':'')+
    '<div class="actions">'+(f.play?'<a class="btn gold big" href="'+esc(url(f.play))+'">&#9654; Play '+esc(f.title)+'</a>':'')+(f.info?'<a class="btn" href="'+esc(url(f.info))+'">Game details</a>':'')+'</div></div>';}}
+if(window.LAGKeyArt)window.LAGKeyArt.mountAll();
 })();

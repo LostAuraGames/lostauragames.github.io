@@ -28,32 +28,41 @@ function rpc(fn,body){var ctl=typeof AbortController!=='undefined'?new AbortCont
 function fetchTop(pid){return rpc('get_top_scores',{p_limit:LIMIT,p_player_id:pid}).then(function(rows){return(rows||[]).map(function(r){return{rank:+r.rank,name:String(r.name||''),score:+r.score,me:!!r.is_me};});});}
 function fetchMyRank(pid){return rpc('get_my_rank',{p_player_id:pid}).then(function(res){var r=Array.isArray(res)?res[0]:res;if(!r||r.rank==null)return null;return{rank:+r.rank,name:String(r.name||''),score:+r.score,total:+r.total_players};});}
 
+// UI text goes through the site translations (assets/js/i18n.js); player names are shown exactly as typed.
+function T(k,v){return window.LAGI18N?window.LAGI18N.t(k,v):String(k).replace(/\{(\w+)\}/g,function(m,x){return v&&v[x]!=null?v[x]:m;});}
 function esc(s){return String(s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
 function fmt(n){return String(n).replace(/\B(?=(\d{3})+(?!\d))/g,',');}
 function rankCell(n){return n<=3?'<span class="lb-medal m'+n+'" aria-hidden="true">&#9733;</span>'+n:'#'+n;}
 function row(r,pinned){return '<li class="lb-row'+(r.me?' me':'')+(r.rank<=3?' top'+r.rank:'')+'"'+(r.me?' aria-current="true"':'')+'>'+
-  '<span class="lb-pos">'+rankCell(r.rank)+'</span><span class="lb-name">'+esc(r.name)+(r.me?' <em>(you)</em>':'')+'</span><span class="lb-score">'+fmt(r.score)+'</span></li>';}
-function setStatus(kind,text){elStatus.className='lb-status '+kind;elStatus.textContent=text;root.setAttribute('data-state',kind);}
+  '<span class="lb-pos">'+rankCell(r.rank)+'</span><span class="lb-name">'+esc(r.name)+(r.me?' <em>'+esc(T('(you)'))+'</em>':'')+'</span><span class="lb-score">'+fmt(r.score)+'</span></li>';}
+var stKind='loading',stKey='Connecting\u2026',last=null,lastErr=false,lastTime=null;
+function setStatus(kind,key){stKind=kind;stKey=key;elStatus.className='lb-status '+kind;elStatus.textContent=T(key);root.setAttribute('data-state',kind);}
+function render(){if(last){var rows=last.rows,me=last.me;
+    if(!rows.length){elList.innerHTML='<li class="lb-empty">'+esc(T('No scores yet, be the first!'))+'</li>';}
+    else elList.innerHTML=rows.map(function(r){return row(r);}).join('');
+    var inList=rows.some(function(r){return r.me;});
+    if(me&&!inList&&me.score>0){elMe.hidden=false;elMe.innerHTML='<p class="lb-me-h">'+esc(T('Your position'))+(me.total?' <span>'+esc(T('of {n} players',{n:fmt(me.total)}))+'</span>':'')+'</p><ol class="lb-rows">'+row({rank:me.rank,name:me.name,score:me.score,me:true},true)+'</ol>';}
+    else{elMe.hidden=true;elMe.innerHTML='';}}
+  else if(lastErr)elList.innerHTML='<li class="lb-empty lb-err">'+esc(T('The leaderboard is offline right now. We\u2019ll keep trying, and your best score is safe in the game.'))+'</li>';
+  else elList.innerHTML='<li class="lb-empty">'+esc(T('Loading scores\u2026'))+'</li>';
+  elList.setAttribute('aria-label',T('Top 100 scores'));
+  if(elTime)elTime.textContent=lastTime?T('Updated {time}',{time:lastTime.toLocaleTimeString(window.LAGI18N?window.LAGI18N.lang:undefined)}):T('Refreshes every 15 seconds.');
+  elStatus.textContent=T(stKey);}
+document.addEventListener('lag:lang',render);
 
 var busy=false,timer=0,hasData=false;
 function refresh(){if(busy)return;busy=true;var pid=playerId();
   var jobs=[fetchTop(pid)];if(pid)jobs.push(fetchMyRank(pid).catch(function(){return null;}));
   Promise.all(jobs).then(function(res){var rows=res[0],me=res[1]||null;hasData=true;
-    if(!rows.length){elList.innerHTML='<li class="lb-empty">No scores yet, be the first!</li>';}
-    else elList.innerHTML=rows.map(function(r){return row(r);}).join('');
-    var inList=rows.some(function(r){return r.me;});
-    if(me&&!inList&&me.score>0){elMe.hidden=false;elMe.innerHTML='<p class="lb-me-h">Your position'+(me.total?' <span>of '+fmt(me.total)+' players</span>':'')+'</p><ol class="lb-rows">'+row({rank:me.rank,name:me.name,score:me.score,me:true},true)+'</ol>';}
-    else{elMe.hidden=true;elMe.innerHTML='';}
-    setStatus('live','Live \u00b7 global');
-    if(elTime)elTime.textContent='Updated '+new Date().toLocaleTimeString();
+    last={rows:rows,me:me};lastTime=new Date();setStatus('live','Live \u00b7 global');render();
   }).catch(function(e){
-    if(!hasData)elList.innerHTML='<li class="lb-empty lb-err">The leaderboard is offline right now. We\u2019ll keep trying, and your best score is safe in the game.</li>';
+    if(!hasData){lastErr=true;render();}
     setStatus('offline',hasData?'Offline \u00b7 showing last scores':'Offline \u00b7 retrying');
     if(window.console&&console.warn)console.warn('[MEOWTEOR leaderboard] '+(e&&e.message||e));
   }).then(function(){busy=false;});}
 function start(){clearInterval(timer);timer=setInterval(function(){if(!document.hidden)refresh();},LB_REFRESH_MS);}
 document.addEventListener('visibilitychange',function(){if(!document.hidden)refresh();});
 window.addEventListener('online',refresh);
-setStatus('loading','Connecting\u2026');refresh();start();
+setStatus('loading','Connecting\u2026');render();refresh();start();
 window.LAGLeaderboardMeowteor={refresh:refresh,playerId:playerId};
 })();

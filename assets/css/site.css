@@ -160,3 +160,19 @@ canvas.keyart{display:block;width:100%;height:auto;aspect-ratio:16/9;image-rende
 .lb-foot{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:10px;margin-top:14px}
 .lb-foot p{margin:0;font-size:13px}
 @media (max-width:520px){.lb{padding:14px}.lb-cols,.lb-row{grid-template-columns:3.6em 1fr auto;gap:8px}.lb-row,.lb-cols{padding-left:8px;padding-right:8px}}
+/* language picker (assets/js/i18n.js) */
+.lang-picker{position:relative}
+.lang-btn{display:flex;align-items:center;gap:7px;font:bold 14px var(--font);letter-spacing:1px;color:var(--purple2);background:#000;border:3px solid var(--purple);box-shadow:3px 3px 0 #000;padding:5px 9px;cursor:pointer;text-transform:uppercase}
+.lang-btn:hover,.lang-btn[aria-expanded="true"]{color:#fff;border-color:var(--purple2);box-shadow:3px 3px 0 #000,0 0 10px rgba(176,76,255,.55)}
+.lang-btn:focus-visible,.lang-menu li:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+.lang-btn canvas.globe{width:18px;height:18px;image-rendering:pixelated;image-rendering:crisp-edges}
+.lang-caret{font-size:11px}
+.lang-menu{position:absolute;right:0;top:calc(100% + 6px);z-index:60;list-style:none;margin:0;padding:4px;min-width:178px;background:#07090a;border:3px solid var(--purple);box-shadow:4px 4px 0 #000}
+.lang-menu[hidden]{display:none}
+.lang-menu li{display:flex;align-items:center;gap:10px;padding:7px 10px;font-size:15px;color:var(--bone);cursor:pointer;border:2px solid transparent}
+.lang-menu li:hover,.lang-menu li:focus{background:#1a0f26;color:#fff;border-color:var(--purple);outline:none}
+.lang-menu li[aria-selected="true"]{color:var(--gold)}
+.lang-menu li[aria-selected="true"]::after{content:"\25C0";margin-left:auto;font-size:11px}
+.lang-code{display:inline-block;min-width:2.2em;padding:1px 3px;font-size:11px;text-align:center;color:#000;background:var(--purple2)}
+.lang-menu li[aria-selected="true"] .lang-code{background:var(--gold)}
+@media (max-width:520px){.lang-picker{margin-left:0}.lang-btn{font-size:13px;padding:4px 7px}}

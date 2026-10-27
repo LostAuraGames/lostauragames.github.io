@@ -63,12 +63,12 @@
  <section aria-labelledby="lb-h">
   <div class="section-title"><h2 id="lb-h">Live <span class="glow">Leaderboard</span></h2></div>
   <div id="lb-meowteor" class="panel purple lb" data-state="loading">
-   <div class="lb-head"><p class="lb-title">Top 100 space cats</p><p id="lb-status" class="lb-status loading" role="status" aria-live="polite">Connecting&hellip;</p></div>
+   <div class="lb-head"><p class="lb-title">Top 100 space cats</p><p id="lb-status" data-i18n-skip class="lb-status loading" role="status" aria-live="polite">Connecting&hellip;</p></div>
    <div class="lb-cols" aria-hidden="true"><span>#</span><span>Name</span><span>Score</span></div>
-   <ol id="lb-list" class="lb-rows" aria-label="Top 100 scores"><li class="lb-empty">Loading scores&hellip;</li></ol>
-   <div id="lb-me" class="lb-me" hidden></div>
+   <ol id="lb-list" data-i18n-skip class="lb-rows" aria-label="Top 100 scores"><li class="lb-empty">Loading scores&hellip;</li></ol>
+   <div id="lb-me" data-i18n-skip class="lb-me" hidden></div>
    <noscript><p class="muted">Turn on JavaScript to see the live leaderboard.</p></noscript>
-   <div class="lb-foot"><p id="lb-time" class="muted">Refreshes every 15 seconds.</p><a class="btn gold" href="meowteor/">&#9654; Set a score</a></div>
+   <div class="lb-foot"><p id="lb-time" data-i18n-skip class="muted">Refreshes every 15 seconds.</p><a class="btn gold" href="meowteor/">&#9654; Set a score</a></div>
   </div>
  </section>
  <section aria-labelledby="s-h">
@@ -110,6 +110,8 @@
 <script src="../assets/js/keyart-orbit.js"></script>
 <script src="../assets/js/keyart-meowteor.js"></script>
 <script src="../assets/js/site.js"></script>
+<script src="../assets/js/i18n-dict.js"></script>
+<script src="../assets/js/i18n.js"></script>
 <script src="../assets/js/leaderboard-meowteor.js"></script>
 </body>
 </html>

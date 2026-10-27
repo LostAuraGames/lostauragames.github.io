@@ -452,7 +452,8 @@ function show(id,...args){closeModal();$$('.screen').forEach(s=>s.classList.remo
 let MODAL_REDO=null;
 function modal(html,btns,opts){MODAL_REDO=(opts&&opts.redo)||null;const p=$('#modalp');p.innerHTML=html;const row=el('div',{style:'margin-top:12px'});(btns||[{t:'OK'}]).forEach(b=>{const e=el('div',{class:'btn '+(b.c||'')},b.t);e.onclick=()=>{sfx('click');closeModal();b.f&&b.f();};row.appendChild(e);});p.appendChild(row);$('#modal').classList.add('on');}
 function closeModal(){$('#modal').classList.remove('on');MODAL_REDO=null;}
-function topBar(title,back='title'){const tb=el('div',{class:'topbar'});const b=el('div',{class:'btn sm'},'&lt; '+t('Back'));b.onclick=()=>{sfx('click');show(back);};tb.appendChild(b);const h=el('div',{});const tp=pixText(t(title),3,BONE,'#b04cff');if(tp.width>560)tp.style.width='560px';h.appendChild(tp);tb.appendChild(h);tb.appendChild(el('div',{class:'coins t',id:'tbcred',style:'font-size:18px;min-width:120px;text-align:right'},'&#9673; '+fmt(SAVE.credits)));return tb;}
+function topBar(title,back='title'){const tb=el('div',{class:'topbar'});const b=el('div',{class:'btn sm'},'&lt; '+t('Back'));b.onclick=()=>{sfx('click');show(back);};tb.appendChild(b);const h=el('div',{});const tp=pixText(t(title),3,BONE,'#b04cff');if(tp.width>560)tp.style.width='560px';h.appendChild(tp);tb.appendChild(h);const cr=el('div',{class:'coins t',id:'tbcred',style:'font-size:18px;min-width:120px;text-align:right'},'&#9673; '+fmt(SAVE.credits));
+ if(WALLET.avail()&&(title==='GARAGE'||title==='SELECT WORLD')){const w=el('div',{style:'display:flex;align-items:center;gap:6px'});w.appendChild(WALLET.button());w.appendChild(cr);tb.appendChild(w);}else tb.appendChild(cr);return tb;}
 
 // ================= FORMAT / SFX EXTRAS =================
 function fmt(n){n=Math.floor(n);return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g,',');}
@@ -483,9 +484,11 @@ function mergeSave(s){const d=defaultSave();if(!s||typeof s!=='object')return d;
    for(const k in c.up)c.up[k]=clamp(c.up[k]|0,0,MAXLV);}
  if(!Array.isArray(o.cosOwned))o.cosOwned=['p0','none','w0','t0'];for(const k of ['p0','none','w0','t0'])if(!o.cosOwned.includes(k))o.cosOwned.push(k);
  if(!o.cars[o.car])o.car='buggy';if(!o.worlds[o.world])o.world='hearth';o.credits=Math.max(0,Math.floor(+o.credits||0));return o;}
-function persist(){try{localStorage.setItem(SAVE_KEY,JSON.stringify(SAVE));}catch(e){}const t=$('#tbcred');if(t)t.innerHTML='&#9673; '+fmt(SAVE.credits);}
+function persist(){try{localStorage.setItem(SAVE_KEY,JSON.stringify(WALLET.persistView(SAVE)));}catch(e){}const t=$('#tbcred');if(t)t.innerHTML='&#9673; '+fmt(SAVE.credits);}
 // Deterministic purchase: check, deduct, save immediately. Returns true on success.
 function spend(cost){cost=Math.floor(cost);if(!(cost>=0)||SAVE.credits<cost){sfx('err');return false;}SAVE.credits-=cost;persist();return true;}
+// Same, but server-authoritative while signed in (see 98_wallet.js): ok() runs once the debit is accepted.
+function spendFor(cost,item,ok){return WALLET.spend(cost,item,ok,()=>toast(t('Not enough credits')));}
 function toast(msg,col){const t=el('div',{style:col?'border-color:'+col:''},msg);$('#toast').appendChild(t);setTimeout(()=>t.remove(),2500);}
 
 // ================= WORLDS =================
@@ -997,7 +1000,7 @@ function pauseModal(){modal(`<div style="margin-bottom:8px"></div>`,[{t:t('Resum
  const p=$('#modalp');p.insertBefore(pixText(t('PAUSED'),5,BONE,'#b04cff'),p.firstChild);p.insertBefore(el('div',{class:'small',style:'margin:6px 0'},t('Restart or End Run banks the credits earned so far.')),p.children[1]);}
 // award credits exactly once per run, then save immediately
 function awardRun(){const R=RACE.run;if(!R||RACE.awarded)return null;RACE.awarded=true;const w=R.world.id;const dist=Math.floor(R.dist);const prev=SAVE.best[w]||0;const tot=R.total();
- SAVE.credits+=tot;SAVE.stats.earned+=tot;SAVE.stats.dist+=dist;SAVE.stats.flips+=R.flipsTotal;SAVE.stats.coins+=R.coins;SAVE.stats.air=Math.max(SAVE.stats.air,R.airBest);
+ SAVE.credits+=tot;WALLET.earned(tot);SAVE.stats.earned+=tot;SAVE.stats.dist+=dist;SAVE.stats.flips+=R.flipsTotal;SAVE.stats.coins+=R.coins;SAVE.stats.air=Math.max(SAVE.stats.air,R.airBest);
  const nb=dist>prev;if(nb)SAVE.best[w]=dist;persist();return{world:w,car:R.carId,dist,prev,newBest:nb,distC:R.distCredits(),coins:R.coins,bonus:R.bonus,total:tot,reason:R.ended||'quit',flips:R.flipsTotal,air:R.airBest,fuel:R.fuelGot};}
 function endRun(reason,restart){const R=RACE.run;if(!R)return;if(!R.ended)R.ended=reason;const res=awardRun();engineStop();if(restart){show('race',{world:R.world.id,car:R.carId});return;}if(res)show('results',res);}
 // ---------- input ----------
@@ -1134,7 +1137,7 @@ SCREENS.worlds=function(s){s.innerHTML='';s.appendChild(topBar('SELECT WORLD','t
   card.title=t(w.desc);g.appendChild(card);}
  startMusic('menu');};
 function buyWorld(w){if(SAVE.worlds[w.id])return;modal(`<div class="t" style="font-size:20px;margin-bottom:8px">${t('Unlock {item}?',{item:w.name})}</div><div class="small" style="max-width:420px;margin:0 auto 8px">${t(w.desc)}</div><div class="coins" style="font-size:18px">${t('Price:')} &#9673; ${fmt(w.price)} &nbsp; <span class="small">${t('(you have {n})',{n:fmt(SAVE.credits)})}</span></div>`,
- [{t:t('Buy'),c:'gold',f:()=>{if(SAVE.worlds[w.id])return;if(!spend(w.price)){toast(t('Not enough credits'));return;}SAVE.worlds[w.id]=true;SAVE.world=w.id;persist();sfx('buy');toast(t('{item} unlocked!',{item:w.name}),'#3cff5a');SCREENS.worlds($('#s-worlds'));}},{t:t('Cancel')}]);}
+ [{t:t('Buy'),c:'gold',f:()=>{if(SAVE.worlds[w.id])return;spendFor(w.price,'world:'+w.id,()=>{SAVE.worlds[w.id]=true;SAVE.world=w.id;persist();sfx('buy');toast(t('{item} unlocked!',{item:w.name}),'#3cff5a');SCREENS.worlds($('#s-worlds'));});}},{t:t('Cancel')}]);}
 // ---------- GARAGE ----------
 let GTAB='up',GCAT='paint',GSEL=null;
 function carPreviewCanvas(id,cos,w=96,h=48,frame=0){const[c,x]=mkCanvas(w,h);const C=CMAP[id];const sp=carSprite(id,cos);const sc=1;const cy=h/2+2;
@@ -1177,10 +1180,10 @@ SCREENS.garage=function(s){s.innerHTML='';s.appendChild(topBar('GARAGE','title')
 function wheelPrev(id){const[c,x]=mkCanvas(72,36);for(let i=0;i<2;i++){const ws=wheelSprite(.6,id,i*3);x.drawImage(ws.c,18+i*30-ws.o,18-ws.o);}return c;}
 function trailPrev(id){const[c,x]=mkCanvas(72,36);const cols=TRAILCOL[id]||['#c8a070','#a88050'];for(let i=0;i<16;i++){x.globalAlpha=1-i/16;x.fillStyle=cols[i%cols.length];const s=id==='t4'?3:2;x.fillRect(64-i*4,16+Math.round(Math.sin(i*.8)*(id==='t0'?4:2)),s,s);}x.globalAlpha=1;return c;}
 function buyCar(car){if(SAVE.cars[car.id])return;modal(`<div class="t" style="font-size:20px;margin-bottom:6px">${t('Buy the {item}?',{item:t(car.name)})}</div><div class="small" style="margin-bottom:8px">${t(car.desc)}</div><div class="coins" style="font-size:18px">${t('Price:')} &#9673; ${fmt(car.price)} &nbsp;<span class="small">${t('(you have {n})',{n:fmt(SAVE.credits)})}</span></div>`,
- [{t:t('Buy'),c:'gold',f:()=>{if(SAVE.cars[car.id])return;if(!spend(car.price)){toast(t('Not enough credits'));return;}SAVE.cars[car.id]={up:{engine:0,fuel:0,susp:0,tires:0,air:0},cos:{paint:'p0',pattern:'none',decal:'none',wheels:'w0',trail:'t0',topper:'none'}};SAVE.car=car.id;persist();sfx('buy');toast(t('{item} is yours!',{item:t(car.name)}),'#3cff5a');SCREENS.garage($('#s-garage'));}},{t:t('Cancel')}]);}
-function buyUpgrade(id,u){const c=SAVE.cars[id];if(!c)return;const lv=c.up[u];if(lv>=MAXLV)return;const cost=upCost(CMAP[id],lv);if(!spend(cost)){toast(t('Not enough credits'));return;}c.up[u]=lv+1;persist();sfx('buy');SCREENS.garage($('#s-garage'));}
+ [{t:t('Buy'),c:'gold',f:()=>{if(SAVE.cars[car.id])return;spendFor(car.price,'car:'+car.id,()=>{SAVE.cars[car.id]={up:{engine:0,fuel:0,susp:0,tires:0,air:0},cos:{paint:'p0',pattern:'none',decal:'none',wheels:'w0',trail:'t0',topper:'none'}};SAVE.car=car.id;persist();sfx('buy');toast(t('{item} is yours!',{item:t(car.name)}),'#3cff5a');SCREENS.garage($('#s-garage'));});}},{t:t('Cancel')}]);}
+function buyUpgrade(id,u){const c=SAVE.cars[id];if(!c)return;const lv=c.up[u];if(lv>=MAXLV)return;const cost=upCost(CMAP[id],lv);spendFor(cost,'up:'+id+':'+u+':'+(lv+1),()=>{c.up[u]=lv+1;persist();sfx('buy');SCREENS.garage($('#s-garage'));});}
 function buyCos(cat,it){if(SAVE.cosOwned.includes(it.id))return;modal(`<div class="t" style="font-size:18px;margin-bottom:6px">${t('Buy {item}?',{item:t(it.name)})}</div><div class="small">${t('Owned cosmetics can be equipped on every car.')}</div><div class="coins" style="font-size:18px;margin-top:6px">&#9673; ${fmt(it.price)}</div>`,
- [{t:t('Buy'),c:'gold',f:()=>{if(SAVE.cosOwned.includes(it.id))return;if(!spend(it.price)){toast(t('Not enough credits'));return;}SAVE.cosOwned.push(it.id);if(SAVE.cars[GSEL])SAVE.cars[GSEL].cos[cat]=it.id;persist();sfx('buy');SCREENS.garage($('#s-garage'));}},{t:t('Cancel')}]);}
+ [{t:t('Buy'),c:'gold',f:()=>{if(SAVE.cosOwned.includes(it.id))return;spendFor(it.price,'cos:'+it.id,()=>{SAVE.cosOwned.push(it.id);if(SAVE.cars[GSEL])SAVE.cars[GSEL].cos[cat]=it.id;persist();sfx('buy');SCREENS.garage($('#s-garage'));});}},{t:t('Cancel')}]);}
 // ---------- RESULTS ----------
 const REASON={flip:['FLIPPED!','#ff4a5a','You landed on your roof. Upgrade suspension & air control, and ease off the gas on steep climbs.'],fuel:['OUT OF FUEL','#ffd24a','Your tank ran dry. A bigger Fuel Tank and a stronger Engine reach the next canister.'],void:['LOST IN THE VOID','#b04cff','You fell into a gap. More speed off the ramp clears longer jumps.'],quit:['RUN ENDED','#bcd3ff','Credits earned so far were banked.']};
 let LASTRES=null;
@@ -1207,10 +1210,11 @@ SCREENS.settings=function(s){s.innerHTML='';s.appendChild(topBar('SETTINGS','tit
  const tog=(k,l)=>{const b=el('div',{class:'btn'+(S[k]?' gold':''),style:'width:340px'},`${t(l)}: ${S[k]?t('ON'):t('OFF')}`);b.onclick=()=>{S[k]=!S[k];persist();if(k==='music'){if(S.music){MUSIC.track=null;startMusic(MUSIC.want||'title');}else stopMusic();}sfx('click');SCREENS.settings(s);};g.appendChild(b);g.appendChild(el('br'));};
  tog('sound','Sound FX');tog('music','Music');tog('shake','Screen Shake');tog('fx','CRT Grain');
  const lgs=el('div',{class:'btn purple',id:'setlang',style:'width:340px'});lgs.appendChild(globeIcon(2,'#e2c2ff'));lgs.appendChild(document.createTextNode(' '+t('Language')+': '+langName(LANG)));lgs.onclick=()=>{sfx('click');langPicker();};g.appendChild(lgs);g.appendChild(el('br'));
+ if(WALLET.avail()){const ab=el('div',{class:'btn gold',id:'setacct',style:'width:340px'},(LAGAccount.user()?'&#9679; ':'')+LAGAccount.t('Account'));ab.onclick=()=>WALLET.openAccount();g.appendChild(ab);g.appendChild(el('br'));}
  g.appendChild(el('div',{class:'small',style:'margin:10px 0 4px'},t('Save data lives in this browser (localStorage). Export it to back up or move to another device.')));
- const ex=el('div',{class:'btn blue'},t('Export Save'));ex.onclick=()=>{const code=btoa(unescape(encodeURIComponent(JSON.stringify(SAVE))));modal(`<div class="t" style="margin-bottom:6px">${t('Your save code (copy it somewhere safe):')}</div><textarea id="excode" readonly style="width:600px;height:120px;background:#000;color:#3cff5a;border:3px solid #a89f80;font:11px monospace">${code}</textarea>`,[{t:t('Copy'),c:'green',f:()=>{try{navigator.clipboard.writeText(code);toast(t('Copied!'));}catch(e){}}},{t:t('Close')}]);setTimeout(()=>{const t=$('#excode');t&&t.select();},50);};g.appendChild(ex);
- const im=el('div',{class:'btn blue'},t('Import Save'));im.onclick=()=>{modal(`<div class="t" style="margin-bottom:6px">${t('Paste a save code:')}</div><textarea id="imcode" style="width:600px;height:120px;background:#000;color:#3cff5a;border:3px solid #a89f80;font:11px monospace"></textarea>`,[{t:t('Load'),c:'gold',f:()=>{try{const o=JSON.parse(decodeURIComponent(escape(atob($('#imcode').value.trim()))));if(!o||typeof o!=='object'||!('credits' in o))throw 0;SAVE=mergeSave(o);persist();toast(t('Save imported!'),'#3cff5a');show('title');}catch(e){toast(t('That code is not valid'),'#ff4a5a');}}},{t:t('Cancel')}]);};g.appendChild(im);
- g.appendChild(el('br'));const rs=el('div',{class:'btn red',style:'margin-top:10px'},t('Reset All Progress'));rs.onclick=()=>modal(`<div class="t" style="font-size:18px">${t('Erase ALL credits, cars, worlds and records?')}</div><div class="small">${t('This cannot be undone.')}</div>`,[{t:t('Erase'),c:'red',f:()=>{const st=SAVE.settings;SAVE=defaultSave();SAVE.settings=st;SAVE.seen.howto=true;persist();toast(t('Progress reset'));show('title');}},{t:t('Cancel')}]);g.appendChild(rs);
+ const ex=el('div',{class:'btn blue'},t('Export Save'));ex.onclick=()=>{const code=btoa(unescape(encodeURIComponent(JSON.stringify(WALLET.persistView(SAVE)))));modal(`<div class="t" style="margin-bottom:6px">${t('Your save code (copy it somewhere safe):')}</div><textarea id="excode" readonly style="width:600px;height:120px;background:#000;color:#3cff5a;border:3px solid #a89f80;font:11px monospace">${code}</textarea>`,[{t:t('Copy'),c:'green',f:()=>{try{navigator.clipboard.writeText(code);toast(t('Copied!'));}catch(e){}}},{t:t('Close')}]);setTimeout(()=>{const t=$('#excode');t&&t.select();},50);};g.appendChild(ex);
+ const im=el('div',{class:'btn blue'},t('Import Save'));im.onclick=()=>{modal(`<div class="t" style="margin-bottom:6px">${t('Paste a save code:')}</div><textarea id="imcode" style="width:600px;height:120px;background:#000;color:#3cff5a;border:3px solid #a89f80;font:11px monospace"></textarea>`,[{t:t('Load'),c:'gold',f:()=>{try{const o=JSON.parse(decodeURIComponent(escape(atob($('#imcode').value.trim()))));if(!o||typeof o!=='object'||!('credits' in o))throw 0;SAVE=mergeSave(o);WALLET.replaced();persist();toast(t('Save imported!'),'#3cff5a');show('title');}catch(e){toast(t('That code is not valid'),'#ff4a5a');}}},{t:t('Cancel')}]);};g.appendChild(im);
+ g.appendChild(el('br'));const rs=el('div',{class:'btn red',style:'margin-top:10px'},t('Reset All Progress'));rs.onclick=()=>modal(`<div class="t" style="font-size:18px">${t('Erase ALL credits, cars, worlds and records?')}</div><div class="small">${t('This cannot be undone.')}</div>`,[{t:t('Erase'),c:'red',f:()=>{const st=SAVE.settings;SAVE=defaultSave();SAVE.settings=st;SAVE.seen.howto=true;WALLET.replaced();persist();toast(t('Progress reset'));show('title');}},{t:t('Cancel')}]);g.appendChild(rs);
  const st=SAVE.stats;g.appendChild(el('div',{class:'small',style:'margin-top:12px;line-height:1.6'},t('Runs: {runs} &middot; Total distance: {dist} m &middot; Flips: {flips} &middot; Credits earned: {earned} &middot; Longest air: {air}s',{runs:fmt(st.runs),dist:fmt(st.dist),flips:fmt(st.flips),earned:fmt(st.earned),air:st.air.toFixed(1)})));
  startMusic('menu');};
 // ---------- HOW TO PLAY ----------
@@ -1240,6 +1244,53 @@ I18N_HOOKS.push(()=>{applyStaticLang();const redo=MODAL_REDO;
  else if(SCREENS[CUR]){const s=$('#s-'+CUR);if(CUR==='title'){/* keep the attract drive running: rebuild only the menu */const keep=RACE.run,cam=RACE.cam,parts=RACE.parts;SCREENS.title(s);RACE.run=keep;RACE.cam=cam;RACE.parts=parts;}else SCREENS[CUR](s);}
  if(redo){closeModal();redo();}});
 
+// ================= ACCOUNT WALLET BRIDGE (Lost Aura Games accounts + coin store) =================
+// Only active on lostauragames.com, where the page also loads assets/js/lag-config.js + lag-account.js
+// and LAG_CONFIG.COMMERCE_ENABLED is true. Otherwise WALLET.avail() is false and the game is unchanged.
+//   signed out -> the game uses the local balance in SAVE.credits exactly as before
+//   signed in  -> SAVE.credits mirrors the SERVER wallet; spending goes through the atomic spend() RPC,
+//                 run rewards through earn() (server caps), and the local guest balance is kept aside
+//                 (persist() always writes the guest balance to localStorage, never the server one).
+//   first sign-in on an account -> the local guest balance is merged once (server cap) and recorded in the ledger.
+var WALLET=(function(){
+ const GAME='orbit-hills',FIELD='credits',ICON='&#9673;',QKEY='orbitHills.pendingEarn';
+ const A=()=>(window.LAGAccount&&window.LAGAccount.enabled)?window.LAGAccount:null;
+ const W={on:false,guest:0,busy:false,syncing:null,
+  avail(){return !!A();},
+  persistView(s){if(!W.on)return s;const o=Object.assign({},s);o[FIELD]=W.guest;return o;},
+  set(b){SAVE[FIELD]=Math.max(0,Math.floor(+b||0));W.ui();},
+  ui(){try{const tb=$('#tbcred');if(tb)tb.innerHTML='&#9673; '+fmt(SAVE.credits);if((CUR==='garage'||CUR==='worlds')&&!$('#modal').classList.contains('on'))SCREENS[CUR]($('#s-'+CUR));}catch(e){console.warn(e);}},
+  sync(u){const run=async()=>{const AC=A();if(!AC)return;
+   if(u){if(!W.on)W.guest=Math.max(0,Math.floor(+SAVE[FIELD]||0));
+    try{let w=await AC.wallet.get(GAME);
+     if(!w.guest_merged){const m=await AC.wallet.mergeGuest(GAME,W.guest);if(+m.credited>0)AC.toast(AC.t('{n} {cur} from this device were moved to your account.',{n:fmt(m.credited),cur:ICON_TXT}),4500);
+      if(!m.already_merged)W.guest=0;w=await AC.wallet.get(GAME);}
+     let q=0;try{q=+localStorage.getItem(QKEY)||0;localStorage.removeItem(QKEY);}catch(e){}
+     if(q>0){try{const r=await AC.wallet.earn(GAME,q,'retry');w={balance:r.balance};}catch(e){}}
+     W.on=true;SAVE[FIELD]=Math.max(0,+w.balance||0);persist();W.ui();}
+    catch(e){console.warn('[wallet] server unavailable, staying in local mode',e);if(e&&e.status!==401)AC.toast(AC.t('Could not reach the server. Please try again.'));}}
+   else if(W.on){W.on=false;SAVE[FIELD]=W.guest;persist();W.ui();}};
+   W.syncing=(W.syncing||Promise.resolve()).then(run,run);return W.syncing;},
+  // spend for an item; ok() runs only after the server accepted the debit (or locally when signed out)
+  spend(cost,item,ok,fail){cost=Math.floor(cost);
+   if(!W.on){if(!(cost>=0)||SAVE[FIELD]<cost){sfx('err');fail&&fail();return false;}SAVE[FIELD]-=cost;persist();ok();return true;}
+   if(W.busy)return false;if(SAVE[FIELD]<cost){sfx('err');fail&&fail();return false;}
+   W.busy=true;A().wallet.spend(GAME,cost,item).then(r=>{W.busy=false;SAVE[FIELD]=+r.balance;ok();W.ui();},
+    e=>{W.busy=false;sfx('err');if(/insufficient/.test(String(e&&e.message))){fail&&fail();W.reload();}else A().toast(A().t('Could not reach the server. Please try again.'));});
+   return true;},
+  earned(n){n=Math.floor(n);if(!W.on||!(n>0))return;
+   A().wallet.earn(GAME,n,'run').then(r=>{SAVE[FIELD]=+r.balance;if(r.capped)A().toast(A().t('Daily earning limit reached. Play again tomorrow to earn more {cur}.',{cur:ICON_TXT}),4500);W.ui();},
+    e=>{try{localStorage.setItem(QKEY,String((+localStorage.getItem(QKEY)||0)+n));}catch(x){}});},
+  replaced(){if(W.on){W.guest=Math.max(0,Math.floor(+SAVE[FIELD]||0));W.reload();}},
+  reload(){if(!W.on)return;A().wallet.get(GAME).then(w=>{SAVE[FIELD]=+w.balance;W.ui();},()=>{});},
+  openStore(){if(!A())return;sfx('click');A().openStore({game:GAME,icon:ICON,onBalance:b=>{if(W.on)W.set(b);}});},
+  openAccount(){if(!A())return;sfx('click');A().open(A().user()?'account':'signin');},
+  button(compact){const lbl=A()?A().t('Get Coins'):'';const b=el('div',{class:'btn gold sm lag-getcoins','title':lbl,'aria-label':lbl,role:'button'},compact?'+'+ICON:'+ '+lbl);b.onclick=e=>{e.stopPropagation();W.openStore();};return b;},
+  init(){const AC=A();if(!AC)return;AC.onChange(u=>W.sync(u));
+   const u=AC.user();(u?W.sync(u):Promise.resolve()).then(()=>AC.resumeCheckout({game:GAME,icon:ICON,onBalance:b=>{if(W.on)W.set(b);}}));}};
+ const ICON_TXT=ICON.replace(/&#(\d+);/g,(m,d)=>String.fromCharCode(+d));
+ return W;})();
+
 // ================= BOOT =================
 let LAST=0,FR=0;
 function loop(now){const dt=Math.min(.1,(now-(LAST||now))/1000);LAST=now;FR++;
@@ -1248,13 +1299,16 @@ function loop(now){const dt=Math.min(.1,(now-(LAST||now))/1000);LAST=now;FR++;
 addEventListener('pointerdown',()=>{ac();if(MUSIC.want&&!MUSIC.timer&&SAVE.settings.music)startMusic(MUSIC.want);},{passive:true});
 addEventListener('keydown',()=>{ac();if(MUSIC.want&&!MUSIC.timer&&SAVE.settings.music)startMusic(MUSIC.want);});
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&CUR==='race'&&RACE.run&&!RACE.run.ended&&!RACE.paused)pauseRace();});
-window.addEventListener('load',()=>{loadSave();fit();bgInit();applyStaticLang();show('title');requestAnimationFrame(loop);});
+window.addEventListener('load',()=>{loadSave();WALLET.init();fit();bgInit();applyStaticLang();show('title');requestAnimationFrame(loop);});
 // test hooks (harmless for players)
 window.DEBUG={race:()=>RACE,save:()=>SAVE,force:(g,b)=>{RACE.forced=(g==null)?null:{gas:!!g,brake:!!b};},
  sim:(sec,fn)=>{const R=RACE.run;const n=Math.round(sec/PDT);for(let i=0;i<n&&!R.ended;i++){R.step(fn?fn(R.car):readInput());}handleFx();return{x:R.car.b.x,y:R.car.b.y,a:R.car.b.a,fuel:R.car.fuel,ended:R.ended,crashed:R.car.crashed,dist:R.dist};},
  autopilot,WORLDS,CARS,show,persist};
 
 </script>
+<!-- Lost Aura Games: shared account + coin store (inactive unless LAG_CONFIG.COMMERCE_ENABLED) -->
+<script src="../../assets/js/lag-config.js"></script>
+<script src="../../assets/js/lag-account.js"></script>
 <!-- Lost Aura Games: small "back to site" link, shown only on the game's title screen -->
 <a id="lag-back" href="../../" aria-label="Back to Lost Aura Games" style="position:fixed;left:10px;top:10px;z-index:9999;display:none;font:bold 13px 'Courier New',monospace;color:#e8dcb5;background:rgba(0,0,0,.78);border:3px solid #e8dcb5;box-shadow:3px 3px 0 #000;padding:5px 10px;text-decoration:none;letter-spacing:1px;text-transform:uppercase;opacity:.8">&#9664; Lost Aura Games</a>
 <script>(function(){var a=document.getElementById('lag-back');function u(){var t;try{t=(typeof CUR!=='undefined')?CUR:null;}catch(e){t=null;}a.style.display=(t==='title')?'block':'none';}a.onmouseenter=function(){a.style.opacity=1;a.style.color='#fff';};a.onmouseleave=function(){a.style.opacity=.8;a.style.color='#e8dcb5';};setInterval(u,400);u();})();</script>

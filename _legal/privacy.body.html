@@ -1,0 +1,57 @@
+<h2 id="p1">1. Who is responsible</h2>
+<p>This Privacy Policy explains how {{OWNER_LEGAL_NAME}}, {{BUSINESS_FORM}} in {{COUNTRY}} ("we", "us"), handles personal information on {{WEBSITE}} and in our games. We are the data controller. Contact: <a href="mailto:{{CONTACT_EMAIL}}">{{CONTACT_EMAIL}}</a>.</p>
+
+<h2 id="p2">2. The short version</h2>
+<ul class="pix">
+<li>No ads, no analytics, no tracking pixels, no advertising cookies. We do not sell or share your personal information for targeted advertising.</li>
+<li>Playing as a guest stores your progress only in your own browser.</li>
+<li>We only store data on a server if you use MEOWTEOR's leaderboard or create an account (an account is only needed to buy Coins).</li>
+<li>Payments are handled by {{PAYMENT_PROVIDER_NAME}}, our Merchant of Record. We never see your full card number.</li>
+</ul>
+
+<h2 id="p3">3. What we collect and why</h2>
+<h3>a) In your browser (localStorage)</h3>
+<p>Our pages and games use your browser's localStorage, not tracking cookies, to remember game saves and settings, your language (<code>lag.lang</code>), a random MEOWTEOR leaderboard player ID, and, if you sign in, your login session (<code>lag.auth.v1</code>). This stays on your device; you can delete it by clearing your browser's site data. Signing out removes the session.</p>
+<h3>b) MEOWTEOR leaderboard (optional)</h3>
+<p>If you choose a player name, we store that name, your best score, a random player ID made by your browser, and timestamps. Names and scores are shown publicly on the leaderboard. Purpose: running the leaderboard you asked to join.</p>
+<h3>c) Accounts (optional)</h3>
+<p>If you create an account we store your email address, a securely hashed password (we cannot see your password), an account ID, sign-up and sign-in times, your confirmation that you are {{MIN_AGE}} or older and agree to the Terms, and security logs kept by our authentication provider (such as IP address and browser type). Purpose: providing your account, keeping it secure, and sending service emails such as password resets.</p>
+<h3>d) Coins, items and purchases</h3>
+<p>For signed-in players we store your Coin balance in each game and a history (ledger) of changes: Coins earned per run, Coins spent with the item bought, guest Coins moved into your account, purchases, refunds and chargebacks, with dates. For each purchase we store the order number from {{PAYMENT_PROVIDER_NAME}}, the bundle, the amount and currency, its status, and the email used at checkout. Purpose: delivering what you bought, preventing fraud and cheating, handling refunds, and keeping business and tax records.</p>
+<h3>e) Payments</h3>
+<p>Checkout is run by {{PAYMENT_PROVIDER_LEGAL_NAME}} as Merchant of Record. It collects your name, email, billing country / address, payment details and IP address to process the payment, calculate tax and prevent fraud, and it sends us order details (order number, email, product, price, country and status). {{PAYMENT_PROVIDER_NAME}} handles that data under its own <a href="{{PAYMENT_PROVIDER_PRIVACY_URL}}" target="_blank" rel="noopener">privacy policy</a>.</p>
+<h3>f) Messages</h3>
+<p>If you email us, we keep the conversation to answer you and for our records.</p>
+
+<h2 id="p4">4. Legal bases (EEA / UK)</h2>
+<p>We process personal data to perform our contract with you (games, accounts, purchases), to meet legal obligations (tax and accounting records), for our legitimate interests (security, fraud and cheat prevention, fair earning limits, improving the games without tracking) and, where required, with your consent (for example joining the leaderboard), which you can withdraw at any time.</p>
+
+<h2 id="p5">5. Who processes data for us</h2>
+<ul class="pix">
+<li><b>Supabase</b> (Supabase, Inc.): database, authentication, password-reset emails and server functions for accounts, wallets, purchases and the leaderboard. See <a href="https://supabase.com/privacy" target="_blank" rel="noopener">supabase.com/privacy</a>.</li>
+<li><b>{{PAYMENT_PROVIDER_NAME}}</b>: checkout and payments as Merchant of Record (see above).</li>
+<li><b>GitHub Pages</b> (GitHub, Inc.): hosts this website; like any web host it processes IP addresses in server logs.</li>
+<li><b>Email</b>: our contact mailbox is hosted by Google (Gmail). If we later send account emails through another email provider, we will list it here.</li>
+</ul>
+<p>These providers may store data in the United States and other countries. Where EU/UK law requires it, transfers are covered by appropriate safeguards such as the EU Standard Contractual Clauses.</p>
+
+<h2 id="p6">6. How long we keep data</h2>
+<ul class="pix">
+<li>Account data and balances: until you delete your account.</li>
+<li>Purchase, refund and ledger records: up to {{RECORD_RETENTION_YEARS}} years for tax, accounting and fraud-prevention reasons. After your account is deleted they are kept only with a random account ID and are no longer linked to your email.</li>
+<li>Leaderboard entries: while the leaderboard runs, or until you ask us to remove yours.</li>
+<li>localStorage: until you clear it.</li>
+</ul>
+
+<h2 id="p7">7. Your rights and deleting your data</h2>
+<p>Depending on where you live (for example the EU/EEA, the UK, California and other US states), you may have the right to access, correct, delete or receive a copy of your personal data, to object to or restrict some processing, and to withdraw consent. We do not sell personal information or share it for cross-context behavioral advertising, and we do not use it for profiling with legal effects. We will not treat you differently for using your rights.</p>
+<p><b>To delete your account or make any request,</b> email <a href="mailto:{{CONTACT_EMAIL}}">{{CONTACT_EMAIL}}</a> from the email address on your account with the subject "Privacy request". For a leaderboard entry, include the player name (and, if you can, the player ID saved in your browser). We may ask you to verify that the request is yours and will reply within 30 days (45 days where US state law allows). Deleting your account permanently removes your login and Coin balances; unused Coins are lost. You can also complain to your local data protection authority.</p>
+
+<h2 id="p8">8. Children</h2>
+<p>Our games are made for a general audience and can be played without giving us any personal information. Children under {{MIN_AGE}} must not create an account or make purchases, and we do not knowingly collect personal information from children under {{MIN_AGE}}. Players aged {{MIN_AGE}} to 17 need a parent's or guardian's permission to create an account or buy anything. If you believe a child under {{MIN_AGE}} has given us personal information, email us and we will delete it.</p>
+
+<h2 id="p9">9. Security</h2>
+<p>We use HTTPS, hashed passwords, row-level security in our database so each player can only read their own data, and keep server keys and payment secrets out of the website code. No system is perfectly secure, so please use a unique password.</p>
+
+<h2 id="p10">10. Changes</h2>
+<p>We will update this policy when our practices change and change the "Last updated" date above. For material changes we will post a notice on the site.</p>

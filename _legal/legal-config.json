@@ -1,0 +1,20 @@
+{
+  "_README": "Fill these in, then run: python3 _legal/build.py  (rebuilds legal/*.html). Any value left as {{NAME}} shows up highlighted on the live page so it is easy to spot. Templates, not legal advice.",
+  "OWNER_LEGAL_NAME": "Kohlton Michael Hilbert",
+  "BUSINESS_NAME": "Lost Aura Games",
+  "BUSINESS_FORM": "an individual (sole proprietor) doing business as Lost Aura Games",
+  "COUNTRY": "United States",
+  "STATE": "{{STATE}}",
+  "MAILING_ADDRESS": "{{MAILING_ADDRESS}}",
+  "CONTACT_EMAIL": "lostauragames@gmail.com",
+  "WEBSITE": "https://lostauragames.com",
+  "EFFECTIVE_DATE": "October 27, 2026",
+  "MIN_AGE": "13",
+  "PAYMENT_PROVIDER_NAME": "Lemon Squeezy",
+  "PAYMENT_PROVIDER_LEGAL_NAME": "Lemon Squeezy, LLC",
+  "PAYMENT_PROVIDER_BUYER_TERMS_URL": "https://www.lemonsqueezy.com/buyer-terms",
+  "PAYMENT_PROVIDER_PRIVACY_URL": "https://www.lemonsqueezy.com/privacy",
+  "PAYMENT_PROVIDER_ORDERS_URL": "https://app.lemonsqueezy.com/my-orders",
+  "RECORD_RETENTION_YEARS": "7",
+  "STORE_LIVE": false
+}

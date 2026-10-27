@@ -611,7 +611,7 @@ function defaultSave(){return{v:1,stars:0,best:0,runs:0,total:0,starsEver:0,owne
  name:'',lbBest:0,pending:0,muted:false,seenHelp:false};}
 function loadSave(){try{const s=JSON.parse(localStorage.getItem(SAVE_KEY)||'null');if(s&&typeof s==='object'){const d=defaultSave();SAVE=Object.assign(d,s);SAVE.owned=Object.assign(d.owned,s.owned||{});SAVE.eq=Object.assign(d.eq,s.eq||{});
   for(const k in SAVE.eq)if(!IMAP[SAVE.eq[k]]||!SAVE.owned[SAVE.eq[k]])SAVE.eq[k]=d.eq[k];}}catch(e){SAVE=defaultSave();}}
-function persist(){try{localStorage.setItem(SAVE_KEY,JSON.stringify(SAVE));}catch(e){}}
+function persist(){try{localStorage.setItem(SAVE_KEY,JSON.stringify(WALLET.persistView(SAVE)));}catch(e){}}
 // grant milestone items whose requirement is met; returns newly unlocked
 function checkUnlocks(){const got=[];for(const it of ITEMS){if(SAVE.owned[it.id])continue;if(!it.price&&!it.free&&reqMet(it)){SAVE.owned[it.id]=1;got.push(it);}}if(got.length)persist();return got;}
 function medalFor(s){if(s>=100)return{n:'COSMIC',c:'#b04cff'};if(s>=50)return{n:'PLATINUM',c:'#bcd3ff'};if(s>=30)return{n:'GOLD',c:'#ffd24a'};if(s>=20)return{n:'SILVER',c:'#d8dce8'};if(s>=10)return{n:'BRONZE',c:'#e09a5a'};return null;}
@@ -943,7 +943,7 @@ function onDeath(){const W=G.world;G.mode='dead';G.shake=8;G.flash=1;sfx('hit');
  G.result=finishRun(W);setTimeout(()=>{if(G.mode==='dead')show('over',G.result);},650);}
 // award stars / update stats exactly once per run
 function finishRun(W){if(W.awarded)return W.awardResult;W.awarded=true;const score=W.score;const prev=SAVE.best;const isBest=score>prev;
- const earned=score+W.picked;SAVE.stars+=earned;SAVE.starsEver+=earned;SAVE.runs++;SAVE.total+=score;if(isBest)SAVE.best=score;persist();
+ const earned=score+W.picked;SAVE.stars+=earned;WALLET.earned(earned);SAVE.starsEver+=earned;SAVE.runs++;SAVE.total+=score;if(isBest)SAVE.best=score;persist();
  const unlocked=checkUnlocks();W.awardResult={score,prev,best:SAVE.best,isBest,earned,picked:W.picked,unlocked,zone:zoneOf(score)};return W.awardResult;}
 function render(){const x=GCX,W=G.world;x.setTransform(2,0,0,2,0,0);x.imageSmoothingEnabled=false;
  const sh=G.shake>0?[Math.round(rnd(-G.shake,G.shake)/2),Math.round(rnd(-G.shake,G.shake)/2)]:[0,0];x.translate(sh[0],sh[1]);
@@ -1059,7 +1059,7 @@ function askName(after,isChange){const wrap=el('div',{});wrap.appendChild(el('di
 // ---------- WARDROBE ----------
 const WD={tab:'fur',timer:null,pc:null,px:null,t:0,raf:0};
 SCREENS.wardrobe=(s,tab)=>{if(tab)WD.tab=tab;startMusic('menu');s.innerHTML='';s.style.background='#050806';
- const tb=el('div',{class:'topbar'});const back=el('div',{class:'btn sm'},'&lt; '+t('BACK'));back.onclick=()=>{sfx('click');show('title');};tb.appendChild(back);const tt=pixText(t('WARDROBE'),3,BONE,'#ff7ac8');fitPix(tt,128);tb.appendChild(tt);tb.appendChild(el('div',{},starsBadge()));s.appendChild(tb);
+ const tb=el('div',{class:'topbar'});const back=el('div',{class:'btn sm'},'&lt; '+t('BACK'));back.onclick=()=>{sfx('click');show('title');};tb.appendChild(back);const tt=pixText(t('WARDROBE'),3,BONE,'#ff7ac8');fitPix(tt,128);tb.appendChild(tt);if(WALLET.avail()){const w=el('div',{style:'display:flex;align-items:center;gap:4px'});w.appendChild(el('div',{},starsBadge()));w.appendChild(WALLET.button(true));tb.appendChild(w);}else tb.appendChild(el('div',{},starsBadge()));s.appendChild(tb);
  const [pc,pxx]=mkCanvas(120,50);pc.id='wprev';s.appendChild(pc);WD.pc=pc;WD.px=pxx;
  const tabs=el('div',{class:'tabs'});for(const sl of SLOTS){const b=el('div',{class:'btn'+(WD.tab===sl.id?' on':''),'data-tab':sl.id},sl.id==='head'?t('HEAD'):t(sl.name).toUpperCase());b.onclick=()=>{sfx('click');WD.tab=sl.id;$$('.tabs .btn').forEach(e=>e.classList.toggle('on',e.dataset.tab===sl.id));renderGrid();};tabs.appendChild(b);}s.appendChild(tabs);
  s.appendChild(el('div',{id:'wgrid'}));
@@ -1075,7 +1075,7 @@ function renderGrid(){const g=$('#wgrid');if(!g)return;g.innerHTML='';const item
 function clickItem(it){if(SAVE.owned[it.id]){SAVE.eq[it.slot]=it.id;persist();sfx('equip');renderGrid();return;}
  if(it.price){if(SAVE.stars<it.price){sfx('err');toast(t('Need {star} {n} more for {item}',{star:STAR_ICON,n:it.price-SAVE.stars,item:esc(t(it.name))}),'#ff4a5a');return;}
   modal(`<div class="gold" style="font-size:16px">${t('BUY {item}?',{item:esc(t(it.name).toUpperCase())})}</div><div style="margin:8px 0">${t('Cost:')} <span class="gold">${STAR_ICON} ${it.price}</span><br><span class="small">${t('You have {star} {n}',{star:STAR_ICON,n:fmt(SAVE.stars)})}</span></div>`,
-   [{t:t('BUY & WEAR'),c:'green',f:()=>{if(SAVE.stars<it.price)return;SAVE.stars-=it.price;SAVE.owned[it.id]=1;SAVE.eq[it.slot]=it.id;persist();sfx('buy');toast(t('NEW: {item}',{item:esc(t(it.name))}),'#3cff5a');refreshStars();renderGrid();}},{t:t('CANCEL')}]);return;}
+   [{t:t('BUY & WEAR'),c:'green',f:()=>{if(SAVE.owned[it.id])return;WALLET.spend(it.price,'item:'+it.id,()=>{SAVE.owned[it.id]=1;SAVE.eq[it.slot]=it.id;persist();sfx('buy');toast(t('NEW: {item}',{item:esc(t(it.name))}),'#3cff5a');refreshStars();renderGrid();},()=>toast(t('Need {star} {n} more for {item}',{star:STAR_ICON,n:Math.max(0,it.price-SAVE.stars),item:esc(t(it.name))}),'#ff4a5a'));}},{t:t('CANCEL')}]);return;}
  sfx('err');const prog=it.best?`${SAVE.best}/${it.best}`:it.runs?`${SAVE.runs}/${it.runs}`:`${SAVE.total}/${it.total}`;toast(`&#128274; ${esc(reqLong(it))} (${prog})`,'#ff7ac8');}
 function wardrobeFrame(dt){if(!WD.px)return;const x=WD.px;WD.t+=dt;x.setTransform(1,0,0,1,0,0);x.drawImage(BGX.sky[2],0,150,120,50,0,0,120,50);
  const sc=WD.t*45;x.fillStyle='#9fb4ff';for(const s of BGX.stars[1]){let X=(s.x-sc*.4)%180;if(X<0)X+=180;x.fillRect(X|0,(s.y/6)|0,1,1);}
@@ -1106,6 +1106,53 @@ function renderRanks(rows,me){const st=$('#lbstat');if(st)st.innerHTML=LB.status
  else pin.innerHTML=`<div class="small center" style="padding-top:12px">${t("You're #{n} in the top 100! Your row is highlighted.",{n:me.rank})}</div>`;
  const meRow=box.querySelector('.lbrow.me');if(meRow&&!RK.scrolled){RK.scrolled=true;}}
 
+// ================= ACCOUNT WALLET BRIDGE (Lost Aura Games accounts + coin store) =================
+// Only active on lostauragames.com, where the page also loads assets/js/lag-config.js + lag-account.js
+// and LAG_CONFIG.COMMERCE_ENABLED is true. Otherwise WALLET.avail() is false and the game is unchanged.
+//   signed out -> the game uses the local balance in SAVE.stars exactly as before
+//   signed in  -> SAVE.stars mirrors the SERVER wallet; spending goes through the atomic spend() RPC,
+//                 run rewards through earn() (server caps), and the local guest balance is kept aside
+//                 (persist() always writes the guest balance to localStorage, never the server one).
+//   first sign-in on an account -> the local guest balance is merged once (server cap) and recorded in the ledger.
+var WALLET=(function(){
+ const GAME='meowteor',FIELD='stars',ICON='&#9733;',QKEY='meowteor.pendingEarn';
+ const A=()=>(window.LAGAccount&&window.LAGAccount.enabled)?window.LAGAccount:null;
+ const W={on:false,guest:0,busy:false,syncing:null,
+  avail(){return !!A();},
+  persistView(s){if(!W.on)return s;const o=Object.assign({},s);o[FIELD]=W.guest;return o;},
+  set(b){SAVE[FIELD]=Math.max(0,Math.floor(+b||0));W.ui();},
+  ui(){try{refreshStars();if(CUR==='wardrobe'&&typeof renderGrid==='function')renderGrid();}catch(e){console.warn(e);}},
+  sync(u){const run=async()=>{const AC=A();if(!AC)return;
+   if(u){if(!W.on)W.guest=Math.max(0,Math.floor(+SAVE[FIELD]||0));
+    try{let w=await AC.wallet.get(GAME);
+     if(!w.guest_merged){const m=await AC.wallet.mergeGuest(GAME,W.guest);if(+m.credited>0)AC.toast(AC.t('{n} {cur} from this device were moved to your account.',{n:fmt(m.credited),cur:ICON_TXT}),4500);
+      if(!m.already_merged)W.guest=0;w=await AC.wallet.get(GAME);}
+     let q=0;try{q=+localStorage.getItem(QKEY)||0;localStorage.removeItem(QKEY);}catch(e){}
+     if(q>0){try{const r=await AC.wallet.earn(GAME,q,'retry');w={balance:r.balance};}catch(e){}}
+     W.on=true;SAVE[FIELD]=Math.max(0,+w.balance||0);persist();W.ui();}
+    catch(e){console.warn('[wallet] server unavailable, staying in local mode',e);if(e&&e.status!==401)AC.toast(AC.t('Could not reach the server. Please try again.'));}}
+   else if(W.on){W.on=false;SAVE[FIELD]=W.guest;persist();W.ui();}};
+   W.syncing=(W.syncing||Promise.resolve()).then(run,run);return W.syncing;},
+  // spend for an item; ok() runs only after the server accepted the debit (or locally when signed out)
+  spend(cost,item,ok,fail){cost=Math.floor(cost);
+   if(!W.on){if(!(cost>=0)||SAVE[FIELD]<cost){sfx('err');fail&&fail();return false;}SAVE[FIELD]-=cost;persist();ok();return true;}
+   if(W.busy)return false;if(SAVE[FIELD]<cost){sfx('err');fail&&fail();return false;}
+   W.busy=true;A().wallet.spend(GAME,cost,item).then(r=>{W.busy=false;SAVE[FIELD]=+r.balance;ok();W.ui();},
+    e=>{W.busy=false;sfx('err');if(/insufficient/.test(String(e&&e.message))){fail&&fail();W.reload();}else A().toast(A().t('Could not reach the server. Please try again.'));});
+   return true;},
+  earned(n){n=Math.floor(n);if(!W.on||!(n>0))return;
+   A().wallet.earn(GAME,n,'run').then(r=>{SAVE[FIELD]=+r.balance;if(r.capped)A().toast(A().t('Daily earning limit reached. Play again tomorrow to earn more {cur}.',{cur:ICON_TXT}),4500);W.ui();},
+    e=>{try{localStorage.setItem(QKEY,String((+localStorage.getItem(QKEY)||0)+n));}catch(x){}});},
+  replaced(){if(W.on){W.guest=Math.max(0,Math.floor(+SAVE[FIELD]||0));W.reload();}},
+  reload(){if(!W.on)return;A().wallet.get(GAME).then(w=>{SAVE[FIELD]=+w.balance;W.ui();},()=>{});},
+  openStore(){if(!A())return;sfx('click');A().openStore({game:GAME,icon:ICON,onBalance:b=>{if(W.on)W.set(b);}});},
+  openAccount(){if(!A())return;sfx('click');A().open(A().user()?'account':'signin');},
+  button(compact){const lbl=A()?A().t('Get Coins'):'';const b=el('div',{class:'btn gold sm lag-getcoins','title':lbl,'aria-label':lbl,role:'button'},compact?'+'+ICON:'+ '+lbl);b.onclick=e=>{e.stopPropagation();W.openStore();};return b;},
+  init(){const AC=A();if(!AC)return;AC.onChange(u=>W.sync(u));
+   const u=AC.user();(u?W.sync(u):Promise.resolve()).then(()=>AC.resumeCheckout({game:GAME,icon:ICON,onBalance:b=>{if(W.on)W.set(b);}}));}};
+ const ICON_TXT=ICON.replace(/&#(\d+);/g,(m,d)=>String.fromCharCode(+d));
+ return W;})();
+
 // ================= BOOT =================
 let LAST=0;
 function loop(now){const dt=Math.min(.1,(now-(LAST||now))/1000);LAST=now;
@@ -1113,7 +1160,7 @@ function loop(now){const dt=Math.min(.1,(now-(LAST||now))/1000);LAST=now;
  requestAnimationFrame(loop);}
 function unlockAudio(){ac();if(MUSIC.want&&!MUSIC.timer&&!SAVE.muted&&!document.hidden)startMusic(MUSIC.want);}
 addEventListener('pointerdown',unlockAudio,{passive:true});addEventListener('keydown',unlockAudio);
-window.addEventListener('load',()=>{loadSave();LB.init();fit();bgInit();gameInit();inputInit();drawMuteIcon();
+window.addEventListener('load',()=>{loadSave();WALLET.init();LB.init();fit();bgInit();gameInit();inputInit();drawMuteIcon();
  $('#mute').addEventListener('click',e=>{e.stopPropagation();setMuted(!SAVE.muted);sfx('click');});
  $('#pauseb').addEventListener('click',e=>{e.stopPropagation();if(G.paused)resumeGame();else pauseGame();});
  $('#pauseb').title=t('Pause');$('#mute').title=t('Mute / unmute (M)');
@@ -1125,6 +1172,9 @@ window.DEBUG={G:()=>G,save:()=>SAVE,LB,World,PHYS,difficulty,ITEMS,show,persist,
  sim(frames,fn){const W=G.world;for(let i=0;i<frames&&!W.dead;i++){const f=fn?fn(W):false;W.step(f);handleEvents();if(W.dead){onDeath();break;}}return{score:W.score,dead:W.dead,y:W.cat.y};}};
 
 </script>
+<!-- Lost Aura Games: shared account + coin store (inactive unless LAG_CONFIG.COMMERCE_ENABLED) -->
+<script src="../../assets/js/lag-config.js"></script>
+<script src="../../assets/js/lag-account.js"></script>
 <!-- Lost Aura Games: small "back to site" link, shown only on the game's title screen -->
 <a id="lag-back" href="../../" aria-label="Back to Lost Aura Games" style="position:fixed;left:10px;top:10px;z-index:9999;display:none;font:bold 13px 'Courier New',monospace;color:#e8dcb5;background:rgba(0,0,0,.78);border:3px solid #e8dcb5;box-shadow:3px 3px 0 #000;padding:5px 10px;text-decoration:none;letter-spacing:1px;text-transform:uppercase;opacity:.8">&#9664; Lost Aura Games</a>
 <script>(function(){var a=document.getElementById('lag-back');function u(){var t;try{t=(typeof CUR!=='undefined')?CUR:null;}catch(e){t=null;}var m=false;try{m=(typeof MODAL_OPEN!=='undefined')&&MODAL_OPEN;}catch(e){}a.style.display=(t==='title'&&!m)?'block':'none';}a.onmouseenter=function(){a.style.opacity=1;a.style.color='#fff';};a.onmouseleave=function(){a.style.opacity=.8;a.style.color='#e8dcb5';};var st=document.getElementById('stage');if(st){st.appendChild(a);a.style.position='absolute';a.style.left='8px';a.style.top='40px';a.style.fontSize='11px';a.style.padding='3px 7px';a.style.borderWidth='2px';a.style.boxShadow='2px 2px 0 #000';}setInterval(u,400);u();})();</script>

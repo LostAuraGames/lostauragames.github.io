@@ -190,3 +190,7 @@ canvas.keyart{display:block;width:100%;height:auto;aspect-ratio:16/9;image-rende
 .legal code{color:var(--green)}
 mark.ph{background:var(--gold);color:#000;padding:0 4px;font-weight:bold}
 @media (max-width:520px){.legal{padding:16px 14px;font-size:15px}}
+/* footer + legal tables: wrap on narrow screens */
+.site-footer nav{display:flex;flex-wrap:wrap;gap:6px 14px}.site-footer nav a{margin-left:0}
+.legal .keys td{overflow-wrap:anywhere}.legal .keys th{word-break:normal;overflow-wrap:normal;white-space:nowrap}
+@media (max-width:520px){.site-footer .wrap{justify-content:center;text-align:center}.site-footer nav{justify-content:center}.legal .keys,.legal .keys tbody,.legal .keys tr,.legal .keys th,.legal .keys td{display:block;width:auto}.legal .keys th{border-bottom:0;padding:8px 4px 0;white-space:normal}.legal .keys td{padding:2px 4px 8px}}

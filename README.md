@@ -13,11 +13,15 @@ about.html                     About page
 404.html                       "Page not found" page (GitHub Pages uses it automatically)
 games/croak-and-dagger.html    Info page for Croak & Dagger (description, screenshots, controls)
 games/croak-and-dagger/        The game itself (one self-contained index.html)
+games/orbit-hills.html         Info page for Orbit Hills
+games/orbit-hills/             Orbit Hills itself (one self-contained index.html)
 assets/css/site.css            All the site styling
 assets/js/games.js             >>> THE GAME LIST <<< (the home page grid is built from this)
 assets/js/site.js              Draws the background and logos, and builds the game grid
 assets/js/pixel.js             Pixel font, logo and emblem drawing, animated background
 assets/js/keyart-croak.js      Animated pixel key art for Croak & Dagger (wakes up on hover/focus/tap)
+assets/js/keyart-orbit.js      Animated pixel key art for Orbit Hills (load it after keyart-croak.js)
+assets/downloads/              Downloadable game zips (OrbitHills.zip)
 assets/img/                    Favicons, social share image (og.png), game pictures
 CNAME                          Tells GitHub Pages to use lostauragames.com
 .nojekyll                      Tells GitHub Pages to serve the files as-is
@@ -67,6 +71,7 @@ You can also double-click `index.html`. Use the local server to be sure everythi
 6. Preview it locally (see above), then commit and push.
 
 Croak & Dagger's cover is animated pixel key art, drawn in code by `assets/js/keyart-croak.js` (`art: "croak-and-dagger"`).
+Orbit Hills uses `assets/js/keyart-orbit.js` (`art: "orbit-hills"`); pages that show it load that script after `keyart-croak.js`.
 It stays still until a visitor hovers, focuses or taps it. A new game can use a normal picture instead: just leave out `art`.
 
 Only one game should have `featured: true`. If none do, the first game in the list is featured.
@@ -89,6 +94,12 @@ Player saves are kept in the browser's localStorage under the key `croakDagger_v
 web address, so players keep their progress when you update the game, as long as the domain stays the same.
 (Saves made on the temporary `*.github.io` address won't carry over to `lostauragames.com`.
 Players can use **Settings → Export** in the game to move a save.)
+
+## Updating Orbit Hills
+
+Same as Croak & Dagger: `games/orbit-hills/index.html` is a copy of the game's single HTML file plus search/social tags in the `<head>`
+and the same `lag-back` block before `</body>`. Saves use the localStorage key `orbitHills_v1`. The offline download is
+`assets/downloads/OrbitHills.zip`; replace it when the game changes.
 
 ## Putting it online with GitHub Pages (when you're ready)
 

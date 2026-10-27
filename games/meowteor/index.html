@@ -1,14 +1,25 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta name="robots" content="noindex,nofollow">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#050806">
 <title>MEOWTEOR - A Space Cat Tap-Flyer</title>
-<meta name="description" content="Meowteor: tap to fly a pixel space cat through an endless asteroid belt. Unlock suits, helmets, hats and trails. A Lost Aura Games production.">
+<meta name="description" content="MEOWTEOR: a free retro pixel-art space cat tap-flyer by Lost Aura Games. Tap to hop through endless gaps, unlock 51 cosmetics and 17 trails, and climb the global leaderboard.">
+<link rel="canonical" href="https://lostauragames.com/games/meowteor/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Lost Aura Games">
+<meta property="og:title" content="MEOWTEOR - A Space Cat Tap-Flyer">
+<meta property="og:description" content="A free pixel-art space cat tap-flyer with a global leaderboard. Play in your browser.">
+<meta property="og:url" content="https://lostauragames.com/games/meowteor/">
+<meta property="og:image" content="https://lostauragames.com/assets/img/games/meowteor/og.png">
+<meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="../../favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="../../assets/img/favicon-32.png">
+<link rel="apple-touch-icon" href="../../assets/img/apple-touch-icon.png">
 <style>
 :root{--bone:#e8dcb5;--bone2:#a89f80;--bg:#050806;--green:#3cff5a;--blue:#3a7bff;--purple:#b04cff;--red:#ff4a5a;--gold:#ffd24a;--pink:#ff7ac8;--panel:#0a0f0bee}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -859,4 +870,8 @@ window.DEBUG={G:()=>G,save:()=>SAVE,LB,World,PHYS,difficulty,ITEMS,show,persist,
  autopilot(on){let cd=0;G.auto=on?(W=>{cd++;const o=W.nextObstacle();const tg=o?W.gapY(o)+4:150;if(cd>5&&W.cat.y>tg&&W.cat.vy>-40){cd=0;return true;}return false;}):null;},
  sim(frames,fn){const W=G.world;for(let i=0;i<frames&&!W.dead;i++){const f=fn?fn(W):false;W.step(f);handleEvents();if(W.dead){onDeath();break;}}return{score:W.score,dead:W.dead,y:W.cat.y};}};
 
-</script></body></html>
+</script>
+<!-- Lost Aura Games: small "back to site" link, shown only on the game's title screen -->
+<a id="lag-back" href="../../" aria-label="Back to Lost Aura Games" style="position:fixed;left:10px;top:10px;z-index:9999;display:none;font:bold 13px 'Courier New',monospace;color:#e8dcb5;background:rgba(0,0,0,.78);border:3px solid #e8dcb5;box-shadow:3px 3px 0 #000;padding:5px 10px;text-decoration:none;letter-spacing:1px;text-transform:uppercase;opacity:.8">&#9664; Lost Aura Games</a>
+<script>(function(){var a=document.getElementById('lag-back');function u(){var t;try{t=(typeof CUR!=='undefined')?CUR:null;}catch(e){t=null;}var m=false;try{m=(typeof MODAL_OPEN!=='undefined')&&MODAL_OPEN;}catch(e){}a.style.display=(t==='title'&&!m)?'block':'none';}a.onmouseenter=function(){a.style.opacity=1;a.style.color='#fff';};a.onmouseleave=function(){a.style.opacity=.8;a.style.color='#e8dcb5';};var st=document.getElementById('stage');if(st){st.appendChild(a);a.style.position='absolute';a.style.left='8px';a.style.top='40px';a.style.fontSize='11px';a.style.padding='3px 7px';a.style.borderWidth='2px';a.style.boxShadow='2px 2px 0 #000';}setInterval(u,400);u();})();</script>
+</body></html>

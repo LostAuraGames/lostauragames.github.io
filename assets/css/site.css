@@ -124,3 +124,39 @@ canvas.keyart{display:block;width:100%;height:auto;aspect-ratio:16/9;image-rende
 .awake .ka-hint{opacity:0}
 .awake .ka-frame,.game-card.awake{box-shadow:0 0 0 3px var(--purple),6px 6px 0 3px #000,0 0 24px rgba(176,76,255,.55)}
 .game-card.awake{border-color:var(--purple)}
+
+/* tall (portrait) screenshots, e.g. MEOWTEOR */
+.shots.tall{grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
+@media (max-width:520px){.shots.tall{grid-template-columns:1fr 1fr;gap:12px}.shots.tall figcaption{font-size:12px}}
+/* live leaderboard (MEOWTEOR info page) */
+.lb{padding:20px}
+.lb-head{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px 16px;margin-bottom:12px}
+.lb-title{margin:0;color:var(--gold);text-transform:uppercase;letter-spacing:2px;font-size:16px;text-shadow:0 0 10px rgba(255,210,74,.45),2px 2px 0 #000}
+.lb-status{margin:0;font-size:13px;text-transform:uppercase;letter-spacing:1px;padding:2px 8px 2px 22px;border:2px solid var(--bone2);background:#000;position:relative}
+.lb-status:before{content:"";position:absolute;left:7px;top:50%;width:8px;height:8px;margin-top:-4px;background:var(--bone2)}
+.lb-status.live{border-color:var(--green);color:#c8ffd0}.lb-status.live:before{background:var(--green);box-shadow:0 0 8px var(--green);animation:blink 1.6s steps(1) infinite}
+.lb-status.offline{border-color:var(--red);color:#ffc2c8}.lb-status.offline:before{background:var(--red)}
+.lb-status.loading{color:var(--bone2)}
+.lb-cols,.lb-row{display:grid;grid-template-columns:4.5em 1fr auto;gap:10px;align-items:center}
+.lb-cols{padding:0 12px 6px;font-size:12px;color:var(--bone2);text-transform:uppercase;letter-spacing:1px;border-bottom:2px dashed rgba(232,220,181,.25)}
+.lb-cols span:last-child{text-align:right}
+.lb-rows{list-style:none;margin:0;padding:0}
+#lb-list{max-height:520px;overflow-y:auto;overscroll-behavior:contain;scrollbar-color:var(--purple) #000}
+.lb-row{padding:7px 12px;border-bottom:1px solid rgba(232,220,181,.12);font-weight:normal}
+.lb-row:nth-child(odd){background:rgba(255,255,255,.025)}
+.lb-pos{color:var(--bone2);font-weight:bold;white-space:nowrap}
+.lb-name{color:#fff;font-weight:bold;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.lb-name em{font-style:normal;color:var(--green)}
+.lb-score{color:var(--gold);font-weight:bold;text-align:right}
+.lb-medal{margin-right:3px}.lb-medal.m1{color:var(--gold)}.lb-medal.m2{color:#d8dce8}.lb-medal.m3{color:#e09a5a}
+.lb-row.top1 .lb-pos{color:var(--gold)}.lb-row.top2 .lb-pos{color:#d8dce8}.lb-row.top3 .lb-pos{color:#e09a5a}
+.lb-row.me{background:rgba(60,255,90,.12);outline:3px solid var(--green);outline-offset:-3px;box-shadow:0 0 14px rgba(60,255,90,.35)}
+.lb-row.me .lb-name{color:#c8ffd0}
+.lb-empty{padding:26px 12px;text-align:center;color:var(--bone);font-size:17px}
+.lb-empty.lb-err{color:#ffc2c8;font-weight:normal;font-size:15px}
+.lb-me{margin-top:14px}
+.lb-me-h{margin:0 0 6px;font-size:13px;text-transform:uppercase;letter-spacing:1px;color:var(--green)}
+.lb-me-h span{color:var(--bone2);text-transform:none;letter-spacing:0;font-weight:normal}
+.lb-foot{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:10px;margin-top:14px}
+.lb-foot p{margin:0;font-size:13px}
+@media (max-width:520px){.lb{padding:14px}.lb-cols,.lb-row{grid-template-columns:3.6em 1fr auto;gap:8px}.lb-row,.lb-cols{padding-left:8px;padding-right:8px}}

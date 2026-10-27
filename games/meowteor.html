@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MEOWTEOR - A Space Cat Tap-Flyer | Lost Aura Games</title>
+<meta name="description" content="MEOWTEOR is a free retro pixel-art space cat tap-flyer. Tap to hop through endless gaps across 6 zones, unlock 51 cosmetics and 17 trails, and chase the top of the global leaderboard. Play in your browser.">
+<link rel="canonical" href="https://lostauragames.com/games/meowteor.html">
+<meta name="theme-color" content="#020403">
+<meta name="color-scheme" content="dark">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Lost Aura Games">
+<meta property="og:title" content="MEOWTEOR - A Space Cat Tap-Flyer | Lost Aura Games">
+<meta property="og:description" content="MEOWTEOR is a free retro pixel-art space cat tap-flyer. Tap to hop through endless gaps across 6 zones, unlock 51 cosmetics and 17 trails, and chase the top of the global leaderboard. Play in your browser.">
+<meta property="og:url" content="https://lostauragames.com/games/meowteor.html">
+<meta property="og:image" content="https://lostauragames.com/assets/img/games/meowteor/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="MEOWTEOR key art: a pixel space cat in a bubble helmet hopping through a gap between asteroid pillars, trailing stardust">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="MEOWTEOR - A Space Cat Tap-Flyer | Lost Aura Games">
+<meta name="twitter:description" content="MEOWTEOR is a free retro pixel-art space cat tap-flyer. Tap to hop through endless gaps across 6 zones, unlock 51 cosmetics and 17 trails, and chase the top of the global leaderboard. Play in your browser.">
+<meta name="twitter:image" content="https://lostauragames.com/assets/img/games/meowteor/og.png">
+<link rel="icon" href="../favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="../assets/img/favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="../assets/img/favicon-16.png">
+<link rel="apple-touch-icon" href="../assets/img/apple-touch-icon.png">
+<link rel="manifest" href="../site.webmanifest">
+<link rel="stylesheet" href="../assets/css/site.css">
+</head>
+<body data-root="../">
+<a class="skip" href="#main">Skip to content</a>
+<canvas id="bg" aria-hidden="true"></canvas>
+<header class="site-header">
+ <div class="wrap">
+  <a class="brand" href="../" aria-label="Lost Aura Games home"><canvas class="pixel-logo" data-size="4" aria-hidden="true"></canvas></a>
+  <nav aria-label="Main"><ul class="nav"><li><a href="../index.html">Home</a></li><li><a href="../index.html#games" aria-current="page">Games</a></li><li><a href="../about.html">About</a></li></ul></nav>
+ </div>
+</header>
+<main id="main" class="wrap">
+ <section aria-labelledby="g-h" class="featured panel blue" style="margin-top:34px" data-keyart-trigger>
+  <div class="feat-img ka-frame"><canvas class="keyart" data-art="meowteor" width="320" height="180" role="img" aria-label="MEOWTEOR key art: a pixel space cat in a bubble helmet hops through a gap between asteroid pillars, trailing sparkly stardust past stars and meteors"></canvas><span class="ka-hint" aria-hidden="true">Hover or tap to fly</span><noscript><img src="../assets/img/games/meowteor/cover.png" alt="MEOWTEOR key art" width="640" height="360"></noscript></div>
+  <div class="feat-body">
+   <p class="kicker">Arcade &middot; Tap-flyer &middot; Free</p>
+   <h1 id="g-h" style="font-size:clamp(28px,4.5vw,42px)">MEOWTEOR</h1>
+   <p class="sub">A Space Cat Tap-Flyer</p>
+   <p>One cat. One button. Infinite space. Tap to make quick, sharp hops through the gaps in an endless asteroid belt. Every gap is +1, every run gets faster and tighter, and there is no finish line. Just you, your helmet and the next gap. How far can your cat fly?</p>
+   <div class="actions"><a class="btn gold big" href="meowteor/">&#9654; Play now</a><a class="btn" href="#lb-h">Leaderboard</a></div>
+   <p class="muted" style="font-size:14px;margin-top:12px">Runs in your browser on desktop and phone. Progress saves on this device automatically.</p>
+  </div>
+ </section>
+ <section aria-labelledby="f-h">
+  <div class="section-title"><h2 id="f-h">What's <span class="glow">Inside</span></h2></div>
+  <div class="features three">
+   <div class="panel"><h3>One-Tap Flying</h3><p>Tap, click or press Space for a quick, snappy hop. Easy to learn, hard to master, and every run takes just seconds to start.</p></div>
+   <div class="panel"><h3>Endless &amp; Ramping</h3><p>+1 for every gap. The gaps get tighter, faster and start to move, and the difficulty keeps climbing forever.</p></div>
+   <div class="panel"><h3>6 Zones</h3><p>Fly through the Asteroid Belt, Satellite Spires, Crystal Caverns, Laser Gates, Candy Nebula and The Void. The scenery changes every 25 points.</p></div>
+   <div class="panel"><h3>51 Cosmetics</h3><p>Furs, space suits, helmets and hats, face gear like shades and monocles, plus capes, wings and jetpacks. Crown your cat or make it a space cowboy.</p></div>
+   <div class="panel"><h3>17 Trails</h3><p>Leave stardust, rainbows, fire, pixel hearts, chiptune notes, glitches and more behind you as you fly.</p></div>
+   <div class="panel"><h3>Stars, Medals &amp; Ranks</h3><p>Earn stars every run to spend in the Wardrobe, win medals from bronze all the way to cosmic, and climb the live global top 100.</p></div>
+  </div>
+ </section>
+ <section aria-labelledby="lb-h">
+  <div class="section-title"><h2 id="lb-h">Live <span class="glow">Leaderboard</span></h2></div>
+  <div id="lb-meowteor" class="panel purple lb" data-state="loading">
+   <div class="lb-head"><p class="lb-title">Top 100 space cats</p><p id="lb-status" class="lb-status loading" role="status" aria-live="polite">Connecting&hellip;</p></div>
+   <div class="lb-cols" aria-hidden="true"><span>#</span><span>Name</span><span>Score</span></div>
+   <ol id="lb-list" class="lb-rows" aria-label="Top 100 scores"><li class="lb-empty">Loading scores&hellip;</li></ol>
+   <div id="lb-me" class="lb-me" hidden></div>
+   <noscript><p class="muted">Turn on JavaScript to see the live leaderboard.</p></noscript>
+   <div class="lb-foot"><p id="lb-time" class="muted">Refreshes every 15 seconds.</p><a class="btn gold" href="meowteor/">&#9654; Set a score</a></div>
+  </div>
+ </section>
+ <section aria-labelledby="s-h">
+  <div class="section-title"><h2 id="s-h">Screen<span class="glow">shots</span></h2></div>
+  <div class="shots tall"><figure><a href="../assets/img/games/meowteor/gameplay.png"><img src="../assets/img/games/meowteor/gameplay.png" alt="Hop through the gaps: every pillar you clear is +1, and the rainbow trail shows your flight path." width="450" height="800" loading="lazy"></a><figcaption>Hop through the gaps: every pillar you clear is +1, and the rainbow trail shows your flight path.</figcaption></figure><figure><a href="../assets/img/games/meowteor/title.png"><img src="../assets/img/games/meowteor/title.png" alt="The title screen. Press Play, tap once and you are flying." width="450" height="800" loading="lazy"></a><figcaption>The title screen. Press Play, tap once and you are flying.</figcaption></figure><figure><a href="../assets/img/games/meowteor/wardrobe.png"><img src="../assets/img/games/meowteor/wardrobe.png" alt="The Wardrobe: spend your stars on furs, suits, helmets, hats, face gear and back items." width="450" height="800" loading="lazy"></a><figcaption>The Wardrobe: spend your stars on furs, suits, helmets, hats, face gear and back items.</figcaption></figure><figure><a href="../assets/img/games/meowteor/trails.png"><img src="../assets/img/games/meowteor/trails.png" alt="17 trails to unlock, from stardust and rainbows to fire, hearts and chiptune notes." width="450" height="800" loading="lazy"></a><figcaption>17 trails to unlock, from stardust and rainbows to fire, hearts and chiptune notes.</figcaption></figure></div>
+ </section>
+ <section aria-labelledby="c-h" class="two">
+  <div class="panel">
+   <h2 id="c-h">Controls</h2>
+   <table class="keys">
+    <tr><th scope="row">Hop</th><td>Tap the screen, click, or press <kbd>Space</kbd> / <kbd>&uarr;</kbd></td></tr>
+    <tr><th scope="row">Start</th><td>Press <b>PLAY</b>, or <kbd>Space</kbd> on the title screen</td></tr>
+    <tr><th scope="row">Pause</th><td><kbd>Esc</kbd> / <kbd>P</kbd> or the pause button</td></tr>
+    <tr><th scope="row">Retry</th><td><kbd>Space</kbd> / <kbd>Enter</kbd> or <b>RETRY</b> on the game over screen</td></tr>
+    <tr><th scope="row">Tip</th><td>Short, steady taps beat panicked mashing. Each hop is quick and sharp, so let gravity do half the work.</td></tr>
+   </table>
+  </div>
+  <div class="panel purple">
+   <h2>Good to Know</h2>
+   <ul class="pix">
+    <li>Free. No account, no ads, no tracking.</li>
+    <li>Your best score, stars and outfits save in this browser.</li>
+    <li>To join the global leaderboard, pick a player name (3&ndash;12 characters) after your first scored run. Only that name and your best score are shared.</li>
+    <li>Made for phones held upright, and plays just as well with a mouse or keyboard.</li>
+   </ul>
+   <div class="actions"><a class="btn gold" href="meowteor/">&#9654; Play MEOWTEOR</a></div>
+  </div>
+ </section>
+</main>
+<footer class="site-footer">
+ <div class="wrap">
+  <p style="margin:0"><canvas class="pixel-emblem" data-size="1" aria-hidden="true" width="32" height="32"></canvas>&copy; Lost Aura Games 2026</p>
+  <nav aria-label="Footer"><a href="../">Home</a><a href="../index.html#games">Games</a><a href="../about.html">About</a></nav>
+ </div>
+</footer>
+<script src="../assets/js/pixel.js"></script>
+<script src="../assets/js/games.js"></script>
+<script src="../assets/js/keyart-croak.js"></script>
+<script src="../assets/js/keyart-orbit.js"></script>
+<script src="../assets/js/keyart-meowteor.js"></script>
+<script src="../assets/js/site.js"></script>
+<script src="../assets/js/leaderboard-meowteor.js"></script>
+</body>
+</html>

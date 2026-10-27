@@ -34,6 +34,21 @@ window.LAG_GAMES = [
     artAlt: "Orbit Hills key art: a little red buggy cresting a purple moon hill under a ringed planet and a starfield",
     tags: ["Single player", "Browser", "Keyboard / Touch"],
     featured: false
+  },
+  {
+    id: "meowteor",
+    title: "MEOWTEOR",
+    subtitle: "A Space Cat Tap-Flyer",
+    blurb: "Tap to hop a pixel space cat through endless gaps in an asteroid belt. Unlock 51 cosmetics and 17 trails, and race for the global top 100.",
+    genre: "Arcade / Tap-flyer",
+    status: "Play now",
+    play: "games/meowteor/",
+    info: "games/meowteor.html",
+    image: "assets/img/games/meowteor/cover.png",
+    art: "meowteor",                             // animated pixel key art (assets/js/keyart-meowteor.js)
+    artAlt: "MEOWTEOR key art: a pixel space cat in a bubble helmet hops through a gap between asteroid pillars, trailing sparkly stardust past stars and meteors",
+    tags: ["Single player", "Browser", "Global leaderboard", "Tap / Click / Keyboard"],
+    featured: false
   }
   // , { id: "my-next-game", title: "My Next Game", ... }
 ];

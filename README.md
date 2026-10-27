@@ -15,12 +15,16 @@ games/croak-and-dagger.html    Info page for Croak & Dagger (description, screen
 games/croak-and-dagger/        The game itself (one self-contained index.html)
 games/orbit-hills.html         Info page for Orbit Hills
 games/orbit-hills/             Orbit Hills itself (one self-contained index.html)
+games/meowteor.html            Info page for MEOWTEOR (with the live global leaderboard)
+games/meowteor/                MEOWTEOR itself (one self-contained index.html)
 assets/css/site.css            All the site styling
 assets/js/games.js             >>> THE GAME LIST <<< (the home page grid is built from this)
 assets/js/site.js              Draws the background and logos, and builds the game grid
 assets/js/pixel.js             Pixel font, logo and emblem drawing, animated background
 assets/js/keyart-croak.js      Animated pixel key art for Croak & Dagger (wakes up on hover/focus/tap)
 assets/js/keyart-orbit.js      Animated pixel key art for Orbit Hills (load it after keyart-croak.js)
+assets/js/keyart-meowteor.js   Animated pixel key art for MEOWTEOR (load it after keyart-orbit.js)
+assets/js/leaderboard-meowteor.js  Live top-100 leaderboard on the MEOWTEOR info page (read-only)
 assets/img/                    Favicons, social share image (og.png), game pictures
 CNAME                          Tells GitHub Pages to use lostauragames.com
 .nojekyll                      Tells GitHub Pages to serve the files as-is
@@ -28,7 +32,8 @@ robots.txt, sitemap.xml        For search engines
 site.webmanifest               App name and icons for phones
 ```
 
-No analytics, tracking or outside services are used. Everything loads from this folder.
+No analytics or tracking are used, and everything loads from this folder. The one outside service is MEOWTEOR's
+global leaderboard (Supabase), which the game and its info page talk to directly from the browser.
 
 ## Preview it on your own computer
 
@@ -71,6 +76,7 @@ You can also double-click `index.html`. Use the local server to be sure everythi
 
 Croak & Dagger's cover is animated pixel key art, drawn in code by `assets/js/keyart-croak.js` (`art: "croak-and-dagger"`).
 Orbit Hills uses `assets/js/keyart-orbit.js` (`art: "orbit-hills"`); pages that show it load that script after `keyart-croak.js`.
+MEOWTEOR uses `assets/js/keyart-meowteor.js` (`art: "meowteor"`), loaded after `keyart-orbit.js`.
 It stays still until a visitor hovers, focuses or taps it. A new game can use a normal picture instead: just leave out `art`.
 
 Only one game should have `featured: true`. If none do, the first game in the list is featured.
@@ -99,6 +105,21 @@ Players can use **Settings → Export** in the game to move a save.)
 Same as Croak & Dagger: `games/orbit-hills/index.html` is a copy of the game's single HTML file plus search/social tags in the `<head>`
 and the same `lag-back` block before `</body>`. Saves use the localStorage key `orbitHills_v1`.
 Orbit Hills is online-only: there is no downloadable copy.
+
+## Updating MEOWTEOR
+
+Same again: `games/meowteor/index.html` is a copy of the game's single HTML file (built from the game's `src/` with `build.sh`)
+plus search/social tags in the `<head>` and the `lag-back` block before `</body>`. MEOWTEOR is online-only: there is no downloadable copy.
+Its `lag-back` script has two small additions (copy the block from the current file when you update the game): it hides
+while a dialog is open, and it moves the link inside the game's `#stage`, just under the star counter, so it never covers the HUD on phones.
+
+- Saves use the localStorage key `meowteor.save.v1`. The player's random leaderboard ID is in `meowteor.playerId`.
+  Both belong to `lostauragames.com`, and the info page reads the same `meowteor.playerId` to highlight the player's row.
+- The global leaderboard is a Supabase project. Its URL and public (publishable) key are at the top of the game's
+  `src/05_leaderboard.js` and at the top of `assets/js/leaderboard-meowteor.js`. If you ever change them, change both.
+  The database side (the `get_top_scores`, `get_my_rank` and `submit_score` functions) is set up by the game's `supabase.sql`.
+- The info page's leaderboard only reads scores. It shows the top 100, refreshes every 15 seconds and pins the player's
+  own position under the list when they're outside the top 100.
 
 ## Putting it online with GitHub Pages (when you're ready)
 

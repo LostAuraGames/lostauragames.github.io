@@ -21,7 +21,6 @@ assets/js/site.js              Draws the background and logos, and builds the ga
 assets/js/pixel.js             Pixel font, logo and emblem drawing, animated background
 assets/js/keyart-croak.js      Animated pixel key art for Croak & Dagger (wakes up on hover/focus/tap)
 assets/js/keyart-orbit.js      Animated pixel key art for Orbit Hills (load it after keyart-croak.js)
-assets/downloads/              Downloadable game zips (OrbitHills.zip)
 assets/img/                    Favicons, social share image (og.png), game pictures
 CNAME                          Tells GitHub Pages to use lostauragames.com
 .nojekyll                      Tells GitHub Pages to serve the files as-is
@@ -98,8 +97,8 @@ Players can use **Settings → Export** in the game to move a save.)
 ## Updating Orbit Hills
 
 Same as Croak & Dagger: `games/orbit-hills/index.html` is a copy of the game's single HTML file plus search/social tags in the `<head>`
-and the same `lag-back` block before `</body>`. Saves use the localStorage key `orbitHills_v1`. The offline download is
-`assets/downloads/OrbitHills.zip`; replace it when the game changes.
+and the same `lag-back` block before `</body>`. Saves use the localStorage key `orbitHills_v1`.
+Orbit Hills is online-only: there is no downloadable copy.
 
 ## Putting it online with GitHub Pages (when you're ready)
 

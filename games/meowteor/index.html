@@ -184,6 +184,7 @@ i18nRows([
 ["Score {n} points in total (all runs)", "Suma {n} puntos en total (todas las partidas)", "Marque {n} points au total (toutes parties)", "Sammle insgesamt {n} Punkte (alle Runden)", "Some {n} pontos no total (todas as partidas)", "Totalizza {n} punti (tutte le partite)"],
 ["Use 3-12 letters or numbers.", "Usa de 3 a 12 letras o números.", "Utilise 3 à 12 lettres ou chiffres.", "Nutze 3–12 Buchstaben oder Zahlen.", "Use de 3 a 12 letras ou números.", "Usa da 3 a 12 lettere o numeri."],
 ["Max 12 characters.", "Máximo 12 caracteres.", "12 caractères maximum.", "Maximal 12 Zeichen.", "Máximo de 12 caracteres.", "Massimo 12 caratteri."],
+["That name isn't allowed", "Ese nombre no está permitido", "Ce nom n'est pas autorisé", "Dieser Name ist nicht erlaubt", "Esse nome não é permitido", "Questo nome non è consentito"],
 ["Please pick a friendlier name.", "Elige un nombre más amable, porfa.", "Choisis un nom plus sympa, s'il te plaît.", "Bitte wähle einen freundlicheren Namen.", "Escolha um nome mais simpático, por favor.", "Scegli un nome più gentile, per favore."],
 ["ZONE {n}", "ZONA {n}", "ZONE {n}", "ZONE {n}", "ZONA {n}", "ZONA {n}"],
 ["TAP TO FLY", "TOCA PARA VOLAR", "TOUCHE POUR VOLER", "TIPPEN ZUM FLIEGEN", "TOQUE PARA VOAR", "TOCCA PER VOLARE"],
@@ -637,9 +638,13 @@ function lbPlayerId(){let id=null;try{id=localStorage.getItem(LB_PID_KEY);}catch
 const BAD_SUB=['fuck','fuk','shit','bitch','cunt','dick','pussy','asshole','nigg','faggot','slut','whore','rapist','nazi','hitler','penis','vagin','porn','twat','wank','retard','kike','chink','bastard','boob','jizz','dildo','molest','pedo','tits','semen','hentai','kkk','cumshot'];
 const BAD_WORD=['ass','cum','sex','fag','tit','xxx','hoe','fck','fk','stfu','piss','arse','kys','cock','rape','spic','anus','nazis','sexy','cocks'];
 function lbNormalize(s){return s.toLowerCase().replace(/0/g,'o').replace(/[1!|]/g,'i').replace(/3/g,'e').replace(/[4@]/g,'a').replace(/[5$]/g,'s').replace(/7/g,'t').replace(/8/g,'b').replace(/9/g,'g');}
+// Slur block (mirrors public.lb_name_blocked in supabase.sql): look-alikes -> letters, keep a-z, collapse repeats.
+function lbSlurNorm(s){const m={'1':'i','l':'i','!':'i','|':'i','y':'i','3':'e','4':'a','@':'a','0':'o','5':'s','$':'s','9':'g','6':'g','7':'t'};return String(s||'').toLowerCase().replace(/[1l!|y34@05$967]/g,c=>m[c]).replace(/[^a-z]/g,'').replace(/(.)\1+/g,'$1');}
+function lbBlocked(s){return /nig(a|e?r|u[hr]|z|s|let)/.test(lbSlurNorm(s));}
 function cleanName(raw){return String(raw||'').toUpperCase().replace(/[^A-Z0-9 _.\-]/g,'').replace(/\s+/g,' ').trim();}
 function validateName(raw){const n=cleanName(raw);if(n.length<3)return{ok:false,err:t('Use 3-12 letters or numbers.')};if(n.length>12)return{ok:false,err:t('Max 12 characters.')};
  const norm=lbNormalize(n);const squash=norm.replace(/[^a-z]/g,'');const dedup=squash.replace(/(.)\1+/g,'$1');
+ if(lbBlocked(raw)||lbBlocked(n))return{ok:false,err:t("That name isn't allowed")};
  if(BAD_SUB.some(w=>squash.includes(w)||dedup.includes(w)))return{ok:false,err:t('Please pick a friendlier name.')};
  const words=norm.split(/[^a-z]+/).filter(Boolean);if(words.some(w=>BAD_WORD.includes(w))||BAD_WORD.includes(squash))return{ok:false,err:t('Please pick a friendlier name.')};
  return{ok:true,name:n};}
@@ -663,8 +668,8 @@ function SupabaseAdapter(url,key){const base=url.replace(/\/+$/,'')+'/rest/v1/rp
   finally{clearTimeout(tm);}}
  return{kind:'supabase',
   async submitScore(name,score){const res=await rpc('submit_score',{p_player_id:lbPlayerId(),p_name:name,p_score:Math.floor(score)});const row=Array.isArray(res)?res[0]:res;return{ok:true,rank:row&&row.rank};},
-  async fetchTop(limit=100){const rows=await rpc('get_top_scores',{p_limit:limit,p_player_id:lbPlayerId()});return(rows||[]).map(r=>({rank:+r.rank,name:r.name,score:+r.score,me:!!r.is_me}));},
-  async fetchMyRank(playerId){const res=await rpc('get_my_rank',{p_player_id:playerId});const r=Array.isArray(res)?res[0]:res;if(!r||r.rank==null)return null;return{rank:+r.rank,name:r.name,score:+r.score,total:+r.total_players};}};}
+  async fetchTop(limit=100){const rows=await rpc('get_top_scores',{p_limit:limit,p_player_id:lbPlayerId()});return(rows||[]).map(r=>({rank:+r.rank,name:r.name,score:+r.score,me:!!r.is_me})).filter(r=>!lbBlocked(r.name));},
+  async fetchMyRank(playerId){const res=await rpc('get_my_rank',{p_player_id:playerId});const r=Array.isArray(res)?res[0]:res;if(!r||r.rank==null||lbBlocked(r.name))return null;return{rank:+r.rank,name:r.name,score:+r.score,total:+r.total_players};}};}
 // ---------- Facade used by the game: remote first, local fallback, local mirror ----------
 const LB={remote:null,local:LocalAdapter,status:'local',lastError:null,
  init(){const forceLocal=/[?&]lb=local\b/.test(location.search);this.remote=(!forceLocal&&lbConfigured())?SupabaseAdapter(SUPABASE_URL,SUPABASE_ANON_KEY):null;this.status=this.remote?'connecting':'local';lbPlayerId();},
@@ -675,7 +680,7 @@ const LB={remote:null,local:LocalAdapter,status:'local',lastError:null,
  async fetchTop(limit=100){return this._try(a=>a.fetchTop(limit),a=>a.fetchTop(limit));},
  async fetchMyRank(pid=lbPlayerId()){return this._try(a=>a.fetchMyRank(pid),a=>a.fetchMyRank(pid));}};
 // Game-side policy: only submit when the player beats the best they have already submitted.
-async function lbMaybeSubmit(){if(!SAVE.name||SAVE.best<=0||SAVE.best<=SAVE.lbBest)return null;const score=SAVE.best;
+async function lbMaybeSubmit(){if(!SAVE.name||lbBlocked(SAVE.name)||SAVE.best<=0||SAVE.best<=SAVE.lbBest)return null;const score=SAVE.best;
  const r=await LB.submitScore(SAVE.name,score);if(r&&r.ok){SAVE.lbBest=Math.max(SAVE.lbBest,score);SAVE.pending=0;}else SAVE.pending=score;persist();return r;}
 
 // ================= PROCEDURAL PIXEL ART =================

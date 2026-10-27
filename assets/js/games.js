@@ -6,18 +6,18 @@
    ===================================================================== */
 window.LAG_GAMES = [
   {
-    id: "croak-and-dagger",                      // short name, no spaces (used in links)
-    title: "Croak & Dagger",
-    subtitle: "100 Frogs Must Fall",
-    blurb: "A slapstick pixel deckbuilder. Melt frogs with lasers, bonk them with frying pans and outwit 100 dressed-up bosses across a haunted pond.",
-    genre: "Card battler / Deckbuilder",
-    status: "Play now",                          // e.g. "Play now", "Coming soon", "Demo"
-    play: "games/croak-and-dagger/",             // where the Play button goes (leave "" if not playable yet)
-    info: "games/croak-and-dagger.html",         // the game's info page (optional, "" for none)
-    image: "assets/img/games/croak-and-dagger/cover.png", // card picture, 16:9 works best (used if there is no animated art)
-    art: "croak-and-dagger",                     // optional animated pixel key art (assets/js/keyart-croak.js); remove to use the image
-    artAlt: "Croak & Dagger key art: a hooded hero with a dagger faces a top-hatted frog on a lily pad under a full moon",
-    tags: ["Single player", "Browser", "Mouse / Touch / Keyboard"],
+    id: "meowteor",
+    title: "MEOWTEOR",
+    subtitle: "A Space Cat Tap-Flyer",
+    blurb: "Tap to hop a pixel space cat through endless gaps in an asteroid belt. Unlock 51 cosmetics and 17 trails, and race for the global top 100.",
+    genre: "Arcade / Tap-flyer",
+    status: "Play now",
+    play: "games/meowteor/",
+    info: "games/meowteor.html",
+    image: "assets/img/games/meowteor/cover.png",
+    art: "meowteor",                             // animated pixel key art (assets/js/keyart-meowteor.js)
+    artAlt: "MEOWTEOR key art: a pixel space cat in a bubble helmet hops through a gap between asteroid pillars, trailing sparkly stardust past stars and meteors",
+    tags: ["Single player", "Browser", "Global leaderboard", "Tap / Click / Keyboard"],
     featured: true                               // true = shown in the big "Featured" box on the home page
   },
   {
@@ -36,19 +36,19 @@ window.LAG_GAMES = [
     featured: false
   },
   {
-    id: "meowteor",
-    title: "MEOWTEOR",
-    subtitle: "A Space Cat Tap-Flyer",
-    blurb: "Tap to hop a pixel space cat through endless gaps in an asteroid belt. Unlock 51 cosmetics and 17 trails, and race for the global top 100.",
-    genre: "Arcade / Tap-flyer",
-    status: "Play now",
-    play: "games/meowteor/",
-    info: "games/meowteor.html",
-    image: "assets/img/games/meowteor/cover.png",
-    art: "meowteor",                             // animated pixel key art (assets/js/keyart-meowteor.js)
-    artAlt: "MEOWTEOR key art: a pixel space cat in a bubble helmet hops through a gap between asteroid pillars, trailing sparkly stardust past stars and meteors",
-    tags: ["Single player", "Browser", "Global leaderboard", "Tap / Click / Keyboard"],
-    featured: false
+    id: "croak-and-dagger",                      // short name, no spaces (used in links)
+    title: "Croak & Dagger",
+    subtitle: "100 Frogs Must Fall",
+    blurb: "A slapstick pixel deckbuilder. Melt frogs with lasers, bonk them with frying pans and outwit 100 dressed-up bosses across a haunted pond.",
+    genre: "Card battler / Deckbuilder",
+    status: "Play now",                          // e.g. "Play now", "Coming soon", "Demo"
+    play: "games/croak-and-dagger/",             // where the Play button goes (leave "" if not playable yet)
+    info: "games/croak-and-dagger.html",         // the game's info page (optional, "" for none)
+    image: "assets/img/games/croak-and-dagger/cover.png", // card picture, 16:9 works best (used if there is no animated art)
+    art: "croak-and-dagger",                     // optional animated pixel key art (assets/js/keyart-croak.js); remove to use the image
+    artAlt: "Croak & Dagger key art: a hooded hero with a dagger faces a top-hatted frog on a lily pad under a full moon",
+    tags: ["Single player", "Browser", "Mouse / Touch / Keyboard"],
+    featured: false                              // true = shown in the big "Featured" box on the home page
   }
   // , { id: "my-next-game", title: "My Next Game", ... }
 ];

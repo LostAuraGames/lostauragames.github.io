@@ -25,8 +25,11 @@ function rpc(fn,body){var ctl=typeof AbortController!=='undefined'?new AbortCont
   return fetch(base+fn,{method:'POST',headers:headers,body:JSON.stringify(body),signal:ctl&&ctl.signal,cache:'no-store'})
    .then(function(r){return r.text().then(function(t){if(!r.ok)throw new Error(fn+' HTTP '+r.status);return t?JSON.parse(t):null;});})
    .then(function(v){clearTimeout(tm);return v;},function(e){clearTimeout(tm);throw e;});}
-function fetchTop(pid){return rpc('get_top_scores',{p_limit:LIMIT,p_player_id:pid}).then(function(rows){return(rows||[]).map(function(r){return{rank:+r.rank,name:String(r.name||''),score:+r.score,me:!!r.is_me};});});}
-function fetchMyRank(pid){return rpc('get_my_rank',{p_player_id:pid}).then(function(res){var r=Array.isArray(res)?res[0]:res;if(!r||r.rank==null)return null;return{rank:+r.rank,name:String(r.name||''),score:+r.score,total:+r.total_players};});}
+// Last line of defence (server already filters): same slur check as public.lb_name_blocked.
+function slurNorm(s){var m={'1':'i','l':'i','!':'i','|':'i','y':'i','3':'e','4':'a','@':'a','0':'o','5':'s','$':'s','9':'g','6':'g','7':'t'};return String(s||'').toLowerCase().replace(/[1l!|y34@05$967]/g,function(c){return m[c];}).replace(/[^a-z]/g,'').replace(/(.)\1+/g,'$1');}
+function blockedName(s){return /nig(a|e?r|u[hr]|z|s|let)/.test(slurNorm(s));}
+function fetchTop(pid){return rpc('get_top_scores',{p_limit:LIMIT,p_player_id:pid}).then(function(rows){return(rows||[]).map(function(r){return{rank:+r.rank,name:String(r.name||''),score:+r.score,me:!!r.is_me};}).filter(function(r){return !blockedName(r.name);});});}
+function fetchMyRank(pid){return rpc('get_my_rank',{p_player_id:pid}).then(function(res){var r=Array.isArray(res)?res[0]:res;if(!r||r.rank==null||blockedName(r.name))return null;return{rank:+r.rank,name:String(r.name||''),score:+r.score,total:+r.total_players};});}
 
 // UI text goes through the site translations (assets/js/i18n.js); player names are shown exactly as typed.
 function T(k,v){return window.LAGI18N?window.LAGI18N.t(k,v):String(k).replace(/\{(\w+)\}/g,function(m,x){return v&&v[x]!=null?v[x]:m;});}

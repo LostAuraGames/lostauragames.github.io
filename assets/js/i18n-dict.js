@@ -250,4 +250,9 @@ window.LAG_I18N_ROWS=[
 ["Time's up! Crowning the Leaderboard Champion…", "¡Se acabó el tiempo! Coronando al campeón de la clasificación…", "C'est fini ! Couronnement du champion du classement…", "Zeit abgelaufen! Der Bestenlisten-Champion wird gekrönt…", "O tempo acabou! Coroando o campeão da classificação…", "Tempo scaduto! Incoronazione del campione della classifica…"],
 ["Leaderboard Champion", "Campeón de la clasificación", "Champion du classement", "Bestenlisten-Champion", "Campeão da classificação", "Campione della classifica"],
 ["Winner of the 1 of 1 space cat skin", "Ganador de la skin única (1 de 1) del gato espacial", "Gagnant du skin unique (1 sur 1) du chat spatial", "Gewinner des einzigartigen 1-von-1-Weltraumkatzen-Skins", "Vencedor da skin única (1 de 1) do gato espacial", "Vincitore della skin unica (1 su 1) del gatto spaziale"]
+,["Banned players", "Jugadores baneados", "Joueurs bannis", "Gesperrte Spieler", "Jogadores banidos", "Giocatori bannati"],
+["Banned for cheating. Their scores were removed and they cannot win prizes.", "Baneados por hacer trampa. Sus puntuaciones se eliminaron y no pueden ganar premios.", "Bannis pour triche. Leurs scores ont été supprimés et ils ne peuvent pas gagner de prix.", "Wegen Betrugs gesperrt. Ihre Punkte wurden entfernt und sie können keine Preise gewinnen.", "Banidos por trapaça. As pontuações foram removidas e eles não podem ganhar prêmios.", "Bannati per imbrogli. I loro punteggi sono stati rimossi e non possono vincere premi."],
+["Best score", "Mejor puntuación", "Meilleur score", "Bestwert", "Melhor pontuação", "Miglior punteggio"],
+["No banned players.", "No hay jugadores baneados.", "Aucun joueur banni.", "Keine gesperrten Spieler.", "Nenhum jogador banido.", "Nessun giocatore bannato."],
+["Banned {date}", "Baneado el {date}", "Banni le {date}", "Gesperrt am {date}", "Banido em {date}", "Bannato il {date}"]
 ];

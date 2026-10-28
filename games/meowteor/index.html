@@ -94,6 +94,12 @@ input.name{font:bold 20px "Courier New",monospace;background:#050806;color:#fff;
 .lbrow.me{background:#2a1a40;outline:2px solid var(--green);outline-offset:-2px;box-shadow:0 0 10px var(--green) inset}
 .lbrow.me .nm{color:var(--green)}
 #lblist{position:absolute;left:8px;right:8px;top:72px;bottom:118px;overflow-y:auto;touch-action:pan-y;border:3px solid var(--bone2);background:#050806e0}
+#lbtabs{display:flex;position:sticky;top:0;z-index:2;background:#0a0f0b;border-bottom:2px solid var(--bone2)}
+.lbtab{flex:1;text-align:center;font-size:11px;padding:4px 2px;color:var(--bone2);cursor:pointer;white-space:nowrap}
+.lbtab.on{color:#fff;background:#1d2a20;box-shadow:0 -3px 0 var(--gold) inset}.lbtab.ban.on{box-shadow:0 -3px 0 #ff5a5a inset}.lbtab b{color:#ff5a5a}
+#lblist .lbcolh{top:24px}
+.lbrow.banrow .rk{color:#ff5a5a}.lbrow.banrow .nm{color:#ffb0b0;text-decoration:line-through;text-decoration-color:#ff5a5a99}.lbrow.banrow .nm i{font-style:normal;font-size:9px;color:var(--bone2);margin-left:6px;text-decoration:none;display:inline-block}
+.bannote{padding:6px 8px;color:#ffb0b0;line-height:13px}
 #lbpin{position:absolute;left:8px;right:8px;bottom:62px;height:50px}
 #lbpin .lbrow{border:3px solid var(--green);height:32px;background:#2a1a40}
 .lbcolh{display:flex;padding:0 8px;font-size:10px;color:var(--bone2);height:18px;align-items:center;position:sticky;top:0;background:#0a0f0b}
@@ -195,6 +201,10 @@ function globeIcon(px=2,col='#9fc0ff'){const c=document.createElement('canvas');
 // ================= TRANSLATIONS (en, es, fr, de, pt, it) =================
 // Generated from the translation table; one row per English string.
 i18nRows([
+["BANNED", "BANEADOS", "BANNIS", "GESPERRT", "BANIDOS", "BANNATI"],
+["BEST SCORE", "MEJOR", "MEILLEUR", "BESTWERT", "MELHOR", "MIGLIORE"],
+["Banned for cheating. Their scores were removed and they cannot win prizes.", "Baneados por hacer trampa. Sus puntuaciones se eliminaron y no pueden ganar premios.", "Bannis pour triche. Leurs scores ont été supprimés et ils ne peuvent pas gagner de prix.", "Wegen Betrugs gesperrt. Ihre Punkte wurden entfernt und sie können keine Preise gewinnen.", "Banidos por trapaça. As pontuações foram removidas e eles não podem ganhar prêmios.", "Bannati per imbrogli. I loro punteggi sono stati rimossi e non possono vincere premi."],
+["No banned players.", "No hay jugadores baneados.", "Aucun joueur banni.", "Keine gesperrten Spieler.", "Nenhum jogador banido.", "Nessun giocatore bannato."],
 ["BEST {n}", "RÉCORD {n}", "RECORD {n}", "REKORD {n}", "RECORDE {n}", "RECORD {n}"],
 ["{n} RUNS", "{n} PARTIDAS", "{n} PARTIES", "{n} RUNDEN", "{n} PARTIDAS", "{n} PARTITE"],
 ["TOTAL {n}", "TOTAL {n}", "TOTAL {n}", "GESAMT {n}", "TOTAL {n}", "TOTALE {n}"],
@@ -716,6 +726,7 @@ function SupabaseAdapter(url,key){const base=url.replace(/\/+$/,'')+'/rest/v1/rp
    const row=Array.isArray(res)?res[0]:res;return{ok:true,rank:row&&row.rank};},
   async startRun(){const res=await rpc('start_run',{p_player_id:lbPlayerId()},5000);const row=Array.isArray(res)?res[0]:res;return row&&row.run_id||null;},
   async fetchTop(limit=100){const rows=await rpc('get_top_scores',{p_limit:limit,p_player_id:lbPlayerId()});return(rows||[]).map(r=>({rank:+r.rank,name:r.name,score:+r.score,me:!!r.is_me})).filter(r=>!lbBlocked(r.name));},
+  async fetchBanned(){const rows=await rpc('get_banned_players',{p_limit:50});return(rows||[]).map(r=>({name:r.name,score:+r.best_score||0,at:r.banned_at}));},
   async fetchMyRank(playerId){const res=await rpc('get_my_rank',{p_player_id:playerId});const r=Array.isArray(res)?res[0]:res;if(!r||r.rank==null||lbBlocked(r.name))return null;return{rank:+r.rank,name:r.name,score:+r.score,total:+r.total_players};}};}
 // ---------- Facade used by the game: remote first, local fallback, local mirror ----------
 const LB={remote:null,local:LocalAdapter,status:'local',lastError:null,
@@ -726,7 +737,8 @@ const LB={remote:null,local:LocalAdapter,status:'local',lastError:null,
  async submitScore(name,score,runId){const lr=await this.local.submitScore(name,score);return this._try(a=>a.submitScore(name,score,runId),()=>this.remote?{ok:false,offline:true,rank:null}:lr);},
  startRun(W){if(!this.remote||!W)return;this.remote.startRun().then(id=>{if(!id)return;W.runId=id;if(W.awarded)lbNoteRun(W);},()=>{});},
  async fetchTop(limit=100){return this._try(a=>a.fetchTop(limit),a=>a.fetchTop(limit));},
- async fetchMyRank(pid=lbPlayerId()){return this._try(a=>a.fetchMyRank(pid),a=>a.fetchMyRank(pid));}};
+ async fetchMyRank(pid=lbPlayerId()){return this._try(a=>a.fetchMyRank(pid),a=>a.fetchMyRank(pid));},
+ async fetchBanned(){if(!this.remote)return[];try{return await this.remote.fetchBanned();}catch(e){return null;}}};
 // Verified best: the best score made in a run that has a server run ticket (only those can be uploaded to the global board).
 function lbNoteRun(W){if(W&&W.runId&&W.score>(SAVE.vBest||0)){SAVE.vBest=W.score;SAVE.vRun=W.runId;persist();}}
 // Game-side policy: only submit when the player beats the best they have already submitted.
@@ -1254,19 +1266,23 @@ SCREENS.ranks=(s)=>{startMusic('menu');s.innerHTML='';s.style.background='#05080
  const tb=el('div',{class:'topbar'});const back=el('div',{class:'btn sm'},'&lt; '+t('BACK'));back.onclick=()=>{sfx('click');show('title');};tb.appendChild(back);const tt=pixText(t('TOP 100'),3,BONE,'#ffd24a');fitPix(tt,170);tb.appendChild(tt);tb.appendChild(el('div',{style:'width:40px'}));s.appendChild(tb);
  s.appendChild(el('div',{id:'lbhead'},`<span id="lbstat"><span class="live off"></span>${t('LOADING...')}</span><span id="lbtime" class="dim"></span>`));
  s.appendChild(el('div',{id:'lbchamp'}));
- s.appendChild(el('div',{id:'lblist'},`<div class="lbcolh"><span class="rk">#</span><span class="nm">${t('NAME')}</span><span class="sc">${t('SCORE')}</span></div><div id="lbrows"><div class="small center" style="padding:20px">${t('Loading...')}</div></div>`));
- s.appendChild(el('div',{id:'lbpin'}));
+ s.appendChild(el('div',{id:'lblist'},`<div id="lbtabs"><span class="lbtab on" data-v="top">${t('TOP 100')}</span><span class="lbtab ban" data-v="ban">${t('BANNED')}<b id="lbbann"></b></span></div><div class="lbcolh"><span class="rk">#</span><span class="nm">${t('NAME')}</span><span class="sc" id="lbsch">${t('SCORE')}</span></div><div id="lbrows"><div class="small center" style="padding:20px">${t('Loading...')}</div></div>`));
+ s.appendChild(el('div',{id:'lbpin'}));RK.view='top';
+ s.querySelectorAll('.lbtab').forEach(tb=>tb.onclick=()=>{sfx('click');RK.view=tb.dataset.v;s.querySelectorAll('.lbtab').forEach(o=>o.classList.toggle('on',o===tb));renderView();});
  const f=el('div',{class:'wfoot'});const nb=el('div',{class:'btn sm gold'},SAVE.name?t('CHANGE NAME'):t('SET NAME'));nb.onclick=()=>{sfx('click');askName(async()=>{await forceRename();refreshRanks();},!!SAVE.name);};
  const rf=el('div',{class:'btn sm'},t('REFRESH'));rf.onclick=()=>{sfx('click');refreshRanks();};const pl=el('div',{class:'btn sm green'},t('PLAY'));pl.onclick=()=>startGame();f.append(nb,rf,pl);s.appendChild(f);
  champRenderRanks();CHAMP.refresh();refreshRanks();clearInterval(RK.timer);RK.timer=setInterval(()=>{if(CUR==='ranks'&&!document.hidden)refreshRanks();},LB_REFRESH_MS);};
 LEAVE.ranks=()=>{clearInterval(RK.timer);RK.timer=null;$('#s-ranks').style.background='';};
 // renaming re-sends the current best under the new name (server keeps the higher score; equal score updates the name)
 async function forceRename(){if(!SAVE.name)return;const sc=LB.remote?SAVE.lbBest:SAVE.best;if(sc<=0)return;try{const r=await LB.submitScore(SAVE.name,sc);if(r&&r.ok){SAVE.lbBest=Math.max(SAVE.lbBest,sc);persist();}}catch(e){}}
-async function refreshRanks(){if(RK.busy)return;RK.busy=true;try{await lbMaybeSubmit();const pid=LB.playerId();const [rows,me]=await Promise.all([LB.fetchTop(100),LB.fetchMyRank(pid)]);if(CUR!=='ranks')return;renderRanks(rows,me);}catch(e){console.warn(e);}finally{RK.busy=false;}}
+async function refreshRanks(){if(RK.busy)return;RK.busy=true;try{await lbMaybeSubmit();const pid=LB.playerId();const [rows,me,ban]=await Promise.all([LB.fetchTop(100),LB.fetchMyRank(pid),LB.fetchBanned()]);if(CUR!=='ranks')return;if(ban)RK.banned=ban;RK.rows=rows;RK.me=me;renderRanks(rows,me);}catch(e){console.warn(e);}finally{RK.busy=false;}}
 function rowHtml(r,me){return`<div class="lbrow${me?' me':''}${r.rank<=3?' r'+r.rank:''}"><span class="rk">${r.rank<=3?['','&#9733;1','&#9733;2','&#9733;3'][r.rank]:'#'+r.rank}</span><span class="nm">${esc(r.name)}${me?' ('+t('YOU')+')':''}</span><span class="sc">${fmt(r.score)}</span></div>`;}
-function renderRanks(rows,me){const st=$('#lbstat');if(st)st.innerHTML=LB.status==='live'?`<span class="live"></span><span class="green">${t('LIVE')}</span> &middot; ${t('GLOBAL')}`:(LB.status==='offline'?`<span class="live off"></span><span class="gold">${t('OFFLINE')}</span> &middot; ${t('LOCAL BOARD')}`:`<span class="live off"></span><span class="gold">${t('LOCAL BOARD')}</span>`);
+function banRowHtml(r){return`<div class="lbrow banrow"><span class="rk">&#10006;</span><span class="nm">${esc(r.name)}<i>${r.at?new Date(r.at).toLocaleDateString([], {month:'short',day:'numeric'}):''}</i></span><span class="sc">${fmt(r.score)}</span></div>`;}
+function renderView(){if(RK.rows)renderRanks(RK.rows,RK.me);}
+function renderRanks(rows,me){const bl=RK.banned||[];const bn=$('#lbbann');if(bn)bn.textContent=bl.length?' '+bl.length:'';const banV=RK.view==='ban';const sh=$('#lbsch');if(sh)sh.textContent=banV?t('BEST SCORE'):t('SCORE');const pn=$('#lbpin');if(pn)pn.style.visibility=banV?'hidden':'';
+ if(banV){const bx=$('#lbrows');if(bx)bx.innerHTML=`<div class="small center bannote">${t('Banned for cheating. Their scores were removed and they cannot win prizes.')}</div>`+(bl.length?bl.map(banRowHtml).join(''):`<div class="small center" style="padding:20px">${t('No banned players.')}</div>`);}const st=$('#lbstat');if(st)st.innerHTML=LB.status==='live'?`<span class="live"></span><span class="green">${t('LIVE')}</span> &middot; ${t('GLOBAL')}`:(LB.status==='offline'?`<span class="live off"></span><span class="gold">${t('OFFLINE')}</span> &middot; ${t('LOCAL BOARD')}`:`<span class="live off"></span><span class="gold">${t('LOCAL BOARD')}</span>`);
  const tm=$('#lbtime');if(tm)tm.textContent=t('UPDATED {time}',{time:new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'})});
- const box=$('#lbrows');if(!box)return;const inTop=rows.some(r=>r.me);
+ const box=$('#lbrows');if(!box||banV)return;const inTop=rows.some(r=>r.me);
  box.innerHTML=rows.length?rows.map(r=>rowHtml(r,r.me)).join(''):`<div class="small center" style="padding:20px">${t('No scores yet. Be the first!')}</div>`;
  const pin=$('#lbpin');if(!pin)return;
  if(me&&!inTop){pin.innerHTML=`<div class="small" style="margin-bottom:2px">${t('YOUR POSITION')}</div>`+rowHtml({rank:me.rank,name:me.name,score:me.score},true);}

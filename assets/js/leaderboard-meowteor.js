@@ -95,5 +95,14 @@ function chTick(){if(!ch.st)return;var s=chState();
   else if(Date.now()-ch.last>60000&&!document.hidden)chRefresh();
   if(s!==ch.state)chRender();else if(s==='pending'){var b=elChamp&&elChamp.querySelector('.lb-champ-time');if(b)b.textContent=chCountdown();}}
 if(elChamp){document.addEventListener('lag:lang',function(){elChamp.removeAttribute('data-h');chRender();});chRefresh();setInterval(chTick,1000);}
+/* ---- banned players (public list: name + best score before the ban + date; never ids) ---- */
+var elBan=document.getElementById('lb-ban-list'),ban=null,banErr=false;
+function banRender(){if(!elBan)return;if(!ban){elBan.innerHTML='<li class="lb-empty">'+esc(T(banErr?'The leaderboard is offline right now. We\u2019ll keep trying, and your best score is safe in the game.':'Loading scores\u2026'))+'</li>';return;}
+  if(!ban.length){elBan.innerHTML='<li class="lb-empty">'+esc(T('No banned players.'))+'</li>';return;}
+  var lang=window.LAGI18N?window.LAGI18N.lang:undefined;
+  elBan.innerHTML=ban.map(function(b){var d='';try{d=b.at?new Date(b.at).toLocaleDateString(lang,{month:'short',day:'numeric',year:'numeric'}):'';}catch(e){}
+    return '<li class="lb-row lb-ban-row"><span class="lb-name"><span class="lb-x" aria-hidden="true">&#10006;</span> '+esc(b.name)+(d?'<small>'+esc(T('Banned {date}',{date:d}))+'</small>':'')+'</span><span class="lb-score">'+fmt(b.score)+'</span></li>';}).join('');}
+function banRefresh(){if(!elBan)return;rpc('get_banned_players',{p_limit:50}).then(function(rows){ban=(rows||[]).map(function(r){return{name:String(r.name||''),score:+r.best_score||0,at:r.banned_at};});banErr=false;banRender();},function(e){banErr=true;banRender();});}
+if(elBan){banRefresh();setInterval(function(){if(!document.hidden)banRefresh();},60000);document.addEventListener('lag:lang',banRender);}
 window.LAGLeaderboardMeowteor={refresh:refresh,playerId:playerId,champion:function(){return{state:chState(),st:ch.st,offset:ch.off};}};
 })();

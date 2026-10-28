@@ -62,6 +62,7 @@
  </section>
  <section aria-labelledby="lb-h">
   <div class="section-title"><h2 id="lb-h">Live <span class="glow">Leaderboard</span></h2></div>
+  <div class="lb-wrap">
   <div id="lb-meowteor" class="panel purple lb" data-state="loading">
    <div id="lb-champ" data-i18n-skip class="lb-champ" role="status" aria-live="polite" hidden></div>
    <div class="lb-head"><p class="lb-title">Top 100 space cats</p><p id="lb-status" data-i18n-skip class="lb-status loading" role="status" aria-live="polite">Connecting&hellip;</p></div>
@@ -70,6 +71,13 @@
    <div id="lb-me" data-i18n-skip class="lb-me" hidden></div>
    <noscript><p class="muted">Turn on JavaScript to see the live leaderboard.</p></noscript>
    <div class="lb-foot"><p id="lb-time" data-i18n-skip class="muted">Refreshes every 15 seconds.</p><a class="btn gold" href="meowteor/">&#9654; Set a score</a></div>
+  </div>
+  <aside id="lb-banned" class="panel lb lb-ban" aria-labelledby="lb-ban-h">
+   <h3 id="lb-ban-h" class="lb-title lb-ban-title">Banned players</h3>
+   <p class="muted lb-ban-note">Banned for cheating. Their scores were removed and they cannot win prizes.</p>
+   <div class="lb-cols lb-ban-cols" aria-hidden="true"><span>Name</span><span>Best score</span></div>
+   <ol id="lb-ban-list" data-i18n-skip class="lb-rows" aria-label="Banned players"><li class="lb-empty">Loading scores&hellip;</li></ol>
+  </aside>
   </div>
  </section>
  <section aria-labelledby="s-h">

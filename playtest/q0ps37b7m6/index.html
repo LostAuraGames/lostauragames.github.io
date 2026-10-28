@@ -2655,7 +2655,12 @@ function wallTile(theme,pal){return cached('wl|'+theme+'|'+pal.join(),TS,TS*2,(x
   if(theme==='foundry'||theme==='void'){x.fillStyle=pal[3]==='#ff5a1e'?'#ff8a1e':shade(pal[3],.4);}
  });}
 // ---------- world objects (trees etc.) ----------
-const OBJ_SOLID={tree:1,mtree:1,pine:1,deadtree:1,willow:1,jtree:1,twisted:1,rock:1,icerock:1,sandrock:1,slag:1,obsidian:1,voidrock:1,crystal:1,spire:1,column:1,coral:1,cactus:1,pillar:1,grave:1,thorn:1,bush:1,cloud:1,marble:1,house:1,wall:1,stall:1,well:1,fence:1};
+const OBJ_SOLID={tree:1,mtree:1,pine:1,deadtree:1,willow:1,jtree:1,twisted:1,rock:1,icerock:1,sandrock:1,slag:1,obsidian:1,voidrock:1,crystal:1,spire:1,column:1,coral:1,cactus:1,pillar:1,grave:1,thorn:1,cloud:1,marble:1,house:1,wall:1,stall:1,well:1,fence:1};
+// per-region plant/grass palette: [blade, blade-light, accent/flower colors...]
+const GRASS_THEME=[['#3f8a3a','#5aa850','#ff8ab0','#ffd24a'],['#7ab04a','#94c860','#ffd24a','#fff'],['#5fa048','#7ab85a','#4a9bff','#fff'],['#6a4a3a','#8a6a5a','#ffb04a','#ff6a2a'],
+ ['#5a6a3a','#76884a','#c8c060','#8ab06a'],['#7f9cb4','#b4d0e6','#ffffff','#9ad0ff'],['#c0a050','#d8bc6a','#e8d090','#a0803a'],['#2f9a86','#4ab8a0','#ff8a8a','#ffd2a0'],
+ ['#2a7a3a','#3e9a4a','#ff4ab0','#ffd24a'],['#6a7a5a','#86967a','#a070b0','#c8c8d8'],['#9ad88a','#c0f0b0','#ffffff','#ffd2f0'],['#5a4a6a','#7a6a8a','#b0a0ff','#d8d0ff'],
+ ['#3a3030','#5a4a44','#ff6a2a','#ffb04a'],['#34405e','#4e5e8a','#8ac8ff','#b04cff'],['#4a2e6a','#6a4a8a','#b04cff','#ff3aff']];
 function objSprite(type,z,v){return cached('o|'+type+'|'+z+'|'+v,32,40,(x)=>{const r=mulberry(hashStr(type)+z*7+v*13);const Z=ZONES[z]||ZONES[0];
  const trunk=(c='#5a3a1e')=>{pRect(x,14,24,4,12,c);pRect(x,14,24,1,12,shade(c,.2));pRect(x,12,35,8,2,shade(c,-.2));};
  const canopy=(cs,n=7)=>{for(let i=0;i<n;i++){const cx=16+Math.round((r()-.5)*14),cy=14+Math.round((r()-.5)*12);pEll(x,cx,cy,6,5,cs[i%cs.length]);}pEll(x,16,12,8,7,cs[0]);for(let i=0;i<10;i++)px(x,8+Math.floor(r()*16),6+Math.floor(r()*14),cs[2]||shade(cs[0],.3));};
@@ -2681,6 +2686,7 @@ function objSprite(type,z,v){return cached('o|'+type+'|'+z+'|'+v,32,40,(x)=>{con
   case'cloud':pEll(x,16,28,13,8,'#ffffff');pEll(x,10,26,6,5,'#f0f4ff');pEll(x,22,25,7,6,'#f8fbff');pEll(x,16,34,12,2,'#c8d8f0');break;
   case'marble':pRect(x,8,22,16,14,'#e8e8f0');pRect(x,8,22,16,2,'#ffffff');pRect(x,8,34,16,2,'#b8b8c8');break;
   // non-solid decor
+  case'sprig':{const G=GRASS_THEME[z]||GRASS_THEME[0];for(let i=0;i<3+Math.floor(r()*3);i++){const fx=5+Math.floor(r()*22),fy=31+Math.floor(r()*5),h=2+Math.floor(r()*3);pRect(x,fx,fy-h,1,h,G[i%2]);px(x,fx+1,fy-h+1,G[1]);if(r()<.35)px(x,fx,fy-h-1,G[2+Math.floor(r()*(G.length-2))]);}break;}
   case'flower':for(let i=0;i<4;i++){const fx=6+Math.floor(r()*20),fy=28+Math.floor(r()*8);pRect(x,fx,fy,1,3,'#2a6a2a');px(x,fx,fy-1,pick2(['#ff4a5a','#ffd24a','#fff','#c25cff','#4a9bff'],r));}break;
   case'heath':for(let i=0;i<6;i++){const fx=4+Math.floor(r()*24),fy=30+Math.floor(r()*6);pRect(x,fx,fy,2,2,'#8a5a8a');}break;
   case'shroom':for(let i=0;i<3;i++){const fx=8+Math.floor(r()*16),fy=30+Math.floor(r()*5);pRect(x,fx+1,fy,1,3,'#e8dcb5');pEll(x,fx+1,fy,2,1,z===0?'#4af0d0':'#c25cff');}break;
@@ -2760,8 +2766,10 @@ function canvasIcon(src,size=32){const c=document.createElement('canvas');c.widt
 
 // ================= MAP GENERATION =================
 const OBJ_TYPES=['','tree','mtree','pine','deadtree','willow','jtree','twisted','rock','icerock','sandrock','slag','obsidian','voidrock','crystal','spire','column','coral','cactus','pillar','grave','thorn','bush','cloud','marble',
- 'flower','heath','shroom','wheat','reed','kelp','lily','bones','vent','rubble','fence','well','stall'];
+ 'flower','heath','shroom','wheat','reed','kelp','lily','bones','vent','rubble','fence','well','stall','sprig'];
 const OBJ_IDX={};OBJ_TYPES.forEach((t,i)=>OBJ_IDX[t]=i);
+const OBS_SOLID_SUM=ZONES.map(Z=>Object.entries(Z.obs).reduce((a,[t,p])=>a+(OBJ_SOLID[t]?p:0),0));
+const OBS_DECOR_SUM=ZONES.map(Z=>Object.entries(Z.obs).reduce((a,[t,p])=>a+(OBJ_SOLID[t]?0:p),0));
 const G_PATH=3,G_LIQ=4,G_FLOOR=6,G_WALL=7,G_VOID=8;
 const MAPW=160,MAPH=160;
 function newMap(w,h){return{w,h,ground:new Uint8Array(w*h),obj:new Uint8Array(w*h),objv:new Uint8Array(w*h),solid:new Uint8Array(w*h),npcs:[],nodes:[],spawns:[],pois:[],gates:[],dents:[],bigs:[],gathers:[],chunks:new Map()};}
@@ -2775,10 +2783,16 @@ function genZone(z){const Z=ZONES[z];const r=mulberry(1000+z*7919);const W=MAPW,
  // ground + liquids + objects
  const so=z*101;const obsList=Object.entries(Z.obs);
  for(let y=0;y<H;y++)for(let x=0;x<W;x++){const i=I(x,y);const n=fbm(x/9,y/9,so,3);M.ground[i]=n<.42?0:n<.58?1:2;
-  const lq=fbm(x/14,y/14,so+55,3);const thr=Z.sky?.66:Z.void?.7:(Z.swamp?.62:Z.lava?.7:.72);
+  const lq=fbm(x/14,y/14,so+55,3);const thr=Z.sky?.66:Z.void?.7:(Z.swamp?.66:Z.lava?.7:.72);
   if(lq>thr){M.ground[i]=Z.sky||Z.void?G_VOID:G_LIQ;M.solid[i]=1;continue;}
-  const dens=fbm(x/7,y/7,so+99,2);const mul=z===0?(dens>.55?1.9:dens<.38?.25:1):(dens>.6?1.6:dens<.35?.4:1);
-  let v=r();for(const [t,p] of obsList){v-=p*mul;if(v<0){const oi=OBJ_IDX[t];M.obj[i]=oi;M.objv[i]=Math.floor(r()*4);if(OBJ_SOLID[t])M.solid[i]=1;break;}}}
+  // Open-movement layout: blockers only in sparse clusters (groves/outcrops give each region its identity); everywhere else
+  // is walkable and dressed with non-blocking plants (baked) and animated grass (drawn per frame in render()).
+  const dens=fbm(x/7,y/7,so+99,2);const v=r(),ov=Math.floor(r()*4);
+  const core=dens>.64?1:dens>.6?.45:0;const sp=core?Math.min(.3,OBS_SOLID_SUM[z]*1.1)*core:OBS_SOLID_SUM[z]*.035;
+  if(v<sp){let w=v/sp*OBS_SOLID_SUM[z];for(const [t,p] of obsList){if(!OBJ_SOLID[t])continue;w-=p;if(w<0){M.obj[i]=OBJ_IDX[t];M.objv[i]=ov;M.solid[i]=1;break;}}}
+  else{const dv=(v-sp)/(1-sp);const ds=OBS_DECOR_SUM[z]*1.4;
+   if(dv<ds){let w=dv/1.4;for(const [t,p] of obsList){if(OBJ_SOLID[t])continue;w-=p;if(w<0){M.obj[i]=OBJ_IDX[t];M.objv[i]=ov;break;}}}
+   else if(dv<ds+.07){M.obj[i]=OBJ_IDX.sprig;M.objv[i]=ov;}}}
  // border
  for(let x=0;x<W;x++){for(const y of[0,H-1]){const i=I(x,y);M.solid[i]=1;M.obj[i]=OBJ_IDX[edgeObj(Z)];}}for(let y=0;y<H;y++){for(const x of[0,W-1]){const i=I(x,y);M.solid[i]=1;M.obj[i]=OBJ_IDX[edgeObj(Z)];}}
  const clear=(x,y,rad,path)=>{for(let j=-rad;j<=rad;j++)for(let k=-rad;k<=rad;k++){const xx=x+k,yy=y+j;if(xx<1||yy<1||xx>=W-1||yy>=H-1)continue;if(k*k+j*j>rad*rad+1)continue;const i=I(xx,yy);M.solid[i]=0;M.obj[i]=0;if(M.ground[i]>=G_LIQ)M.ground[i]=path?G_PATH:0;if(path)M.ground[i]=G_PATH;}};
@@ -2866,16 +2880,18 @@ function genDungeon(did){const D=DUNGEON_BY_ID[did];const r=mulberry(5000+D.idx*
   const dir=k%3===2?'up':(r()<.5?'side':'up');if(dir==='up'){y-=14+Math.floor(r()*6);x+=Math.floor((r()-.5)*24);}else{x+=(x<W/2?1:-1)*(20+Math.floor(r()*8));y-=Math.floor(r()*8);}x=clamp(x,12,W-12);y=clamp(y,12,H-12);}
  const carve=(x0,y0,w,h)=>{for(let j=y0;j<y0+h;j++)for(let i=x0;i<x0+w;i++){if(i<1||j<1||i>=W-1||j>=H-1)continue;M.solid[I(i,j)]=0;M.ground[I(i,j)]=G_FLOOR;}};
  rooms.forEach(R=>carve(R.x,R.y,R.w,R.h));
- for(let k=1;k<rooms.length;k++){const a=rooms[k-1],b=rooms[k];let cx=a.cx,cy=a.cy;while(cx!==b.cx){carve(cx-1,cy-1,3,3);cx+=Math.sign(b.cx-cx);}while(cy!==b.cy){carve(cx-1,cy-1,3,3);cy+=Math.sign(b.cy-cy);}}
+ for(let k=1;k<rooms.length;k++){const a=rooms[k-1],b=rooms[k];let cx=a.cx,cy=a.cy;while(cx!==b.cx){carve(cx-2,cy-2,5,5);cx+=Math.sign(b.cx-cx);}while(cy!==b.cy){carve(cx-2,cy-2,5,5);cy+=Math.sign(b.cy-cy);}carve(cx-2,cy-2,5,5);}
  // decor
- rooms.forEach((R,k)=>{for(let t=0;t<4;t++){const xx=R.x+1+Math.floor(r()*(R.w-2)),yy=R.y+1+Math.floor(r()*(R.h-2));if(Math.abs(xx-R.cx)<3&&Math.abs(yy-R.cy)<3)continue;const i=I(xx,yy);M.obj[i]=OBJ_IDX[D.theme==='ice'?'icerock':D.theme==='tomb'?'pillar':D.theme==='sunken'?'column':D.theme==='under'?'grave':D.theme==='jungle'?'jtree':D.theme==='void'||D.theme==='shadow'?'crystal':'rock'];M.solid[i]=1;}
-  for(let t=0;t<3;t++){const xx=R.x+1+Math.floor(r()*(R.w-2)),yy=R.y+1+Math.floor(r()*(R.h-2));const i=I(xx,yy);if(!M.solid[i]){M.obj[i]=OBJ_IDX[D.theme==='hive'?'shroom':D.theme==='foundry'?'vent':'bones'];}}});
+ rooms.forEach((R,k)=>{for(let t=0;t<4;t++){const side=r()<.5;const xx=side?(r()<.5?R.x+1:R.x+R.w-2):R.x+1+Math.floor(r()*(R.w-2)),yy=side?R.y+1+Math.floor(r()*(R.h-2)):(r()<.5?R.y+1:R.y+R.h-2);if(t>0||rooms.some(Q=>Math.abs(xx-Q.cx)<3&&Math.abs(yy-Q.cy)<3))continue;const i=I(xx,yy);M.obj[i]=OBJ_IDX[D.theme==='ice'?'icerock':D.theme==='tomb'?'pillar':D.theme==='sunken'?'column':D.theme==='under'?'grave':D.theme==='jungle'?'jtree':D.theme==='void'||D.theme==='shadow'?'crystal':'rock'];M.solid[i]=1;}
+  for(let t=0;t<6;t++){const xx=R.x+1+Math.floor(r()*(R.w-2)),yy=R.y+1+Math.floor(r()*(R.h-2));const i=I(xx,yy);if(!M.solid[i]){M.obj[i]=OBJ_IDX[D.theme==='hive'?'shroom':D.theme==='foundry'?'vent':'bones'];}}});
  M.rooms=rooms;const s=rooms[0];M.start={x:s.cx+.5,y:s.cy+2.5};M.exitPortal={x:s.cx+.5,y:s.cy+.5};
  // packs
  rooms.forEach((R,k)=>{if(k===0)return;const last=k===rooms.length-1;if(last){M.spawns.push({x:R.cx+.5,y:R.cy+.5,boss:1,lvl:D.lvl,n:1,alive:0,timer:0,once:1});
    for(let t=0;t<2;t++){const m=D.mobs[t%D.mobs.length];M.spawns.push({x:R.cx-5+t*10+.5,y:R.cy+4.5,dmob:m,lvl:D.lvl,n:1,alive:0,once:1});}return;}
   const packs=1+(R.w*R.h>110?1:0)+(r()<.5?1:0);for(let p=0;p<packs;p++){const m=D.mobs[Math.floor(r()*D.mobs.length)];const px_=R.x+2+Math.floor(r()*(R.w-4)),py_=R.y+2+Math.floor(r()*(R.h-4));
    M.spawns.push({x:px_+.5,y:py_+.5,dmob:m,lvl:D.lvl-2+Math.floor(r()*3),n:2+Math.floor(r()*2),alive:0,once:1,elite:k===4&&p===0});}});
+ // never leave a spawn inside a pillar/wall: nudge to the nearest floor tile
+ M.spawns.forEach(sp=>{let bx=Math.floor(sp.x),by=Math.floor(sp.y);if(!M.solid[I(bx,by)])return;for(let rr=1;rr<6;rr++){for(let j=-rr;j<=rr;j++)for(let i2=-rr;i2<=rr;i2++){const xx=bx+i2,yy=by+j;if(xx>0&&yy>0&&xx<W-1&&yy<H-1&&!M.solid[I(xx,yy)]){sp.x=xx+.5;sp.y=yy+.5;return;}}}});
  M.reach=new Uint8Array(W*H).fill(1);return M;}
 
 // ================= PLAYER STATE, STATS, INVENTORY =================
@@ -3380,6 +3396,11 @@ function render(){const x=R.x,M=GAME.map;if(!M||!PE)return;const Zm=R.Z;const vw
  const tx0=Math.max(0,Math.floor(R.camX/TS)-2),tx1=Math.min(M.w-1,Math.ceil((R.camX+vw)/TS)+2),ty0=Math.max(0,Math.floor(R.camY/TS)-1),ty1=Math.min(M.h-1,Math.ceil((R.camY+vh)/TS)+3);
  // animated liquid sparkle
  const T=GAME.time;for(let ty=ty0;ty<=ty1;ty++)for(let tx=tx0;tx<=tx1;tx++){const k=ty*M.w+tx;if(M.ground[k]===G_LIQ){const h=hash2(tx,ty,9);const ph=(T*.8+h*6)%3;if(ph<1){x.fillStyle=ZONES[M.z].lava&&M.z!==3?'#ffd24a':'rgba(255,255,255,.35)';x.fillRect(tx*TS+(h*12|0),ty*TS+((h*97)%12|0),3,1);}}}
+ // animated swaying grass (outdoor regions only): cheap per-tile blades drawn under every entity, never on paths/water/blockers
+ if(M.kind==='zone'&&OPT.grass!==false){const G=GRASS_THEME[M.z]||GRASS_THEME[0];const wind=T*2.2;
+  for(let ty=ty0;ty<=ty1;ty++)for(let tx=tx0;tx<=tx1;tx++){const k=ty*M.w+tx;const g=M.ground[k];if(g>=G_PATH||M.solid[k])continue;const h=hash2(tx,ty,21);if(h>.42)continue;
+   const sw=Math.sin(wind+tx*.55+ty*.35);const n=2+((h*100)|0)%3;for(let b=0;b<n;b++){const bx=tx*TS+2+((h*(37+b*53))*12|0)%13,by=ty*TS+6+((h*(71+b*29))*10|0)%9,bh=3+((b+((h*10)|0))%3);
+    x.fillStyle=G[b&1];x.fillRect(bx,by-bh+1,1,bh);x.fillRect(bx+Math.round(sw*(b&1?.6:1)),by-bh,1,2);}}}
  // ground effects (under)
  for(const g of GAME.grounds){const a=g.warn?.25+.25*Math.sin(T*20):.25;x.globalAlpha=a;x.fillStyle=g.c;x.beginPath();x.ellipse(g.x*TS,g.y*TS,g.r*TS,g.r*TS*.6,0,0,6.283);x.fill();x.globalAlpha=1;
   if(g.warn){x.strokeStyle=g.c;x.lineWidth=1;x.beginPath();x.ellipse(g.x*TS,g.y*TS,g.r*TS*(1-g.delay/1.3),g.r*TS*.6*(1-g.delay/1.3),0,0,6.283);x.stroke();}
@@ -3391,7 +3412,7 @@ function render(){const x=R.x,M=GAME.map;if(!M||!PE)return;const Zm=R.Z;const vw
  for(const l of GAME.loot){const ic=itemIcon(l.it);const yb=Math.sin(T*3+l.bob)*1.5;const col=RAR[l.it.rar||0].c;x.globalAlpha=.4;x.fillStyle=col;x.fillRect(l.x*TS-6,l.y*TS-2,12,3);x.globalAlpha=1;x.drawImage(ic,l.x*TS-6,l.y*TS-14+yb,12,12);if((l.it.rar||0)>=2){x.fillStyle=col;x.fillRect(l.x*TS-1,l.y*TS-20+yb,2,2);}}
  // collect drawables
  const D=[];
- for(let ty=ty0;ty<=ty1;ty++)for(let tx=tx0;tx<=tx1;tx++){const k=ty*M.w+tx;const o=M.obj[k];if(!o)continue;const tn=OBJ_TYPES[o];if(!OBJ_SOLID[tn])continue;D.push({y:ty+1,f:()=>x.drawImage(objSprite(tn,M.z,M.objv[k]),tx*TS-8,ty*TS+TS-40)});}
+ for(let ty=ty0;ty<=ty1;ty++)for(let tx=tx0;tx<=tx1;tx++){const k=ty*M.w+tx;const o=M.obj[k];if(!o)continue;const tn=OBJ_TYPES[o];if(!OBJ_SOLID[tn])continue;const cover=ty+1>PE.y&&ty-1.6<PE.y&&Math.abs(tx+.5-PE.x)<1.4;D.push({y:ty+1,f:()=>{if(cover)x.globalAlpha=.42;x.drawImage(objSprite(tn,M.z,M.objv[k]),tx*TS-8,ty*TS+TS-40);if(cover)x.globalAlpha=1;}});}
  for(const b of M.bigs){if(b.x>tx1+4||b.x<tx0-12||b.y<ty0-2||b.y>ty1+10)continue;if(b.t==='house')D.push({y:b.y+1,f:()=>x.drawImage(houseSprite(M.z,b.v),b.x*TS,(b.y+1)*TS-56)});if(b.t==='castle')D.push({y:b.y+1,f:()=>x.drawImage(castleSprite(),b.x*TS,(b.y+1)*TS-120)});}
  for(const n of M.npcs){if(Math.abs(n.x-PE.x)>vw/TS||Math.abs(n.y-PE.y)>vh/TS)continue;D.push({y:n.y,f:()=>drawNPC(x,n)});}
  for(const n of M.nodes){if(Math.abs(n.x-PE.x)>vw/TS||Math.abs(n.y-PE.y)>vh/TS)continue;if(n.t>0)continue;const mine=(n.kind==='herb'&&P.interest==='cloth')||(n.kind==='ore'&&P.interest==='mining');if(n.kind==='herb'&&!mine)continue;D.push({y:n.y,f:()=>{x.globalAlpha=mine?1:.75;x.drawImage(nodeSprite(n.kind,n.tier,(T*2+n.x)%3<1?1:0),n.x*TS-10,n.y*TS-16);x.globalAlpha=1;}});}

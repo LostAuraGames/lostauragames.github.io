@@ -156,6 +156,7 @@ input.name{font:bold 20px "Courier New",monospace;background:#050806;color:#fff;
 </div>
 <script>
 (()=>{"use strict";
+const ENGINE_BUILD='ef9ea45e3b3-r1';
 // ================= I18N (shared by Lost Aura Games titles) =================
 // One language setting for the whole site and every game: localStorage "lag.lang".
 // Strings are looked up by their English text: t('PLAY') -> 'JUGAR'. {name} placeholders are filled from vars.
@@ -735,11 +736,11 @@ function SupabaseAdapter(url,key){const base=url.replace(/\/+$/,'')+'/rest/v1/rp
   // New/higher scores go to the verifier (edge function meowteor-submit): it replays the run from the server seed and
   // the flap log, so only runs that really happen in the game count. Renames (same best) use the plain RPC.
   async submitScore(name,score,run){const body={p_player_id:lbPlayerId(),p_name:name,p_score:Math.floor(score)};
-   if(run&&typeof run==='object'&&run.id&&Array.isArray(run.flaps)){Object.assign(body,{p_run_id:run.id,frames:run.frames,flaps:run.flaps});
+   if(run&&typeof run==='object'&&run.id&&Array.isArray(run.flaps)){Object.assign(body,{p_run_id:run.id,frames:run.frames,flaps:run.flaps,build:ENGINE_BUILD});
     const ctl=typeof AbortController!=='undefined'?new AbortController():null;const tm=setTimeout(()=>ctl&&ctl.abort(),20000);let r,txt;
     try{r=await fetch(url.replace(/\/+$/,'')+'/functions/v1/meowteor-submit',{method:'POST',headers,body:JSON.stringify(body),signal:ctl&&ctl.signal,cache:'no-store'});txt=await r.text();}finally{clearTimeout(tm);}
     let v=null;try{v=txt?JSON.parse(txt):null;}catch(e){}
-    if(r.status===400)return{ok:false,rejected:true,msg:(v&&v.message)||'rejected'};if(!r.ok)throw new Error('LB verify HTTP '+r.status);
+    if(r.status===400||r.status===403||r.status===409)return{ok:false,rejected:true,banned:r.status===403,outdated:r.status===409,msg:(v&&v.message)||'rejected'};if(!r.ok)throw new Error('LB verify HTTP '+r.status);
     return{ok:true,rank:v&&v.rank,verdict:v&&v.verdict};}
    let res;try{res=await rpc('submit_score',body);}catch(e){const m=String(e.message||e);if(/HTTP 400/.test(m)&&/run ticket|verified run|not plausible|slow down|banned/.test(m))return{ok:false,rejected:true,msg:m};throw e;}
    const row=Array.isArray(res)?res[0]:res;return{ok:true,rank:row&&row.rank};},

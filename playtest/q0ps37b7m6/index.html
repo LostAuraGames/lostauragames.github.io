@@ -699,7 +699,7 @@ const STAT_KEYS=Object.keys(STATS);
 const CLASSES={
  knight:{n:'Knight',main:['bra','vit'],hp:1.35,res:'valor',armor:['mail','plate'],weapons:['sword2','axe2','mace2','hammer2','sword','mace','axe','shield'],
   col:'#d8d0c0',acc:'#3a7bff',spec:'Warrior Specialist',d:'Honored noble slayer. Two-handed swords, battle axes and maces, or a one-handed weapon with a shield. Mail armor; steel plate after training at level 20.',range:1.35},
- thief:{n:'Thief',main:['qck','cun'],hp:.72,res:'energy',armor:['leather'],weapons:['dagger','sword','axe','rapier'],
+ thief:{n:'Thief',main:['qck','cun'],hp:.78,res:'energy',armor:['leather'],weapons:['dagger','sword','axe','rapier'],
   col:'#5a4a3a',acc:'#3cff5a',spec:'Shadow Specialist',d:'Lowest health, highest burst. Stalks in stealth and strikes from the shadows with one-handed blades. Leather armor only.',range:1.2},
  mage:{n:'Mage',main:['arc','wis'],hp:.85,res:'mana',armor:['cloth'],weapons:['wand','staff','sceptre'],
   col:'#3a5ad8',acc:'#ff8a1e',spec:'Arcane Specialist',d:'Strictly ranged caster: fireballs, frost, lightning and meteors. Wands, staffs and sceptres. Cloth armor only.',range:7},
@@ -798,7 +798,7 @@ function xpToNext(L){return L>=MAX_LEVEL?Infinity:Math.round(killsPerLevel(L)*mo
 // ================= COMBAT CURVES =================
 function mobHPBase(L){return 20+16*Math.pow(L,1.12);}
 function weaponBase(L){return mobHPBase(L)/6.2;}
-function mobDmgBase(L){return (80+16*L)/11;}
+function mobDmgBase(L){return (80+16*L)/11*(.55+.45*Math.min(1,L/15));}
 function statRating(v,L){return v/(10+3*L);}
 
 // ================= WORLD: 15 REGIONS =================
@@ -1462,7 +1462,7 @@ function genZone(z){const Z=ZONES[z];const r=mulberry(1000+z*7919);const W=MAPW,
  for(let k=0;k<55;k++){for(let t=0;t<40;t++){const x=2+Math.floor(r()*(W-4)),y=2+Math.floor(r()*(H-4));if(!free(x,y))continue;M.nodes.push({kind:'ore',x:x+.5,y:y+.5,tier:z,t:0});break;}}
  // mob spawn points; difficulty grows with distance from town
  const maxD=Math.hypot(W,H)*.55;const mobs=Z.mobs.slice().sort((a,b)=>a[4]-b[4]);
- for(let k=0;k<300;k++){for(let t=0;t<40;t++){const x=2+Math.floor(r()*(W-4)),y=2+Math.floor(r()*(H-4));if(!free(x,y,10))continue;const d=Math.hypot(x-tx,y-ty);let f=clamp((d-14)/(maxD*.85),0,1);
+ for(let k=0;k<250;k++){for(let t=0;t<40;t++){const x=2+Math.floor(r()*(W-4)),y=2+Math.floor(r()*(H-4));if(!free(x,y,10))continue;const d=Math.hypot(x-tx,y-ty);let f=clamp((d-14)/(maxD*.85),0,1);
    if(z===0)f=clamp((d-12)/70,0,1);
    const cand=mobs.filter(m=>m[4]<=f+.12);const m=cand.length?cand[Math.floor(Math.pow(r(),.7)*cand.length)]:mobs[0];
    const lvl=Math.round(clamp(Z.lvl[0]+(Z.lvl[1]-Z.lvl[0])*clamp(f+(r()-.5)*.15,0,1),Z.lvl[0],Z.lvl[1]));const n=m[5].includes('T')?1:(r()<.22?2:1);
@@ -1634,7 +1634,7 @@ function makeMob(def,lvl,x,y,opts={}){const [id,name,arch,pal,,flags]=def;const 
  let hpM=tough?1.5:fast?.8:1,dmM=tough?1.15:1;if(opts.elite){hpM*=4;dmM*=1.6;}if(opts.boss){hpM*=10;dmM*=1.5;}if(opts.dun&&!opts.boss&&!opts.elite){hpM*=1.25;}
  const hp=Math.round(mobHPBase(lvl)*(1+lvl/120)*hpM);
  return{id:uid(),kind:'mob',mid:id,name:opts.name||name,arch,pal,lvl,hp,maxHp:hp,dmg:mobDmgBase(lvl)*dmM,x,y,sx:x,sy:y,spd:(fast?3.6:2.5)*(opts.boss?1.05:1),ranged:flags.includes('R'),beast:flags.includes('B'),tough,elite:!!opts.elite,boss:!!opts.boss,
-  state:'idle',tgt:null,atk:rnd(0,1),stun:0,root:0,slow:0,dots:[],aggro:opts.boss?9:6,wander:rnd(1,4),fx:1,anim:rnd(0,2),flash:0,spawn:opts.spawn||null,quest:opts.quest||null,size:opts.boss?2:(opts.elite?1.35:1),dun:!!opts.dun,mark:0,special:opts.boss?6:9,adds:opts.boss?14:0,enr:false,qitem:opts.qitem||null,taunt:0};}
+  state:'idle',tgt:null,atk:rnd(0,1),stun:0,root:0,slow:0,dots:[],aggro:opts.boss?9:(lvl<=10?4.2:5.2),wander:rnd(1,4),fx:1,anim:rnd(0,2),flash:0,spawn:opts.spawn||null,quest:opts.quest||null,size:opts.boss?2:(opts.elite?1.35:1),dun:!!opts.dun,mark:0,special:opts.boss?6:9,adds:opts.boss?14:0,enr:false,qitem:opts.qitem||null,taunt:0};}
 function updateSpawns(dt){const M=GAME.map;for(const s of M.spawns){const d=Math.hypot(s.x-PE.x,s.y-PE.y);
   if(s.mobs&&s.mobs.length){s.mobs=s.mobs.filter(m=>m.hp>0);if(!s.mobs.length){if(s.once){s.done=1;}else s.timer=rnd(30,55);}
    else if(d>58&&!s.once&&s.mobs.every(m=>m.state==='idle')){s.mobs.forEach(m=>{m.gone=1;});GAME.mobs=GAME.mobs.filter(m=>!m.gone);s.mobs=[];s.timer=0;}continue;}
@@ -1674,7 +1674,7 @@ function playerHit(m,base,o={}){if(!m||m.hp<=0)return 0;let d=base*PS.pow*PS.dmg
  return d;}
 function damageMob(m,d,crit,el){if(m.hp<=0)return;m.hp-=d;m.flash=.12;floater(m.x,m.y,(crit?'*':'')+fmt(d),crit?'#ffd24a':el==='fire'?'#ff8a1e':el==='frost'?'#9fe':el==='shock'?'#fff27a':el==='dark'?'#c25cff':'#fff',crit);sfx(crit?'crit':'hit');
  if(m.state==='idle'||m.state==='return'){m.state='chase';m.tgt=PE;alertPack(m);}if(m.hp<=0)killMob(m);}
-function alertPack(m){for(const o of GAME.mobs){if(o!==m&&o.state==='idle'&&Math.hypot(o.x-m.x,o.y-m.y)<4){o.state='chase';o.tgt=PE;}}}
+function alertPack(m){for(const o of GAME.mobs){if(o!==m&&o.state==='idle'&&((m.spawn&&o.spawn===m.spawn)||Math.hypot(o.x-m.x,o.y-m.y)<2.5)){o.state='chase';o.tgt=PE;}}}
 function killMob(m){m.hp=0;sfx('die');burst(m.x,m.y,m.pal[0],12);GAME.mobs=GAME.mobs.filter(o=>o!==m);if(GAME.target===m)GAME.target=null;
  GAME.corpses.push({x:m.x,y:m.y,arch:m.arch,pal:m.pal,t:30,beast:m.beast,tier:tierOf(m.lvl),lvl:m.lvl,skinned:false,size:m.size,boss:m.boss});if(GAME.corpses.length>40)GAME.corpses.shift();
  // xp & gold

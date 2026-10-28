@@ -1528,7 +1528,7 @@ function newCharacter(name,cls,interest,look){const C=CLASSES[cls];const p={v:1,
  if(cls==='mage'){p.eq.main=genGear(1,0,{wt:'staff'});p.eq.chest=genGear(1,0,{slot:'chest',arm:'cloth'});p.eq.feet=genGear(1,0,{slot:'feet',arm:'cloth'});}
  if(cls==='summoner'){p.eq.main=genGear(1,0,{wt:'wand'});p.eq.chest=genGear(1,0,{slot:'chest',arm:'cloth'});p.eq.feet=genGear(1,0,{slot:'feet',arm:'cloth'});}
  for(const k in p.eq){p.eq[k].n=p.eq[k].n.replace(/^\S+/,'Worn');p.eq[k].st={};}
- const hp=mkPotion('hp',0);hp.q=5;give(hp);if(C.res==='mana'){const mp=mkPotion('mp',0);mp.q=3;give(mp);}const b=mkBandage(0);b.q=3;give(b);give(mkScroll('recall'));
+ const hp=mkPotion('hp',0);hp.q=5;give(hp);if(C.res==='mana'){const mp=mkPotion('mp',0);mp.q=3;give(mp);}const b=mkBandage(0);b.q=6;give(b);give(mkScroll('recall'));
  // first abilities are known
  Object.values(AB).filter(a=>a.cls===cls&&a.lvl===1).forEach(a=>{p.abil[a.id]=1;});p.bar=Object.values(AB).filter(a=>a.cls===cls).sort((a,b)=>a.lvl-b.lvl).map(a=>a.id);
  return p;}

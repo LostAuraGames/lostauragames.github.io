@@ -255,4 +255,5 @@ window.LAG_I18N_ROWS=[
 ["Best score", "Mejor puntuación", "Meilleur score", "Bestwert", "Melhor pontuação", "Miglior punteggio"],
 ["No banned players.", "No hay jugadores baneados.", "Aucun joueur banni.", "Keine gesperrten Spieler.", "Nenhum jogador banido.", "Nessun giocatore bannato."],
 ["Banned {date}", "Baneado el {date}", "Banni le {date}", "Gesperrt am {date}", "Banido em {date}", "Bannato il {date}"]
+,["Protected by", "Protegido por", "Protégé par", "Geschützt durch", "Protegido por", "Protetto da"]
 ];

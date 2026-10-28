@@ -153,3 +153,6 @@ Every other page uses relative links and works at both addresses.
 - The logo and emblem are drawn in code in `assets/js/pixel.js` (`logo()` and `emblem()`).
   The PNG versions (favicons, `og.png`) are in `assets/img/`. Remake them if you change the logo.
 - Animations turn off automatically for visitors who choose "reduce motion" in their system settings.
+
+### MEOWTEOR: Aura Anticheat
+Scores are replay-verified on the server (Supabase edge function `meowteor-submit`), and the production game exposes no globals or test hooks. The game and the info page show a public **Banned players** list (name, best score before the ban, and date; from the `get_banned_players` RPC, which never returns ids) and a "Protected by Aura Anticheat" badge. Admin SQL (ban/unban, remove a score, review flagged runs) is in the game repo README under "Aura Anticheat". The bolt icon is in `lostaura-commerce/branding/aura-anticheat-bolt.{svg,png}`.

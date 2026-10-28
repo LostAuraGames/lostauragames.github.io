@@ -93,13 +93,18 @@ input.name{font:bold 20px "Courier New",monospace;background:#050806;color:#fff;
 .lbrow.r1 .rk{color:#ffd24a}.lbrow.r2 .rk{color:#d8e0ff}.lbrow.r3 .rk{color:#e09a5a}
 .lbrow.me{background:#2a1a40;outline:2px solid var(--green);outline-offset:-2px;box-shadow:0 0 10px var(--green) inset}
 .lbrow.me .nm{color:var(--green)}
-#lblist{position:absolute;left:8px;right:8px;top:72px;bottom:118px;overflow-y:auto;touch-action:pan-y;border:3px solid var(--bone2);background:#050806e0}
+#lblist{position:absolute;left:8px;right:8px;top:72px;bottom:132px;overflow-y:auto;touch-action:pan-y;border:3px solid var(--bone2);background:#050806e0}
 #lbtabs{display:flex;position:sticky;top:0;z-index:2;background:#0a0f0b;border-bottom:2px solid var(--bone2)}
 .lbtab{flex:1;text-align:center;font-size:11px;padding:4px 2px;color:var(--bone2);cursor:pointer;white-space:nowrap}
 .lbtab.on{color:#fff;background:#1d2a20;box-shadow:0 -3px 0 var(--gold) inset}.lbtab.ban.on{box-shadow:0 -3px 0 #ff5a5a inset}.lbtab b{color:#ff5a5a}
 #lblist .lbcolh{top:24px}
 .lbrow.banrow .rk{color:#ff5a5a}.lbrow.banrow .nm{color:#ffb0b0;text-decoration:line-through;text-decoration-color:#ff5a5a99}.lbrow.banrow .nm i{font-style:normal;font-size:9px;color:var(--bone2);margin-left:6px;text-decoration:none;display:inline-block}
 .bannote{padding:6px 8px;color:#ffb0b0;line-height:13px}
+/* Aura Anticheat badge */
+.aac{position:absolute;left:0;right:0;display:flex;justify-content:center;align-items:center;gap:5px;font-size:10px;letter-spacing:1px;color:var(--bone2);pointer-events:none;white-space:nowrap}
+.aac .aac-bolt{width:10px;height:13px;filter:drop-shadow(0 0 3px #ff304599)}
+.aac b{color:#ff6b7a;font-weight:normal;text-shadow:0 0 6px #ff304566}
+.aac-title{bottom:50px}.aac-lb{bottom:114px}
 #lbpin{position:absolute;left:8px;right:8px;bottom:62px;height:50px}
 #lbpin .lbrow{border:3px solid var(--green);height:32px;background:#2a1a40}
 .lbcolh{display:flex;padding:0 8px;font-size:10px;color:var(--bone2);height:18px;align-items:center;position:sticky;top:0;background:#0a0f0b}
@@ -201,6 +206,7 @@ function globeIcon(px=2,col='#9fc0ff'){const c=document.createElement('canvas');
 // ================= TRANSLATIONS (en, es, fr, de, pt, it) =================
 // Generated from the translation table; one row per English string.
 i18nRows([
+["Protected by", "Protegido por", "Protégé par", "Geschützt durch", "Protegido por", "Protetto da"],
 ["BANNED", "BANEADOS", "BANNIS", "GESPERRT", "BANIDOS", "BANNATI"],
 ["BEST SCORE", "MEJOR", "MEILLEUR", "BESTWERT", "MELHOR", "MIGLIORE"],
 ["Banned for cheating. Their scores were removed and they cannot win prizes.", "Baneados por hacer trampa. Sus puntuaciones se eliminaron y no pueden ganar premios.", "Bannis pour triche. Leurs scores ont été supprimés et ils ne peuvent pas gagner de prix.", "Wegen Betrugs gesperrt. Ihre Punkte wurden entfernt und sie können keine Preise gewinnen.", "Banidos por trapaça. As pontuações foram removidas e eles não podem ganhar prêmios.", "Bannati per imbrogli. I loro punteggi sono stati rimossi e non possono vincere premi."],
@@ -507,7 +513,13 @@ const STAR_ICON='&#9733;';
 const PHYS={W:180,H:320,GROUND:296,CATX:52,HBW:12,HBH:10,G:1150,JUMP:255,MAXFALL:300,OBW:28,DT:1/60,
  TOPM:34,BOTM:30,FIRSTX:250};
 // Difficulty for the k-th obstacle (0-based). e ramps 0 -> 1 over the first ~100 obstacles, then stays maxed (infinite level).
-function difficulty(k){const e=Math.pow(Math.min(1,k/100),.85);
+// Cross-engine determinism: the server re-simulates every submitted run (V8) and must get bit-identical results to
+// the player's browser (V8, JavaScriptCore, SpiderMonkey). Only + - * / Math.floor/min/max/round/imul are used in the
+// simulation; pow and sin (implementation-defined precision) are replaced by a literal table and a fixed polynomial.
+const DIFF_E=[0,0.0199526231496888,0.03596462168791318,0.05076367634561804,0.06482626386771051,0.07836542688315398,0.09150157358062944,0.1043117746308404,0.11684940060021168,0.12915348607498028,0.14125375446227545,0.15317355160842663,0.16493167103832243,0.17654354763209817,0.18802207028360313,0.1993781537965183,0.210621152693478,0.22175916781134827,0.23279927814575477,0.24374771931645306,0.2546100231092847,0.2653911281073648,0.2760954684936768,0.2867270461289272,0.2972894896449307,0.3077861033362291,0.31821990794877125,0.3285936749685389,0.33890995564828674,0.3491711057389097,0.35937930668721074,0.3695365839058538,0.3796448226012467,0.3897057815518492,0.39972110515634074,0.40969233401336785,0.41962091424865766,0.4295082057684607,0.43935548958857623,0.4491639743640834,0.4589348022251941,0.4686690540084535,0.4783677539591453,0.48803187396966347,0.49766233740936017,0.5072600225936295,0.516825765933465,0.5263603648012247,0.5358645801436628,0.5453391388693144,0.5547847360339225,0.5642020368446874,0.5735916785016119,0.5829542718920597,0.592290403152777,0.6016006351119998,0.6108855086228687,0.6201455437981329,0.629381241155055,0.6385930826784816,0.6477815328092162,0.6569470393640987,0.6660900343935533,0.6752109349817922,0.6843101439943604,0.6933880507772526,0.7024450318114385,0.7114814513262697,0.7204976618749288,0.7294940048747913,0.7384708111153171,0.7474284012358583,0.7563670861755645,0.7652871675973776,0.7741889382879458,0.7830726825351271,0.7919386764846242,0.8007871884771605,0.8096184793674984,0.8184328028265003,0.8272304056273321,0.836011527916834,0.8447764034729978,0.8535252599494243,0.862258319107567,0.8709757970375106,0.8796779043679792,0.8883648464662176,0.8970368236283459,0.9056940312607425,0.9143366600529774,0.9229648961427755,0.9315789212734639,0.9401789129443201,0.9487650445542182,0.957337485538936,0.9658964015024689,0.9744419543426706,0.9829743023715227,0.9914936004303152,1]; // = (k/100)^0.85 for k=0..100
+function detSin(x){const TP=6.283185307179586,P=3.141592653589793,H=1.5707963267948966;x=x-TP*Math.floor(x/TP);if(x>P)x-=TP;
+ if(x>H)x=P-x;else if(x<-H)x=-P-x;const z=x*x;return x*(1+z*(-1/6+z*(1/120+z*(-1/5040+z*(1/362880+z*(-1/39916800+z/6227020800))))));}
+function difficulty(k){k=Math.max(0,Math.floor(k));const e=k>=100?1:DIFF_E[k];
  return{e,gap:Math.round(96-26*e)+Math.max(0,3-k)*5, // vertical opening: 96 -> 70 px (+15/+10/+5 warm-up on the first 3; cat hitbox is 10 px tall)
   speed:64+32*e,                               // scroll speed px/s: 64 -> 96
   spacing:Math.round(116-26*e),                // obstacle-to-obstacle distance: 116 -> 90 px
@@ -518,7 +530,7 @@ function difficulty(k){const e=Math.pow(Math.min(1,k/100),.85);
 function zoneOf(score){return Math.floor(score/25);}
 class World{
  constructor(seed){this.seed=seed>>>0;this.rng=mulberry(this.seed);this.t=0;this.frame=0;
-  this.cat={y:150,vy:0,rot:0};this.dead=false;this.deathBy=null;this.obs=[];this.k=0;this.score=0;this.picked=0;this.flaps=0;
+  this.cat={y:150,vy:0,rot:0};this.dead=false;this.deathBy=null;this.obs=[];this.k=0;this.score=0;this.picked=0;this.flaps=0;this.log=[];
   this.lastGy=150;this.events=[];this.spawn(PHYS.FIRSTX);}
  spawn(x){const r=this.rng,d=difficulty(this.k);const lo=PHYS.TOPM+d.gap/2,hi=PHYS.GROUND-PHYS.BOTM-d.gap/2;
   let gy=this.k===0?150+(r()*40-20):this.lastGy+(r()*2-1)*d.maxDelta;
@@ -529,7 +541,7 @@ class World{
   const o={k:this.k,x,w:PHYS.OBW,gap:d.gap,base:gy,amp,hz:d.moveHz*(.8+r()*.4),ph:r()*6.283,passed:false,star:null,zone:zoneOf(this.k)};
   if(this.k>1&&r()<d.starP)o.star={dy:0,got:false,gold:r()<.12};
   this.obs.push(o);this.lastGy=gy;this.k++;}
- gapY(o,t=this.t){return o.amp?o.base+o.amp*Math.sin(o.ph+6.2832*o.hz*t):o.base;}
+ gapY(o,t=this.t){return o.amp?o.base+o.amp*detSin(o.ph+6.2832*o.hz*t):o.base;}
  speed(){return difficulty(this.score).speed;}
  // advance obstacles only (independent of the cat => usable for reachability search)
  stepWorld(){const dt=PHYS.DT,sp=this.speed();this.t+=dt;this.frame++;
@@ -543,7 +555,7 @@ class World{
   for(const o of this.obs){if(o.x>hx1||o.x+o.w<hx0)continue;const g=this.gapY(o);if(hy0<g-o.gap/2||hy1>g+o.gap/2)return'pillar';}
   return null;}
  static catStep(c,flap){if(flap)c.vy=-PHYS.JUMP;c.vy=Math.min(PHYS.MAXFALL,c.vy+PHYS.G*PHYS.DT);c.y+=c.vy*PHYS.DT;if(c.y<PHYS.HBH/2){c.y=PHYS.HBH/2;if(c.vy<0)c.vy=0;}}
- step(flap){if(this.dead)return;if(flap)this.flaps++;World.catStep(this.cat,flap);this.stepWorld();
+ step(flap){if(this.dead)return;if(flap){this.flaps++;this.log.push(this.frame);}World.catStep(this.cat,flap);this.stepWorld();
   const c=this.cat;c.rot=clamp(c.vy/300,-.45,1.1);
   for(const o of this.obs)if(o.star&&!o.star.got){const sx=o.x+o.w/2,sy=this.gapY(o);if(Math.abs(sx-PHYS.CATX)<10&&Math.abs(sy-c.y)<11){o.star.got=true;this.picked+=o.star.gold?5:1;this.events.push({e:'star',gold:o.star.gold,x:sx,y:sy});}}
   const h=this.hits(c.y);if(h){this.dead=true;this.deathBy=h;this.events.push({e:'dead',by:h});}}
@@ -720,11 +732,18 @@ function SupabaseAdapter(url,key){const base=url.replace(/\/+$/,'')+'/rest/v1/rp
   try{const r=await fetch(base+fn,{method:'POST',headers,body:JSON.stringify(body),signal:ctl&&ctl.signal,cache:'no-store'});const txt=await r.text();if(!r.ok)throw new Error('LB '+fn+' HTTP '+r.status+' '+txt.slice(0,160));return txt?JSON.parse(txt):null;}
   finally{clearTimeout(tm);}}
  return{kind:'supabase',
-  // score improvements need a server run ticket (start_run) that is old enough for the score; renames do not
-  async submitScore(name,score,runId){const body={p_player_id:lbPlayerId(),p_name:name,p_score:Math.floor(score)};if(runId)body.p_run_id=runId;
-   let res;try{res=await rpc('submit_score',body);}catch(e){const m=String(e.message||e);if(/HTTP 400/.test(m)&&/run ticket|not plausible|slow down/.test(m))return{ok:false,rejected:true,msg:m};throw e;}
+  // New/higher scores go to the verifier (edge function meowteor-submit): it replays the run from the server seed and
+  // the flap log, so only runs that really happen in the game count. Renames (same best) use the plain RPC.
+  async submitScore(name,score,run){const body={p_player_id:lbPlayerId(),p_name:name,p_score:Math.floor(score)};
+   if(run&&typeof run==='object'&&run.id&&Array.isArray(run.flaps)){Object.assign(body,{p_run_id:run.id,frames:run.frames,flaps:run.flaps});
+    const ctl=typeof AbortController!=='undefined'?new AbortController():null;const tm=setTimeout(()=>ctl&&ctl.abort(),20000);let r,txt;
+    try{r=await fetch(url.replace(/\/+$/,'')+'/functions/v1/meowteor-submit',{method:'POST',headers,body:JSON.stringify(body),signal:ctl&&ctl.signal,cache:'no-store'});txt=await r.text();}finally{clearTimeout(tm);}
+    let v=null;try{v=txt?JSON.parse(txt):null;}catch(e){}
+    if(r.status===400)return{ok:false,rejected:true,msg:(v&&v.message)||'rejected'};if(!r.ok)throw new Error('LB verify HTTP '+r.status);
+    return{ok:true,rank:v&&v.rank,verdict:v&&v.verdict};}
+   let res;try{res=await rpc('submit_score',body);}catch(e){const m=String(e.message||e);if(/HTTP 400/.test(m)&&/run ticket|verified run|not plausible|slow down|banned/.test(m))return{ok:false,rejected:true,msg:m};throw e;}
    const row=Array.isArray(res)?res[0]:res;return{ok:true,rank:row&&row.rank};},
-  async startRun(){const res=await rpc('start_run',{p_player_id:lbPlayerId()},5000);const row=Array.isArray(res)?res[0]:res;return row&&row.run_id||null;},
+  async startRun(){const res=await rpc('start_run',{p_player_id:lbPlayerId()},5000);const row=Array.isArray(res)?res[0]:res;return row&&row.run_id?{id:row.run_id,seed:(+row.seed)>>>0}:null;},
   async fetchTop(limit=100){const rows=await rpc('get_top_scores',{p_limit:limit,p_player_id:lbPlayerId()});return(rows||[]).map(r=>({rank:+r.rank,name:r.name,score:+r.score,me:!!r.is_me})).filter(r=>!lbBlocked(r.name));},
   async fetchBanned(){const rows=await rpc('get_banned_players',{p_limit:50});return(rows||[]).map(r=>({name:r.name,score:+r.best_score||0,at:r.banned_at}));},
   async fetchMyRank(playerId){const res=await rpc('get_my_rank',{p_player_id:playerId});const r=Array.isArray(res)?res[0]:res;if(!r||r.rank==null||lbBlocked(r.name))return null;return{rank:+r.rank,name:r.name,score:+r.score,total:+r.total_players};}};}
@@ -735,14 +754,19 @@ const LB={remote:null,local:LocalAdapter,status:'local',lastError:null,
  async _try(fn,localFn){if(this.remote){try{const r=await fn(this.remote);this.status='live';this.lastError=null;return r;}catch(e){this.status='offline';this.lastError=String(e.message||e);console.warn('[leaderboard] remote failed, using local board:',this.lastError);}}
   return localFn(this.local);},
  async submitScore(name,score,runId){const lr=await this.local.submitScore(name,score);return this._try(a=>a.submitScore(name,score,runId),()=>this.remote?{ok:false,offline:true,rank:null}:lr);},
- startRun(W){if(!this.remote||!W)return;this.remote.startRun().then(id=>{if(!id)return;W.runId=id;if(W.awarded)lbNoteRun(W);},()=>{});},
+ // run tickets carry the server seed the run must be played with; one is prefetched so a run can start instantly
+ ticket:null,_tp:null,
+ prefetchTicket(){if(!this.remote||this.ticket)return Promise.resolve(this.ticket);if(this._tp)return this._tp;
+  return this._tp=this.remote.startRun().then(t=>{this.ticket=t||null;return this.ticket;},()=>null).finally(()=>{this._tp=null;});},
+ takeTicket(){const t=this.ticket;this.ticket=null;return t;},
  async fetchTop(limit=100){return this._try(a=>a.fetchTop(limit),a=>a.fetchTop(limit));},
  async fetchMyRank(pid=lbPlayerId()){return this._try(a=>a.fetchMyRank(pid),a=>a.fetchMyRank(pid));},
  async fetchBanned(){if(!this.remote)return[];try{return await this.remote.fetchBanned();}catch(e){return null;}}};
 // Verified best: the best score made in a run that has a server run ticket (only those can be uploaded to the global board).
-function lbNoteRun(W){if(W&&W.runId&&W.score>(SAVE.vBest||0)){SAVE.vBest=W.score;SAVE.vRun=W.runId;persist();}}
+function lbNoteRun(W){if(W&&W.runId&&W.dead&&W.score>(SAVE.vBest||0)){const d=[];let p=0;for(const f of W.log){d.push(f-p);p=f;}
+ SAVE.vBest=W.score;SAVE.vRun={id:W.runId,frames:W.frame,flaps:d};persist();}}
 // Game-side policy: only submit when the player beats the best they have already submitted.
-async function lbMaybeSubmit(){if(!SAVE.name||lbBlocked(SAVE.name))return null;const remote=!!LB.remote;const score=remote?(SAVE.vBest||0):SAVE.best;if(score<=0||score<=SAVE.lbBest)return null;
+async function lbMaybeSubmit(){if(!SAVE.name||lbBlocked(SAVE.name))return null;const remote=!!LB.remote;const score=remote?(SAVE.vBest||0):SAVE.best;if(score<=0||score<=SAVE.lbBest)return null;if(remote&&!(SAVE.vRun&&typeof SAVE.vRun==='object'))return null;
  const r=await LB.submitScore(SAVE.name,score,remote?SAVE.vRun:null);if(r&&r.ok){SAVE.lbBest=Math.max(SAVE.lbBest,score);SAVE.pending=0;}else if(r&&r.rejected){SAVE.vBest=SAVE.lbBest;SAVE.vRun=null;SAVE.pending=0;console.warn('[leaderboard] score rejected:',r.msg);}else SAVE.pending=score;persist();return r;}
 
 // =====================================================================================
@@ -1093,8 +1117,10 @@ function medalCanvas(m){const [c,x]=mkCanvas(16,16);pEll(x,8,9,6,6,'#000');pEll(
 const G={mode:'title',world:null,acc:0,flapQ:0,t:0,scroll:0,shake:0,flash:0,deadT:0,pops:[],burst:[],zoneShown:0,zoneBlend:1,lastZone:0,attractY:150,paused:false,runStars:0,result:null,seed:0};
 let FRAME=0,GCX=null,GC=null;
 function gameInit(){GC=$('#gc');GCX=GC.getContext('2d');GCX.imageSmoothingEnabled=false;buildZoneTex();buildBackgrounds();}
-function newRun(){G.seed=(Math.random()*2**31)>>>0;G.world=new World(G.seed);LB.startRun(G.world);G.mode='ready';G.acc=0;G.flapQ=0;G.pops=[];G.burst=[];G.shake=0;G.flash=0;G.deadT=0;G.lastZone=0;G.zoneBlend=1;G.paused=false;trailReset();}
-function flap(){if(MODAL_OPEN)return;if(G.mode==='ready'){G.mode='play';G.flapQ++;return;}if(G.mode==='play'){if(G.paused){resumeGame();return;}G.flapQ++;}}
+function newRun(){const tk=LB.takeTicket();G.seed=tk?tk.seed:(Math.random()*2**31)>>>0;G.world=new World(G.seed);if(tk)G.world.runId=tk.id;
+ else if(LB.remote){const W0=G.world;LB.prefetchTicket().then(t=>{if(t&&G.world===W0&&W0.frame===0&&G.mode==='ready'){LB.takeTicket();G.world=new World(t.seed);G.seed=t.seed;G.world.runId=t.id;}LB.prefetchTicket();});}
+ LB.prefetchTicket();G.mode='ready';G.acc=0;G.flapQ=0;G.pops=[];G.burst=[];G.shake=0;G.flash=0;G.deadT=0;G.lastZone=0;G.zoneBlend=1;G.paused=false;trailReset();}
+function flap(){if(MODAL_OPEN)return;if(G.mode==='ready'){G.mode='play';const W=G.world;if(W){W.cat.y=150;W.cat.vy=0;}G.flapQ++;return;}/* runs start from the canonical state so the server replay matches */if(G.mode==='play'){if(G.paused){resumeGame();return;}G.flapQ++;}}
 function pauseGame(){if(G.mode!=='play'||G.paused)return;G.paused=true;stopMusic();}
 function resumeGame(){G.paused=false;G.acc=0;startMusic('play');}
 function gameFrame(dt){FRAME++;G.t+=dt;const W=G.world;
@@ -1167,6 +1193,9 @@ function refreshStars(){$$('.starn').forEach(e=>e.textContent=fmt(SAVE.stars));}
 function startGame(){sfx('click');ac();newRun();show('play');startMusic('play');}
 function attract(){if(!G.world||G.mode!=='title'){G.world=new World(1);G.mode='title';trailReset();}}
 // ---------- TITLE ----------
+// Aura Anticheat badge (runs are replay-verified on the server)
+const AAC_BOLT='<svg class="aac-bolt" viewBox="0 0 10 13" shape-rendering="crispEdges" aria-hidden="true"><path fill="#000" d="M0 4h1v1h-1zM0 5h1v1h-1zM0 6h1v1h-1zM1 3h1v1h-1zM1 4h1v1h-1zM1 6h1v1h-1zM1 8h1v1h-1zM1 9h1v1h-1zM1 10h1v1h-1zM1 11h1v1h-1zM1 12h1v1h-1zM2 2h1v1h-1zM2 3h1v1h-1zM2 6h1v1h-1zM2 7h1v1h-1zM2 8h1v1h-1zM2 12h1v1h-1zM3 1h1v1h-1zM3 2h1v1h-1zM3 7h1v1h-1zM3 11h1v1h-1zM3 12h1v1h-1zM4 0h1v1h-1zM4 1h1v1h-1zM4 10h1v1h-1zM4 11h1v1h-1zM5 0h1v1h-1zM5 9h1v1h-1zM5 10h1v1h-1zM6 0h1v1h-1zM6 4h1v1h-1zM6 8h1v1h-1zM6 9h1v1h-1zM7 0h1v1h-1zM7 3h1v1h-1zM7 4h1v1h-1zM7 7h1v1h-1zM7 8h1v1h-1zM8 0h1v1h-1zM8 2h1v1h-1zM8 3h1v1h-1zM8 4h1v1h-1zM8 6h1v1h-1zM8 7h1v1h-1zM9 0h1v1h-1zM9 1h1v1h-1zM9 2h1v1h-1zM9 4h1v1h-1zM9 5h1v1h-1zM9 6h1v1h-1z"/><path fill="#ff3045" d="M2 5h1v1h-1zM2 10h1v1h-1zM3 4h1v1h-1zM3 5h1v1h-1zM3 6h1v1h-1zM3 9h1v1h-1zM4 2h1v1h-1zM4 3h1v1h-1zM4 4h1v1h-1zM4 5h1v1h-1zM4 6h1v1h-1zM4 8h1v1h-1zM5 1h1v1h-1zM5 2h1v1h-1zM5 3h1v1h-1zM5 5h1v1h-1zM5 6h1v1h-1zM5 7h1v1h-1zM6 1h1v1h-1zM6 2h1v1h-1zM6 5h1v1h-1zM6 6h1v1h-1zM7 1h1v1h-1zM7 5h1v1h-1z"/><path fill="#ff9aa6" d="M1 5h1v1h-1zM2 4h1v1h-1zM2 9h1v1h-1zM3 3h1v1h-1zM3 8h1v1h-1zM4 7h1v1h-1z"/><path fill="#b0102a" d="M2 11h1v1h-1zM3 10h1v1h-1zM4 9h1v1h-1zM5 4h1v1h-1zM5 8h1v1h-1zM6 3h1v1h-1zM6 7h1v1h-1zM7 2h1v1h-1zM7 6h1v1h-1zM8 1h1v1h-1zM8 5h1v1h-1z"/></svg>';
+function aacBadge(extra){return el('div',{class:'aac'+(extra?' '+extra:'')},AAC_BOLT+`<span>${t('Protected by')} <b>Aura Anticheat</b></span>`);}
 SCREENS.title=(s)=>{attract();$('#pauseb').classList.remove('on');startMusic('title');s.innerHTML='';
  s.appendChild(el('div',{class:'topbar',style:'right:54px'},`<div>${starsBadge()}</div><div class="t small" style="color:#e8dcb5">${t('BEST')} <span class="gold">${SAVE.best}</span></div>`));
  const logo=el('div',{class:'col',style:'position:absolute;left:0;right:0;top:92px'});const lt=pixText(GAME_NAME,6,'#ffd24a','#ff7ac8');lt.style.width='300px';logo.appendChild(lt);
@@ -1178,6 +1207,7 @@ SCREENS.title=(s)=>{attract();$('#pauseb').classList.remove('on');startMusic('ti
  const hr=el('div',{class:'row',style:'display:flex;justify-content:center;flex-wrap:wrap;margin-top:6px'});const h=el('div',{class:'btn sm blue'},t('HOW TO PLAY'));h.onclick=()=>{sfx('click');howTo();};hr.appendChild(h);
  const lg=el('div',{class:'btn sm purple',id:'langbtn',title:t('Language')});lg.appendChild(globeIcon(1,'#e2c2ff'));lg.appendChild(document.createTextNode(' '+langName(LANG)));lg.onclick=()=>{sfx('click');langPicker();};hr.appendChild(lg);b.appendChild(hr);s.appendChild(b);
  s.appendChild(el('div',{class:'t small center',style:'position:absolute;left:0;right:0;bottom:12px;letter-spacing:1px'},`${t('A LOST AURA GAMES PRODUCTION')}<br>${t('{n} COSMETICS',{n:COSMETIC_COUNT})} &middot; ${t('{n} TRAILS',{n:TRAIL_COUNT})} &middot; ${t('ENDLESS')}`));
+ s.appendChild(aacBadge('aac-title'));
  champTitleChip();
  if(!SAVE.seenHelp){SAVE.seenHelp=true;persist();setTimeout(()=>{if(CUR==='title')howTo();},300);}};
 function howTo(){modal(`<div style="margin-bottom:6px"></div><div class="gold" style="font-size:18px">${t('HOW TO PLAY')}</div><div style="font-size:13px;text-align:left;line-height:1.5;margin-top:8px">
@@ -1267,7 +1297,7 @@ SCREENS.ranks=(s)=>{startMusic('menu');s.innerHTML='';s.style.background='#05080
  s.appendChild(el('div',{id:'lbhead'},`<span id="lbstat"><span class="live off"></span>${t('LOADING...')}</span><span id="lbtime" class="dim"></span>`));
  s.appendChild(el('div',{id:'lbchamp'}));
  s.appendChild(el('div',{id:'lblist'},`<div id="lbtabs"><span class="lbtab on" data-v="top">${t('TOP 100')}</span><span class="lbtab ban" data-v="ban">${t('BANNED')}<b id="lbbann"></b></span></div><div class="lbcolh"><span class="rk">#</span><span class="nm">${t('NAME')}</span><span class="sc" id="lbsch">${t('SCORE')}</span></div><div id="lbrows"><div class="small center" style="padding:20px">${t('Loading...')}</div></div>`));
- s.appendChild(el('div',{id:'lbpin'}));RK.view='top';
+ s.appendChild(el('div',{id:'lbpin'}));s.appendChild(aacBadge('aac-lb'));RK.view='top';
  s.querySelectorAll('.lbtab').forEach(tb=>tb.onclick=()=>{sfx('click');RK.view=tb.dataset.v;s.querySelectorAll('.lbtab').forEach(o=>o.classList.toggle('on',o===tb));renderView();});
  const f=el('div',{class:'wfoot'});const nb=el('div',{class:'btn sm gold'},SAVE.name?t('CHANGE NAME'):t('SET NAME'));nb.onclick=()=>{sfx('click');askName(async()=>{await forceRename();refreshRanks();},!!SAVE.name);};
  const rf=el('div',{class:'btn sm'},t('REFRESH'));rf.onclick=()=>{sfx('click');refreshRanks();};const pl=el('div',{class:'btn sm green'},t('PLAY'));pl.onclick=()=>startGame();f.append(nb,rf,pl);s.appendChild(f);
@@ -1344,7 +1374,7 @@ function loop(now){const dt=Math.min(.1,(now-(LAST||now))/1000);LAST=now;
  requestAnimationFrame(loop);}
 function unlockAudio(){ac();if(MUSIC.want&&!MUSIC.timer&&!SAVE.muted&&!document.hidden)startMusic(MUSIC.want);}
 addEventListener('pointerdown',unlockAudio,{passive:true});addEventListener('keydown',unlockAudio);
-window.addEventListener('load',()=>{loadSave();WALLET.init();LB.init();CHAMP.init();fit();bgInit();gameInit();inputInit();drawMuteIcon();
+window.addEventListener('load',()=>{loadSave();WALLET.init();LB.init();LB.prefetchTicket();CHAMP.init();fit();bgInit();gameInit();inputInit();drawMuteIcon();
  $('#mute').addEventListener('click',e=>{e.stopPropagation();setMuted(!SAVE.muted);sfx('click');});
  $('#pauseb').addEventListener('click',e=>{e.stopPropagation();if(G.paused)resumeGame();else pauseGame();});
  $('#pauseb').title=t('Pause');$('#mute').title=t('Mute / unmute (M)');

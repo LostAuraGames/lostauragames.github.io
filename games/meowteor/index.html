@@ -144,6 +144,7 @@ input.name{font:bold 20px "Courier New",monospace;background:#050806;color:#fff;
  <div id="toast"></div>
 </div>
 <script>
+(()=>{"use strict";
 // ================= I18N (shared by Lost Aura Games titles) =================
 // One language setting for the whole site and every game: localStorage "lag.lang".
 // Strings are looked up by their English text: t('PLAY') -> 'JUGAR'. {name} placeholders are filled from vars.
@@ -1085,7 +1086,7 @@ function flap(){if(MODAL_OPEN)return;if(G.mode==='ready'){G.mode='play';G.flapQ+
 function pauseGame(){if(G.mode!=='play'||G.paused)return;G.paused=true;stopMusic();}
 function resumeGame(){G.paused=false;G.acc=0;startMusic('play');}
 function gameFrame(dt){FRAME++;G.t+=dt;const W=G.world;
- if(G.mode==='play'&&!G.paused){G.acc+=Math.min(dt,.1);while(G.acc>=PHYS.DT){G.acc-=PHYS.DT;const f=G.flapQ>0||(G.auto?G.auto(W):false);if(f){G.flapQ=0;sfx('flap');}W.step(f);handleEvents();if(W.dead){onDeath();break;}}}
+ if(G.mode==='play'&&!G.paused){G.acc+=Math.min(dt,.1);while(G.acc>=PHYS.DT){G.acc-=PHYS.DT;const f=G.flapQ>0;if(f){G.flapQ=0;sfx('flap');}W.step(f);handleEvents();if(W.dead){onDeath();break;}}}
  else if(G.mode==='ready'||G.mode==='title'||G.mode==='menu'){const y=(G.mode==='title'?146:150)+Math.sin(G.t*3)*6;if(W){W.cat.y=y;W.cat.vy=Math.cos(G.t*3)*18;W.cat.rot=0;}}
  else if(G.mode==='dead'){G.deadT+=dt;const c=W.cat;if(c.y<PHYS.GROUND-PHYS.HBH/2){c.vy=Math.min(400,c.vy+1400*dt);c.y=Math.min(PHYS.GROUND-PHYS.HBH/2,c.y+c.vy*dt);c.rot=Math.min(1.5,c.rot+dt*6);}}
  const live=G.mode==='play'&&!G.paused;const sp=W?(G.mode==='dead'?0:(G.mode==='play'&&G.paused?0:W.speed())):40;
@@ -1333,16 +1334,13 @@ window.addEventListener('load',()=>{loadSave();WALLET.init();LB.init();CHAMP.ini
  $('#pauseb').title=t('Pause');$('#mute').title=t('Mute / unmute (M)');
  show('title');requestAnimationFrame(loop);
  setTimeout(()=>{lbMaybeSubmit().catch(()=>{});},1500);});
-// test hooks (harmless for players)
-window.DEBUG={G:()=>G,save:()=>SAVE,LB,World,PHYS,difficulty,ITEMS,show,persist,startGame,finishRun,validateName,LocalAdapter,
- autopilot(on){let cd=0;G.auto=on?(W=>{cd++;const o=W.nextObstacle();const tg=o?W.gapY(o)+4:150;if(cd>5&&W.cat.y>tg&&W.cat.vy>-40){cd=0;return true;}return false;}):null;},
- sim(frames,fn){const W=G.world;for(let i=0;i<frames&&!W.dead;i++){const f=fn?fn(W):false;W.step(f);handleEvents();if(W.dead){onDeath();break;}}return{score:W.score,dead:W.dead,y:W.cat.y};}};
-
+window.MEOWTEOR_UI=Object.freeze({screen:()=>CUR,modal:()=>!!MODAL_OPEN});
+})();
 </script>
 <!-- Lost Aura Games: shared account + coin store (inactive unless LAG_CONFIG.COMMERCE_ENABLED) -->
 <script src="../../assets/js/lag-config.js"></script>
 <script src="../../assets/js/lag-account.js"></script>
 <!-- Lost Aura Games: small "back to site" link, shown only on the game's title screen -->
 <a id="lag-back" href="../../" aria-label="Back to Lost Aura Games" style="position:fixed;left:10px;top:10px;z-index:9999;display:none;font:bold 13px 'Courier New',monospace;color:#e8dcb5;background:rgba(0,0,0,.78);border:3px solid #e8dcb5;box-shadow:3px 3px 0 #000;padding:5px 10px;text-decoration:none;letter-spacing:1px;text-transform:uppercase;opacity:.8">&#9664; Lost Aura Games</a>
-<script>(function(){var a=document.getElementById('lag-back');function u(){var t;try{t=(typeof CUR!=='undefined')?CUR:null;}catch(e){t=null;}var m=false;try{m=(typeof MODAL_OPEN!=='undefined')&&MODAL_OPEN;}catch(e){}a.style.display=(t==='title'&&!m)?'block':'none';}a.onmouseenter=function(){a.style.opacity=1;a.style.color='#fff';};a.onmouseleave=function(){a.style.opacity=.8;a.style.color='#e8dcb5';};var st=document.getElementById('stage');if(st){st.appendChild(a);a.style.position='absolute';a.style.left='8px';a.style.top='40px';a.style.fontSize='11px';a.style.padding='3px 7px';a.style.borderWidth='2px';a.style.boxShadow='2px 2px 0 #000';}setInterval(u,400);u();})();</script>
+<script>(function(){var a=document.getElementById('lag-back');function u(){var t;try{t=window.MEOWTEOR_UI?window.MEOWTEOR_UI.screen():null;}catch(e){t=null;}var m=false;try{m=!!(window.MEOWTEOR_UI&&window.MEOWTEOR_UI.modal());}catch(e){}a.style.display=(t==='title'&&!m)?'block':'none';}a.onmouseenter=function(){a.style.opacity=1;a.style.color='#fff';};a.onmouseleave=function(){a.style.opacity=.8;a.style.color='#e8dcb5';};var st=document.getElementById('stage');if(st){st.appendChild(a);a.style.position='absolute';a.style.left='8px';a.style.top='40px';a.style.fontSize='11px';a.style.padding='3px 7px';a.style.borderWidth='2px';a.style.boxShadow='2px 2px 0 #000';}setInterval(u,400);u();})();</script>
 </body></html>

@@ -37,7 +37,16 @@ function esc(s){return String(s).replace(/[&<>"']/g,function(c){return{'&':'&amp
 function fmt(n){return String(n).replace(/\B(?=(\d{3})+(?!\d))/g,',');}
 function rankCell(n){return n<=3?'<span class="lb-medal m'+n+'" aria-hidden="true">&#9733;</span>'+n:'#'+n;}
 function row(r,pinned){return '<li class="lb-row'+(r.me?' me':'')+(r.rank<=3?' top'+r.rank:'')+'"'+(r.me?' aria-current="true"':'')+'>'+
-  '<span class="lb-pos">'+rankCell(r.rank)+'</span><span class="lb-name">'+esc(r.name)+(r.me?' <em>'+esc(T('(you)'))+'</em>':'')+'</span><span class="lb-score">'+fmt(r.score)+'</span></li>';}
+  '<span class="lb-pos">'+rankCell(r.rank)+'</span><span class="lb-name">'+esc(r.name)+(r.me?' <em>'+esc(T('(you)'))+'</em>':'')+liveBtn(r)+'</span><span class="lb-score">'+fmt(r.score)+'</span></li>';}
+// ---- Live match broadcasting: top-100 players who opted in get a play button while they are in a run.
+// get_live_players returns names + a random per-run stream id only (never player ids). The button opens the game's
+// spectator view (games/meowteor/?watch=<stream id>), which rebuilds the run from its seed + taps.
+var live=[],liveKey='',LIVE_MS=5000;
+function liveFor(r){var i,m=null;for(i=0;i<live.length;i++){if(live[i].name===r.name&&live[i].best===r.score)return live[i];if(!m&&live[i].name===r.name)m=live[i];}return m;}
+function liveBtn(r){var l=r.me?null:liveFor(r);if(!l)return'';var lab=T('Watch {name} live',{name:r.name});
+  return ' <a class="lb-live" href="meowteor/?watch='+encodeURIComponent(l.sid)+'" title="'+esc(lab)+'" aria-label="'+esc(lab)+'"><span aria-hidden="true">&#9654;</span> '+esc(T('LIVE'))+'</a>';}
+function fetchLive(){return rpc('get_live_players',{}).then(function(rows){live=(rows||[]).map(function(x){return{sid:String(x.stream_id),name:String(x.name||''),best:+x.best||0};});
+  var k=live.map(function(x){return x.sid;}).join();if(k!==liveKey){liveKey=k;render();}},function(){});}
 var stKind='loading',stKey='Connecting\u2026',last=null,lastErr=false,lastTime=null;
 function setStatus(kind,key){stKind=kind;stKey=key;elStatus.className='lb-status '+kind;elStatus.textContent=T(key);root.setAttribute('data-state',kind);}
 function render(){if(last){var rows=last.rows,me=last.me;
@@ -63,7 +72,8 @@ function refresh(){if(busy)return;busy=true;var pid=playerId();
     setStatus('offline',hasData?'Offline \u00b7 showing last scores':'Offline \u00b7 retrying');
     if(window.console&&console.warn)console.warn('[MEOWTEOR leaderboard] '+(e&&e.message||e));
   }).then(function(){busy=false;});}
-function start(){clearInterval(timer);timer=setInterval(function(){if(!document.hidden)refresh();},LB_REFRESH_MS);}
+function start(){clearInterval(timer);timer=setInterval(function(){if(!document.hidden)refresh();},LB_REFRESH_MS);
+  setInterval(function(){if(!document.hidden)fetchLive();},LIVE_MS);fetchLive();}
 document.addEventListener('visibilitychange',function(){if(!document.hidden)refresh();});
 window.addEventListener('online',refresh);
 setStatus('loading','Connecting\u2026');render();refresh();start();

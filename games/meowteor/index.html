@@ -136,6 +136,20 @@ input.name{font:bold 20px "Courier New",monospace;background:#050806;color:#fff;
 .gorow{display:flex;justify-content:space-between;align-items:center;font-size:16px;margin:4px 6px}
 .newbest{color:var(--gold);font-size:15px;animation:blink .6s infinite}
 .medal{width:64px;height:64px;image-rendering:pixelated}
+/* live match broadcasting */
+.bcbox{display:flex;align-items:center;justify-content:center;gap:6px;font-size:11px;color:#e8dcb5;cursor:pointer;margin:3px 0;line-height:12px;text-align:left}
+.bcbox input{width:16px;height:16px;margin:0;accent-color:#3cff5a;cursor:pointer;flex-shrink:0}
+#lbpin .bcbox{margin:2px 0 0}
+.lvplay{width:24px;height:18px;margin:0 4px;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;font-size:10px;color:#04140a;background:var(--green);border:2px solid #000;box-shadow:0 0 6px var(--green);cursor:pointer;animation:blink 1.2s infinite}
+.lvplay:hover{animation:none;background:#fff}
+.lvtop{position:absolute;left:6px;right:54px;top:6px;height:40px;display:flex;align-items:center;gap:6px;z-index:6}
+.lvname{flex:1;color:#fff;font-size:14px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;text-shadow:2px 2px 0 #000}
+.lvbadge,.livebadge{display:flex;align-items:center;font-size:12px;color:#fff;background:#c0102a;border:2px solid #000;padding:2px 6px;box-shadow:2px 2px 0 #000;white-space:nowrap}
+.lvbadge .live,.livebadge .live{background:#fff;box-shadow:0 0 6px #fff}
+.livebadge{position:absolute;left:54px;top:12px;z-index:6;pointer-events:none;font-size:10px;padding:1px 5px}
+.lvstat{position:absolute;left:0;right:0;top:300px;text-align:center;font-size:13px;color:#e8dcb5;text-shadow:2px 2px 0 #000}
+.lvend{position:absolute;left:30px;right:30px;top:200px;text-align:center}
+.lvpanel{animation:drop .35s ease-out}.lvpanel .btn{margin-top:8px}
 ::-webkit-scrollbar{width:8px}::-webkit-scrollbar-thumb{background:var(--bone2);border:2px solid #000}::-webkit-scrollbar-track{background:#050805}
 </style>
 </head>
@@ -149,6 +163,7 @@ input.name{font:bold 20px "Courier New",monospace;background:#050806;color:#fff;
  <div id="s-over" class="screen"></div>
  <div id="s-wardrobe" class="screen"></div>
  <div id="s-ranks" class="screen"></div>
+ <div id="s-watch" class="screen pass"></div>
  <div class="btn sm" id="pauseb" title="Pause"></div>
  <div class="btn sm" id="mute" title="Mute / unmute (M)"></div>
  <div id="modal"><div class="panel" id="modalp"></div></div>
@@ -412,7 +427,18 @@ i18nRows([
 ["OK", "OK", "OK", "OK", "OK", "OK"],
 ["CHAMPION SKIN", "SKIN DE CAMPEÓN", "SKIN DE CHAMPION", "CHAMPION-SKIN", "SKIN DE CAMPEÃO", "SKIN DEL CAMPIONE"],
 ["You were #1 when the timer ended. The 1 of 1 space cat skin is yours!", "Eras el n.º 1 cuando acabó el tiempo. ¡La skin única (1 de 1) del gato espacial es tuya!", "Tu étais n°1 à la fin du compte à rebours. Le skin unique (1 sur 1) du chat spatial est à toi !", "Du warst Platz 1, als die Zeit ablief. Der einzigartige 1-von-1-Weltraumkatzen-Skin gehört dir!", "Você era o nº 1 quando o tempo acabou. A skin única (1 de 1) do gato espacial é sua!", "Eri il n. 1 allo scadere del tempo. La skin unica (1 su 1) del gatto spaziale è tua!"],
-["EQUIP", "EQUIPAR", "ÉQUIPER", "ANLEGEN", "EQUIPAR", "EQUIPAGGIA"]
+["EQUIP", "EQUIPAR", "ÉQUIPER", "ANLEGEN", "EQUIPAR", "EQUIPAGGIA"],
+["Consent to broadcasting your match data", "Consiento la retransmisión de los datos de mis partidas", "J'accepte la diffusion des données de mes parties", "Einwilligung zur Übertragung deiner Spieldaten", "Consinto a transmissão dos dados das minhas partidas", "Acconsento alla trasmissione dei dati delle mie partite"],
+["Top 100 players: others can watch your runs live from the leaderboard.", "Jugadores del top 100: otros pueden ver tus partidas en directo desde la clasificación.", "Joueurs du top 100 : les autres peuvent regarder tes parties en direct depuis le classement.", "Top-100-Spieler: Andere können deine Runden live über die Bestenliste ansehen.", "Jogadores do top 100: outros podem assistir às suas partidas ao vivo pelo placar.", "Giocatori della top 100: gli altri possono guardare le tue partite in diretta dalla classifica."],
+["Broadcasting on: other players can watch your runs live.", "Retransmisión activada: otros jugadores pueden ver tus partidas en directo.", "Diffusion activée : les autres joueurs peuvent regarder tes parties en direct.", "Übertragung an: Andere Spieler können deine Runden live ansehen.", "Transmissão ativada: outros jogadores podem assistir às suas partidas ao vivo.", "Trasmissione attiva: gli altri giocatori possono guardare le tue partite in diretta."],
+["Broadcasting off.", "Retransmisión desactivada.", "Diffusion désactivée.", "Übertragung aus.", "Transmissão desativada.", "Trasmissione disattivata."],
+["Only top 100 players can broadcast.", "Solo los jugadores del top 100 pueden retransmitir.", "Seuls les joueurs du top 100 peuvent diffuser.", "Nur Top-100-Spieler können übertragen.", "Só jogadores do top 100 podem transmitir.", "Solo i giocatori della top 100 possono trasmettere."],
+["Could not save. Try again.", "No se pudo guardar. Inténtalo de nuevo.", "Impossible d'enregistrer. Réessaie.", "Speichern fehlgeschlagen. Versuch es noch einmal.", "Não foi possível salvar. Tente de novo.", "Impossibile salvare. Riprova."],
+["Watch {name} live", "Ver a {name} en directo", "Regarder {name} en direct", "{name} live ansehen", "Assistir {name} ao vivo", "Guarda {name} in diretta"],
+["CLOSE", "CERRAR", "FERMER", "SCHLIESSEN", "FECHAR", "CHIUDI"],
+["Connecting...", "Conectando...", "Connexion...", "Verbinde...", "Conectando...", "Connessione..."],
+["Broadcast ended", "Retransmisión terminada", "Diffusion terminée", "Übertragung beendet", "Transmissão encerrada", "Trasmissione terminata"],
+["FINAL SCORE", "PUNTUACIÓN FINAL", "SCORE FINAL", "ENDSTAND", "PONTUAÇÃO FINAL", "PUNTEGGIO FINALE"]
 ]);
 
 "use strict";
@@ -1126,12 +1152,13 @@ function pauseGame(){if(G.mode!=='play'||G.paused)return;G.paused=true;stopMusic
 function resumeGame(){G.paused=false;G.acc=0;startMusic('play');}
 function gameFrame(dt){FRAME++;G.t+=dt;const W=G.world;
  if(G.mode==='play'&&!G.paused){G.acc+=Math.min(dt,.1);while(G.acc>=PHYS.DT){G.acc-=PHYS.DT;const f=G.flapQ>0;if(f){G.flapQ=0;sfx('flap');}W.step(f);handleEvents();if(W.dead){onDeath();break;}}}
+ else if(G.mode==='watch'){liveWatchFrame(dt);}
  else if(G.mode==='ready'||G.mode==='title'||G.mode==='menu'){const y=(G.mode==='title'?146:150)+Math.sin(G.t*3)*6;if(W){W.cat.y=y;W.cat.vy=Math.cos(G.t*3)*18;W.cat.rot=0;}}
  else if(G.mode==='dead'){G.deadT+=dt;const c=W.cat;if(c.y<PHYS.GROUND-PHYS.HBH/2){c.vy=Math.min(400,c.vy+1400*dt);c.y=Math.min(PHYS.GROUND-PHYS.HBH/2,c.y+c.vy*dt);c.rot=Math.min(1.5,c.rot+dt*6);}}
  const live=G.mode==='play'&&!G.paused;const sp=W?(G.mode==='dead'?0:(G.mode==='play'&&G.paused?0:W.speed())):40;
  if(G.mode!=='dead'&&!(G.mode==='play'&&G.paused))G.scroll+=sp*dt;
  // trail + particles
- if(W&&!(G.mode==='play'&&G.paused)){if(G.mode!=='dead'){trailPush(W.cat.y,W.cat.rot);emitTrail(SAVE.eq.trail,PHYS.CATX,W.cat.y,FRAME,sp,SAVE.eq);}updateTrail(dt);}
+ if(W&&!(G.mode==='play'&&G.paused)){if(G.mode!=='dead'){trailPush(W.cat.y,W.cat.rot);emitTrail(REQ().trail,PHYS.CATX,W.cat.y,FRAME,sp,REQ());}updateTrail(dt);}
  for(let i=G.pops.length-1;i>=0;i--){const p=G.pops[i];p.t+=dt;if(p.t>p.life)G.pops.splice(i,1);}
  for(let i=G.burst.length-1;i>=0;i--){const p=G.burst[i];p.t+=dt;p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=300*dt;if(p.t>p.life)G.burst.splice(i,1);}
  G.shake=Math.max(0,G.shake-dt*30);G.flash=Math.max(0,G.flash-dt*3);G.zoneBlend=Math.min(1,G.zoneBlend+dt*.6);
@@ -1152,16 +1179,16 @@ function render(){const x=GCX,W=G.world;x.setTransform(2,0,0,2,0,0);x.imageSmoot
  NO_PLANET=G.mode==='title';const zone=W?zoneOf(W.score):0;drawBackground(x,G.t,G.scroll,zone,G.zoneBlend);
  if(W&&G.mode!=='title'){for(const o of W.obs){if(o.x>PHYS.W+4||o.x+o.w<-4)continue;const gy=W.gapY(o);drawPillar(x,o,gy,o.zone===undefined?0:zoneOf(o.k),G.t);if(o.star&&!o.star.got)drawStarPickup(x,Math.round(o.x+o.w/2),Math.round(gy),G.t,o.star.gold);}}
  drawGround(x,G.scroll,zone);
- if(W){const c=W.cat;drawTrail(x,SAVE.eq.trail,PHYS.CATX,c.y,W?(G.mode==='dead'?0:W.speed()):40,SAVE.eq);
-  let fr=Math.floor(G.t*8)%4;if(G.mode==='play'&&c.vy<-120)fr=0;if(Math.floor(G.t*10)%37===0)fr=7;
-  const s=catSprite(SAVE.eq,fr);x.save();x.translate(Math.round(PHYS.CATX*2)/2,Math.round(c.y*2)/2);x.rotate(c.rot);x.drawImage(s,-(s.ax||CAT_AX),-(s.ay||CAT_AY));x.restore();}
+ if(W){const c=W.cat;drawTrail(x,REQ().trail,PHYS.CATX,c.y,W?(G.mode==='dead'?0:W.speed()):40,REQ());
+  let fr=Math.floor(G.t*8)%4;if((G.mode==='play'||G.mode==='watch')&&c.vy<-120)fr=0;if(Math.floor(G.t*10)%37===0)fr=7;
+  const s=catSprite(REQ(),fr);x.save();x.translate(Math.round(PHYS.CATX*2)/2,Math.round(c.y*2)/2);x.rotate(c.rot);x.drawImage(s,-(s.ax||CAT_AX),-(s.ay||CAT_AY));x.restore();}
  for(const p of G.burst){x.globalAlpha=1-p.t/p.life;x.fillStyle=p.c;x.fillRect(Math.round(p.x),Math.round(p.y),2,2);}x.globalAlpha=1;
  x.setTransform(1,0,0,1,0,0);
  // crisp HUD in screen pixels
  for(const p of G.pops){const a=1-p.t/p.life;x.globalAlpha=a;const s=2;const tw=textW(p.txt,s);drawPixText(x,p.txt,Math.round(p.x*2-tw/2),Math.round((p.y-p.t*30)*2),s,p.c);}x.globalAlpha=1;
- if(W&&(G.mode==='play'||G.mode==='ready'||G.mode==='dead')){const sc=String(W.score);const s=6;drawPixText(x,sc,Math.round(180-textW(sc,s)/2),54,s,'#ffffff');
+ if(W&&(G.mode==='play'||G.mode==='ready'||G.mode==='dead'||G.mode==='watch')){const sc=String(W.score);const s=6;drawPixText(x,sc,Math.round(180-textW(sc,s)/2),54,s,'#ffffff');
   const st=STAR_TXT+W.picked;if(G.mode!=='ready'){drawPixText(x,st,12,60,2,'#ffd24a');}}
- if(W&&G.mode==='play'&&G.t-G.zoneShown<2.2&&G.lastZone>0){const a=Math.min(1,(2.2-(G.t-G.zoneShown))*2);x.globalAlpha=a;const n=t(ZONES[G.lastZone%ZONES.length].n);const l1=t('ZONE {n}',{n:G.lastZone+1}),s1=3,s2=2;drawPixText(x,l1,Math.round(180-textW(l1,s1)/2),130,s1,'#ffd24a');drawPixText(x,n,Math.round(180-textW(n,s2)/2),160,s2,ZONES[G.lastZone%ZONES.length].neb);x.globalAlpha=1;}
+ if(W&&(G.mode==='play'||G.mode==='watch')&&G.t-G.zoneShown<2.2&&G.lastZone>0){const a=Math.min(1,(2.2-(G.t-G.zoneShown))*2);x.globalAlpha=a;const n=t(ZONES[G.lastZone%ZONES.length].n);const l1=t('ZONE {n}',{n:G.lastZone+1}),s1=3,s2=2;drawPixText(x,l1,Math.round(180-textW(l1,s1)/2),130,s1,'#ffd24a');drawPixText(x,n,Math.round(180-textW(n,s2)/2),160,s2,ZONES[G.lastZone%ZONES.length].neb);x.globalAlpha=1;}
  if(G.mode==='ready'){const a=.6+.4*Math.sin(G.t*6);x.globalAlpha=a;const l=t('TAP TO FLY');drawPixText(x,l,Math.round(180-textW(l,3)/2),400,3,'#ffffff');x.globalAlpha=1;const l2=t('TAP / CLICK / SPACE / UP');drawPixText(x,l2,Math.round(180-textW(l2,2)/2),440,2,'#a89f80');
   // finger hint
   const hy=470+Math.round(Math.abs(Math.sin(G.t*5))*8);x.fillStyle='#e8dcb5';x.fillRect(174,hy,12,18);x.fillRect(170,hy+8,4,10);x.fillStyle='#000';x.fillRect(174,hy,12,2);}
@@ -1184,6 +1211,107 @@ function inputInit(){const st=$('#stage');
  let lastTouch=0;document.addEventListener('touchend',e=>{const n=Date.now();if(n-lastTouch<300&&!(e.target&&e.target.tagName==='INPUT'))e.preventDefault();lastTouch=n;},{passive:false});
  document.addEventListener('visibilitychange',()=>{if(document.hidden){if(CUR==='play')pauseGame();stopMusic();}else if(MUSIC.want&&CUR!=='play')startMusic(MUSIC.want);});
  addEventListener('blur',()=>{if(CUR==='play')pauseGame();});}
+
+// =====================================================================================
+// LIVE MATCH BROADCASTING (opt-in, top 100 only; supabase_live.sql).
+// Broadcaster: while a run with a server ticket is played, every ~450 ms the new flap frames + current frame are
+// pushed to meowteor_live_push (server checks consent, top 100, not banned, rate limit; the seed comes from the
+// ticket). Display only: scores still go through meowteor-submit (Aura Anticheat).
+// Viewer: watch_live is polled every second; the run is rebuilt with the same deterministic engine from seed + taps
+// and played back ~1.5 s behind the newest data. Viewers only ever see names and a random per-run stream id.
+// Full-body skins are never streamed: viewers see the broadcaster's normal cosmetics on the classic cat.
+// =====================================================================================
+const LIVE_PUSH_MS=450,LIVE_POLL_MS=1000,LIVE_LIST_MS=4000,LIVE_BUFFER=90;
+async function liveRpc(fn,body,timeout=6000){if(!LB.remote)throw new Error('offline');const ctl=typeof AbortController!=='undefined'?new AbortController():null;const tm=setTimeout(()=>ctl&&ctl.abort(),timeout);
+ const h={'apikey':SUPABASE_ANON_KEY,'Content-Type':'application/json','Accept':'application/json'};if(/^eyJ/.test(SUPABASE_ANON_KEY))h.Authorization='Bearer '+SUPABASE_ANON_KEY;
+ try{const r=await fetch(SUPABASE_URL.replace(/\/+$/,'')+'/rest/v1/rpc/'+fn,{method:'POST',headers:h,body:JSON.stringify(body),signal:ctl&&ctl.signal,cache:'no-store'});const txt=await r.text();let v=null;try{v=txt?JSON.parse(txt):null;}catch(e){}
+  if(!r.ok){const e=new Error((v&&v.message)||('HTTP '+r.status));e.status=r.status;throw e;}return v;}finally{clearTimeout(tm);}}
+// ---------- consent (server-side per player id) ----------
+const BC={eligible:false,consent:false,checked:false,busy:false,run:null,n:0,sending:false,doneSent:false,stopped:null,lastPush:0,live:false,lastErr:null,
+ async refresh(){if(!LB.remote)return this;try{const r=await liveRpc('get_broadcast_status',{p_player_id:LB.playerId()});const row=Array.isArray(r)?r[0]:r;
+   if(row){this.eligible=!!row.eligible;this.consent=!!row.consent;this.checked=true;}}catch(e){}liveConsentUi();return this;},
+ async set(on){if(this.busy)return;this.busy=true;try{const r=await liveRpc('set_broadcast_consent',{p_player_id:LB.playerId(),p_consent:!!on});const row=Array.isArray(r)?r[0]:r;
+   if(row){this.eligible=!!row.eligible;this.consent=!!row.consent;}toast(this.consent?t('Broadcasting on: other players can watch your runs live.'):t('Broadcasting off.'),this.consent?'#3cff5a':'#ffd24a');}
+  catch(e){const m=String(e.message||e);if(/top 100|banned/.test(m)){this.eligible=false;this.consent=false;toast(t('Only top 100 players can broadcast.'),'#ff4a5a');}else toast(t('Could not save. Try again.'),'#ff4a5a');}
+  finally{this.busy=false;liveConsentUi();}},
+ canTry(){return !!(LB.remote&&this.consent&&this.eligible);}};
+// the checkbox (shown only to players the server says are in the top 100 and not banned)
+function liveConsentBox(extra){const w=el('label',{class:'bcbox click'+(extra?' '+extra:''),title:t('Top 100 players: others can watch your runs live from the leaderboard.')});
+ const cb=el('input',{type:'checkbox',class:'bccheck'});cb.checked=BC.consent;cb.disabled=BC.busy;
+ cb.addEventListener('change',e=>{e.stopPropagation();sfx('click');const v=cb.checked;cb.blur();BC.set(v);});cb.addEventListener('keydown',e=>e.stopPropagation());
+ w.appendChild(cb);w.appendChild(el('span',{},esc(t('Consent to broadcasting your match data'))));return w;}
+function liveConsentUi(){for(const h of $$('.bchost')){h.innerHTML='';if(BC.eligible&&LB.remote)h.appendChild(liveConsentBox(h.dataset.k));}}
+// ---------- broadcaster ----------
+function liveEq(){const o={};for(const k of ['fur','suit','head','face','back','trail'])o[k]=SAVE.eq[k];return o;}
+async function liveTick(){if(BC.sending||!LB.remote)return;const W0=G.world;
+ // a newly started run with a server ticket
+ if(W0&&W0.runId&&G.mode==='play'&&BC.run!==W0&&!(BC.run&&BC.run.dead&&!BC.doneSent&&BC.stopped!==BC.run&&BC.canTry())){BC.run=W0;BC.n=0;BC.doneSent=false;BC.lastPush=0;BC.stopped=null;}
+ const W=BC.run;if(!W||BC.stopped===W||BC.doneSent||!BC.canTry()){if(BC.live){BC.live=false;liveHud();}return;}
+ const done=!!W.dead;if(!done&&W!==G.world){BC.run=null;return;}
+ const now=Date.now();if(!done&&G.paused&&now-BC.lastPush<3000)return;
+ const fl=W.log.slice(BC.n,BC.n+100);let frame=W.frame;if(W.log.length-BC.n>100)frame=fl[fl.length-1]+1;
+ BC.sending=true;try{const r=await liveRpc('meowteor_live_push',{p_player_id:LB.playerId(),p_run_id:W.runId,p_from:BC.n,p_flaps:fl,p_frame:frame,p_score:W.score,p_eq:liveEq(),p_done:done&&frame===W.frame});
+  const row=Array.isArray(r)?r[0]:r;if(row){BC.n=Math.min(+row.n||0,W.log.length);BC.lastPush=now;if(done&&frame===W.frame)BC.doneSent=true;BC.live=!BC.doneSent;BC.lastErr=null;}}
+ catch(e){const m=String(e.message||e);BC.lastErr=m;if(/top 100|banned|consent|ticket|ended|too long|bad /.test(m)){BC.stopped=W;BC.live=false;if(/top 100|banned/.test(m))BC.eligible=false;if(/consent/.test(m))BC.consent=false;}}
+ finally{BC.sending=false;liveHud();}}
+function liveHud(){const s=$('#s-play');if(!s)return;let b=$('#livebadge');const on=BC.live&&CUR==='play';
+ if(on&&!b){b=el('div',{id:'livebadge',class:'livebadge'},`<span class="live"></span>${esc(t('LIVE'))}`);s.appendChild(b);}else if(!on&&b)b.remove();}
+// ---------- live list (leaderboard play buttons) ----------
+const LIVE={rows:[],at:0,busy:false,
+ async fetch(){if(!LB.remote||this.busy)return this.rows;this.busy=true;try{const r=await liveRpc('get_live_players',{});this.rows=(r||[]).map(x=>({sid:String(x.stream_id),name:String(x.name||''),best:+x.best||0,score:+x.score||0}));this.at=Date.now();}catch(e){}finally{this.busy=false;}return this.rows;},
+ find(r){return this.rows.find(x=>x.name===r.name&&x.best===r.score)||this.rows.find(x=>x.name===r.name)||null;}};
+function livePlayBtn(r){const l=LIVE.find(r);if(!l||r.me)return'';return`<span class="lvplay click" data-sid="${esc(l.sid)}" data-nm="${esc(r.name)}" title="${esc(t('Watch {name} live',{name:r.name}))}" role="button" aria-label="${esc(t('Watch {name} live',{name:r.name}))}">&#9654;</span>`;}
+function liveBindRows(box,back){if(!box)return;box.querySelectorAll('.lvplay').forEach(b=>b.onclick=e=>{e.stopPropagation();sfx('click');openWatch(b.dataset.sid,b.dataset.nm,back);});}
+// ---------- spectator view ----------
+const LV={on:false,sid:null,name:'',back:'ranks',seed:0,eq:null,flaps:[],set:new Set(),known:0,score:0,live:false,ended:false,over:false,poll:null,busy:false,acc:0,found:false,miss:0,fin:null};
+function liveViewerEq(eq){const d=defaultSave().eq,o=Object.assign({},d);for(const k of ['fur','suit','head','face','back','trail']){const v=eq&&eq[k];if(typeof v==='string'&&ITEMS.some(i=>i.id===v&&i.slot===k))o[k]=v;}o.skin='skin_none';return o;}
+function REQ(){return LV.on&&LV.eq?LV.eq:SAVE.eq;}
+function openWatch(sid,name,back){if(!/^[0-9a-f-]{36}$/i.test(String(sid||'')))return;show('watch',{sid,name,back});}
+SCREENS.watch=(s,o)=>{o=o||{sid:LV.sid,name:LV.name,back:LV.back};const fresh=!LV.on||LV.sid!==o.sid;
+ if(fresh){Object.assign(LV,{on:true,sid:o.sid,name:o.name||'',back:o.back||'ranks',seed:0,eq:liveViewerEq(null),flaps:[],set:new Set(),known:0,score:0,live:false,ended:false,over:false,acc:0,found:false,miss:0,fin:null});
+  G.world=null;G.mode='watch';G.pops=[];G.burst=[];G.shake=0;G.flash=0;G.deadT=0;G.lastZone=0;G.zoneBlend=1;G.paused=false;trailReset();stopMusic();
+  clearInterval(LV.poll);LV.poll=setInterval(()=>{if(!document.hidden)livePoll();},LIVE_POLL_MS);livePoll();}
+ s.innerHTML='';const top=el('div',{class:'lvtop'});
+ const cl=el('div',{class:'btn sm',id:'lvclose',title:t('CLOSE')},'&#10006; '+t('CLOSE'));cl.onclick=e=>{e.stopPropagation();sfx('click');closeWatch();};top.appendChild(cl);
+ top.appendChild(el('div',{class:'lvname',id:'lvname'},esc(LV.name)));
+ top.appendChild(el('div',{class:'lvbadge',id:'lvbadge'},`<span class="live"></span>${esc(t('LIVE'))}`));s.appendChild(top);
+ s.appendChild(el('div',{class:'lvstat small',id:'lvstat'},''));
+ s.appendChild(el('div',{class:'lvend',id:'lvend'}));liveWatchUi();};
+LEAVE.watch=()=>{clearInterval(LV.poll);LV.poll=null;LV.on=false;G.world=null;G.mode='title';trailReset();};
+function closeWatch(){const b=LV.back||'ranks';show(b==='title'?'title':'ranks');}
+function liveWatchUi(){const st=$('#lvstat'),bd=$('#lvbadge'),en=$('#lvend'),nm=$('#lvname');if(!st)return;if(nm)nm.textContent=LV.name;
+ const ended=LV.over;if(bd)bd.style.visibility=(!ended&&LV.found&&LV.live)?'':'hidden';
+ st.textContent=(!ended&&!LV.found)?t('Connecting...'):'';
+ if(en){if(ended&&!en.dataset.on){en.dataset.on='1';const sc=LV.fin!=null?LV.fin:(G.world?G.world.score:LV.score);
+   en.innerHTML=`<div class="panel lvpanel"><div class="gold" style="font-size:16px">${esc(t('Broadcast ended'))}</div><div class="gorow"><span>${esc(t('FINAL SCORE'))}</span><span style="font-size:26px;color:#fff">${fmt(sc)}</span></div><div class="small">${esc(LV.name)}</div></div>`;
+   const b=el('div',{class:'btn green'},t('CLOSE'));b.onclick=e=>{e.stopPropagation();sfx('click');closeWatch();};en.querySelector('.panel').appendChild(b);}
+  else if(!ended){en.dataset.on='';en.innerHTML='';}}}
+async function livePoll(){if(!LV.on||LV.busy||LV.over)return;LV.busy=true;const sid=LV.sid;
+ try{const r=await liveRpc('watch_live',{p_stream_id:sid,p_from:LV.flaps.length});if(!LV.on||LV.sid!==sid)return;const row=Array.isArray(r)?r[0]:r;
+  if(!row){LV.miss++;if(LV.found||LV.miss>=3){LV.live=false;LV.ended=true;if(!G.world||G.world.frame>=LV.known)liveEnd();}return;}
+  LV.miss=0;if(!LV.found){LV.found=true;LV.seed=(+row.seed)>>>0;LV.eq=liveViewerEq(row.eq);LV.name=String(row.name||LV.name);G.world=new World(LV.seed);G.mode='watch';trailReset();}
+  if(+row.n!==LV.flaps.length+(row.flaps||[]).length){LV.flaps=[];LV.set.clear();}  // out of sync: refetch everything next time
+  else for(const f of row.flaps||[]){LV.flaps.push(+f);LV.set.add(+f);}
+  LV.known=Math.max(LV.known,+row.frame||0);LV.score=+row.score||0;LV.live=!!row.live;LV.ended=!!row.ended;if(LV.ended)LV.fin=null;
+  // joined mid-run: jump to just behind the newest data
+  const W=G.world;if(W&&W.frame===0&&LV.known>LIVE_BUFFER){liveSim(LV.known-LIVE_BUFFER,true);}
+ }catch(e){}finally{LV.busy=false;liveWatchUi();}}
+function liveSim(toFrame,quiet){const W=G.world;let n=0;while(W&&!W.dead&&W.frame<toFrame&&W.frame<LV.known){W.step(LV.set.has(W.frame));n++;if(quiet)W.events.length=0;else liveEvents();}
+ if(W&&W.dead&&!LV.over)liveDeath();return n;}
+function liveEvents(){const W=G.world;for(const e of W.events){if(e.e==='score'){G.pops.push({x:PHYS.CATX+6,y:W.cat.y-14,txt:'+1',c:'#ffffff',t:0,life:.6});const z=zoneOf(W.score);if(z!==G.lastZone){G.lastZone=z;G.zoneBlend=0;G.zoneShown=G.t;}}
+ else if(e.e==='star'){G.pops.push({x:e.x,y:e.y-8,txt:e.gold?'+5':'+1',c:e.gold?'#3ad8ff':'#ffd24a',t:0,life:.8});for(let i=0;i<10;i++)G.burst.push({x:e.x,y:e.y,vx:rnd(-60,60),vy:rnd(-90,10),t:0,life:.5,c:e.gold?'#3ad8ff':'#ffd24a'});}}W.events.length=0;}
+function liveDeath(){const W=G.world;G.mode='dead';G.shake=8;G.flash=1;const F=furOf(LV.eq);for(let i=0;i<22;i++)G.burst.push({x:PHYS.CATX,y:W.cat.y,vx:rnd(-90,90),vy:rnd(-160,20),t:0,life:.8,c:pick([F.m,F.l,F.d,'#ffffff'])});
+ LV.fin=W.score;setTimeout(()=>{if(LV.on)liveEnd();},700);}
+function liveEnd(){if(LV.over)return;LV.over=true;if(G.world&&LV.fin==null)LV.fin=G.world.score;liveWatchUi();}
+// called from gameFrame while the spectator view is open
+function liveWatchFrame(dt){const W=G.world;if(!W||W.dead)return;LV.acc+=Math.min(dt,.1);let steps=0;
+ while(LV.acc>=PHYS.DT){LV.acc-=PHYS.DT;steps++;}const lag=LV.known-W.frame;if(lag>LIVE_BUFFER*2)steps+=Math.min(30,lag-LIVE_BUFFER);  // catch up after a stall
+ liveSim(W.frame+steps,false);if(W.frame>=LV.known)LV.acc=0;
+ if(!W.dead&&W.frame>=LV.known&&(LV.ended||(!LV.live&&LV.found)))liveEnd();
+ if(FRAME%15===0)liveWatchUi();}
+// ---------- wiring ----------
+setInterval(()=>{liveTick();},LIVE_PUSH_MS);
+I18N_HOOKS.push(()=>{if(CUR==='watch')SCREENS.watch($('#s-watch'));liveHud();});
 
 // ================= SCREENS =================
 const GAME_NAME='MEOWTEOR';
@@ -1243,18 +1371,18 @@ SCREENS.over=(s,res,redraw)=>{if(!redraw){OVER_READY=false;OVER_RANK=null;setTim
  p.appendChild(el('div',{class:'gorow'},`<span>${t('BEST')}</span><span class="gold" style="font-size:22px">${res.best}</span>`));
  if(res.isBest&&res.score>0)p.appendChild(el('div',{class:'newbest'},'&#9733; '+t('NEW BEST!')+' &#9733;'));
  p.appendChild(el('div',{class:'gorow',style:'font-size:13px'},`<span>${t('STARS EARNED')}</span><span class="gold">+${res.earned} ${STAR_ICON}</span>`));
- p.appendChild(el('div',{class:'small',id:'gorank',style:'min-height:14px;margin:2px 0'},overRankHtml()));
+ p.appendChild(el('div',{class:'small',id:'gorank',style:'min-height:14px;margin:2px 0'},overRankHtml()));p.appendChild(el('div',{class:'bchost',"data-k":'bcover'}));
  for(const u of res.unlocked||[])p.appendChild(el('div',{class:'green',style:'font-size:12px'},t('UNLOCKED: {item}',{item:esc(t(u.name)).toUpperCase()})));
  const retry=el('div',{class:'btn big green',id:'retry'},'&#8635; '+t('RETRY'));retry.onclick=()=>{if(OVER_READY)startGame();};p.appendChild(retry);
  const row=el('div',{});const mb=el('div',{class:'btn sm'},t('MENU'));mb.onclick=()=>{sfx('click');show('title');};const wb=el('div',{class:'btn sm pink'},t('WARDROBE'));wb.onclick=()=>{sfx('click');show('wardrobe');};const rb=el('div',{class:'btn sm gold'},t('RANKS'));rb.onclick=()=>{sfx('click');show('ranks');};
- row.append(mb,wb,rb);p.appendChild(row);s.appendChild(p);if(redraw)return;
+ row.append(mb,wb,rb);p.appendChild(row);s.appendChild(p);liveConsentUi();if(redraw)return;BC.refresh();
  if(res.isBest&&res.score>0)sfx('best');for(const u of res.unlocked||[]){toast(t('UNLOCKED: {item}',{item:esc(t(u.name))}),'#3cff5a');}
  // leaderboard: ask for a name the first time the player gets a score; submit only on a new best
  if(res.score>0&&!SAVE.name&&(!SAVE.askedName||res.isBest)){SAVE.askedName=true;persist();setTimeout(()=>askName(()=>submitFromOver()),500);}
  else if(SAVE.name&&SAVE.best>SAVE.lbBest)submitFromOver();};
 function overRankHtml(){const o=OVER_RANK;if(!o)return'';if(o.k==='sending')return esc(t('Submitting to leaderboard...'));if(o.k==='rank')return`<span class="green">${t('LEADERBOARD RANK #{n}',{n:o.rank})}</span>`;if(o.k==='offline')return esc(t('Offline: will upload your best later.'));return'';}
 function setOverRank(o){OVER_RANK=o;const g=$('#gorank');if(g)g.innerHTML=overRankHtml();}
-async function submitFromOver(){setOverRank({k:'sending'});try{const r=await lbMaybeSubmit();
+async function submitFromOver(){setOverRank({k:'sending'});try{const r=await lbMaybeSubmit();if(r&&r.ok)BC.refresh();
  if(r&&r.rank)setOverRank({k:'rank',rank:r.rank});else if(r&&r.offline)setOverRank({k:'offline'});else setOverRank(null);}catch(e){setOverRank(null);}}
 function askName(after,isChange){const wrap=el('div',{});wrap.appendChild(el('div',{class:'gold',style:'font-size:18px'},isChange?t('CHANGE NAME'):t('YOU SCORED!')));
  wrap.appendChild(el('div',{style:'font-size:13px;margin:6px 0 10px'},isChange?t('Pick a new leaderboard name.'):t('Enter a name for the leaderboard.')));
@@ -1302,23 +1430,24 @@ SCREENS.ranks=(s)=>{startMusic('menu');s.innerHTML='';s.style.background='#05080
  s.querySelectorAll('.lbtab').forEach(tb=>tb.onclick=()=>{sfx('click');RK.view=tb.dataset.v;s.querySelectorAll('.lbtab').forEach(o=>o.classList.toggle('on',o===tb));renderView();});
  const f=el('div',{class:'wfoot'});const nb=el('div',{class:'btn sm gold'},SAVE.name?t('CHANGE NAME'):t('SET NAME'));nb.onclick=()=>{sfx('click');askName(async()=>{await forceRename();refreshRanks();},!!SAVE.name);};
  const rf=el('div',{class:'btn sm'},t('REFRESH'));rf.onclick=()=>{sfx('click');refreshRanks();};const pl=el('div',{class:'btn sm green'},t('PLAY'));pl.onclick=()=>startGame();f.append(nb,rf,pl);s.appendChild(f);
- champRenderRanks();CHAMP.refresh();refreshRanks();clearInterval(RK.timer);RK.timer=setInterval(()=>{if(CUR==='ranks'&&!document.hidden)refreshRanks();},LB_REFRESH_MS);};
-LEAVE.ranks=()=>{clearInterval(RK.timer);RK.timer=null;$('#s-ranks').style.background='';};
+ champRenderRanks();CHAMP.refresh();refreshRanks();clearInterval(RK.timer);RK.timer=setInterval(()=>{if(CUR==='ranks'&&!document.hidden)refreshRanks();},LB_REFRESH_MS);
+ clearInterval(RK.ltimer);RK.ltimer=setInterval(async()=>{if(CUR!=='ranks'||document.hidden||!LB.remote)return;await LIVE.fetch();if(CUR==='ranks'&&LIVE.rows.map(x=>x.sid).join()!==RK.liveKey)renderView();},LIVE_LIST_MS);};
+LEAVE.ranks=()=>{clearInterval(RK.timer);RK.timer=null;clearInterval(RK.ltimer);RK.ltimer=null;$('#s-ranks').style.background='';};
 // renaming re-sends the current best under the new name (server keeps the higher score; equal score updates the name)
 async function forceRename(){if(!SAVE.name)return;const sc=LB.remote?SAVE.lbBest:SAVE.best;if(sc<=0)return;try{const r=await LB.submitScore(SAVE.name,sc);if(r&&r.ok){SAVE.lbBest=Math.max(SAVE.lbBest,sc);persist();}}catch(e){}}
-async function refreshRanks(){if(RK.busy)return;RK.busy=true;try{await lbMaybeSubmit();const pid=LB.playerId();const [rows,me,ban]=await Promise.all([LB.fetchTop(100),LB.fetchMyRank(pid),LB.fetchBanned()]);if(CUR!=='ranks')return;if(ban)RK.banned=ban;RK.rows=rows;RK.me=me;renderRanks(rows,me);}catch(e){console.warn(e);}finally{RK.busy=false;}}
-function rowHtml(r,me){return`<div class="lbrow${me?' me':''}${r.rank<=3?' r'+r.rank:''}"><span class="rk">${r.rank<=3?['','&#9733;1','&#9733;2','&#9733;3'][r.rank]:'#'+r.rank}</span><span class="nm">${esc(r.name)}${me?' ('+t('YOU')+')':''}</span><span class="sc">${fmt(r.score)}</span></div>`;}
+async function refreshRanks(){if(RK.busy)return;RK.busy=true;try{await lbMaybeSubmit();const pid=LB.playerId();const [rows,me,ban]=await Promise.all([LB.fetchTop(100),LB.fetchMyRank(pid),LB.fetchBanned(),LIVE.fetch(),BC.refresh()]);if(CUR!=='ranks')return;if(ban)RK.banned=ban;RK.rows=rows;RK.me=me;renderRanks(rows,me);}catch(e){console.warn(e);}finally{RK.busy=false;}}
+function rowHtml(r,me){return`<div class="lbrow${me?' me':''}${r.rank<=3?' r'+r.rank:''}"><span class="rk">${r.rank<=3?['','&#9733;1','&#9733;2','&#9733;3'][r.rank]:'#'+r.rank}</span><span class="nm">${esc(r.name)}${me?' ('+t('YOU')+')':''}</span>${livePlayBtn(r)}<span class="sc">${fmt(r.score)}</span></div>`;}
 function banRowHtml(r){return`<div class="lbrow banrow"><span class="rk">&#10006;</span><span class="nm">${esc(r.name)}<i>${r.at?new Date(r.at).toLocaleDateString([], {month:'short',day:'numeric'}):''}</i></span><span class="sc">${fmt(r.score)}</span></div>`;}
 function renderView(){if(RK.rows)renderRanks(RK.rows,RK.me);}
 function renderRanks(rows,me){const bl=RK.banned||[];const bn=$('#lbbann');if(bn)bn.textContent=bl.length?' '+bl.length:'';const banV=RK.view==='ban';const sh=$('#lbsch');if(sh)sh.textContent=banV?t('BEST SCORE'):t('SCORE');const pn=$('#lbpin');if(pn)pn.style.visibility=banV?'hidden':'';
  if(banV){const bx=$('#lbrows');if(bx)bx.innerHTML=`<div class="small center bannote">${t('Banned for cheating. Their scores were removed and they cannot win prizes.')}</div>`+(bl.length?bl.map(banRowHtml).join(''):`<div class="small center" style="padding:20px">${t('No banned players.')}</div>`);}const st=$('#lbstat');if(st)st.innerHTML=LB.status==='live'?`<span class="live"></span><span class="green">${t('LIVE')}</span> &middot; ${t('GLOBAL')}`:(LB.status==='offline'?`<span class="live off"></span><span class="gold">${t('OFFLINE')}</span> &middot; ${t('LOCAL BOARD')}`:`<span class="live off"></span><span class="gold">${t('LOCAL BOARD')}</span>`);
  const tm=$('#lbtime');if(tm)tm.textContent=t('UPDATED {time}',{time:new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'})});
  const box=$('#lbrows');if(!box||banV)return;const inTop=rows.some(r=>r.me);
- box.innerHTML=rows.length?rows.map(r=>rowHtml(r,r.me)).join(''):`<div class="small center" style="padding:20px">${t('No scores yet. Be the first!')}</div>`;
+ box.innerHTML=rows.length?rows.map(r=>rowHtml(r,r.me)).join(''):`<div class="small center" style="padding:20px">${t('No scores yet. Be the first!')}</div>`;liveBindRows(box,'ranks');RK.liveKey=LIVE.rows.map(x=>x.sid).join();
  const pin=$('#lbpin');if(!pin)return;
  if(me&&!inTop){pin.innerHTML=`<div class="small" style="margin-bottom:2px">${t('YOUR POSITION')}</div>`+rowHtml({rank:me.rank,name:me.name,score:me.score},true);}
  else if(!me){pin.innerHTML=`<div class="small" style="margin-bottom:2px">${t('YOUR POSITION')}</div>`+`<div class="lbrow me"><span class="rk">--</span><span class="nm">${SAVE.name?esc(SAVE.name):t('YOU')}</span><span class="sc">${SAVE.best}</span></div>`+`<div class="small center" style="margin-top:2px">${SAVE.name?(SAVE.best>0?t('Uploading your best...'):t('Score a point to get ranked!')):t('Score a point and set a name to get ranked!')}</div>`;}
- else pin.innerHTML=`<div class="small center" style="padding-top:12px">${t("You're #{n} in the top 100! Your row is highlighted.",{n:me.rank})}</div>`;
+ else{pin.innerHTML=`<div class="small center" style="padding-top:${BC.eligible&&LB.remote?2:12}px">${t("You're #{n} in the top 100! Your row is highlighted.",{n:me.rank})}</div><div class="bchost" data-k="bcpin"></div>`;liveConsentUi();}
  const meRow=box.querySelector('.lbrow.me');if(meRow&&!RK.scrolled){RK.scrolled=true;}}
 
 // ================= ACCOUNT WALLET BRIDGE (Lost Aura Games accounts + coin store) =================
@@ -1380,6 +1509,7 @@ window.addEventListener('load',()=>{loadSave();WALLET.init();LB.init();LB.prefet
  $('#pauseb').addEventListener('click',e=>{e.stopPropagation();if(G.paused)resumeGame();else pauseGame();});
  $('#pauseb').title=t('Pause');$('#mute').title=t('Mute / unmute (M)');
  show('title');requestAnimationFrame(loop);
+ BC.refresh();const wm=/[?&]watch=([0-9a-f-]{36})(?:&|$)/i.exec(location.search);if(wm&&LB.remote)openWatch(wm[1],'','title');
  setTimeout(()=>{lbMaybeSubmit().catch(()=>{});},1500);});
 window.MEOWTEOR_UI=Object.freeze({screen:()=>CUR,modal:()=>!!MODAL_OPEN});
 })();

@@ -67,5 +67,33 @@ function start(){clearInterval(timer);timer=setInterval(function(){if(!document.
 document.addEventListener('visibilitychange',function(){if(!document.hidden)refresh();});
 window.addEventListener('online',refresh);
 setStatus('loading','Connecting\u2026');render();refresh();start();
-window.LAGLeaderboardMeowteor={refresh:refresh,playerId:playerId};
+
+// ---- Leaderboard Champion event (server-authoritative; see the game's supabase_champion.sql) ----
+// Countdown to the deadline using the SERVER clock (offset from get_champion_status), then the winner's name
+// above the board for 24 h. Never shows anything about the skin's look (only the winner's game receives it).
+var CH_EVENT=(/[?&]champ=([a-z0-9-]{3,48})\b/.exec(location.search)||[])[1]||'meowteor-2026-10-29';
+var elChamp=document.getElementById('lb-champ'),ch={st:null,off:0,busy:false,poll:0,last:0,state:null};
+function chNow(){return Date.now()+ch.off;}
+function chState(){var st=ch.st;if(!st||!st.event)return'none';var n=chNow(),d=Date.parse(st.deadline),b=Date.parse(st.banner_until);
+  if(st.decided)return(st.has_winner&&n<b)?'banner':'over';if(n<d)return'pending';return n<b?'deciding':'over';}
+function p2(n){return(n<10?'0':'')+n;}
+function chCountdown(){var ms=Math.max(0,Date.parse(ch.st.deadline)-chNow()),s=Math.floor(ms/1000),d=Math.floor(s/86400),h=Math.floor(s%86400/3600),m=Math.floor(s%3600/60),x=s%60;
+  var hms=p2(h)+':'+p2(m)+':'+p2(x);return d>0?T('{d}d {hms}',{d:d,hms:hms}):hms;}
+function chDate(){try{return new Date(ch.st.deadline).toLocaleString(window.LAGI18N?window.LAGI18N.lang:undefined,{weekday:'short',month:'short',day:'numeric',hour:'numeric',minute:'2-digit',timeZoneName:'short'});}catch(e){return new Date(ch.st.deadline).toString();}}
+function chRender(){if(!elChamp)return;var s=chState();ch.state=s;var h='';
+  if(s==='pending')h='<p class="lb-champ-t">&#9733; '+esc(T('Champion event'))+' &#9733;</p><p class="lb-champ-s">'+esc(T('#1 on the leaderboard when the timer ends wins the 1 of 1 space cat skin: an exclusive full-body skin nobody else can ever get.'))+'</p>'+
+    '<p class="lb-champ-cd"><span>'+esc(T('Time left until the winner gets the skin'))+'</span><b class="lb-champ-time">'+esc(chCountdown())+'</b></p><p class="lb-champ-s muted">'+esc(T('Ends {date}',{date:chDate()}))+'</p>';
+  else if(s==='deciding')h='<p class="lb-champ-t">&#9733; '+esc(T('Champion event'))+' &#9733;</p><p class="lb-champ-s">'+esc(T("Time's up! Crowning the Leaderboard Champion\u2026"))+'</p>';
+  else if(s==='banner')h='<p class="lb-champ-t">&#9819; '+esc(T('Leaderboard Champion'))+' &#9819;</p><p class="lb-champ-n">'+esc(ch.st.winner_name||'')+(ch.st.is_me?' <em>'+esc(T('(you)'))+'</em>':'')+'</p><p class="lb-champ-s">'+esc(T('Winner of the 1 of 1 space cat skin'))+'</p>';
+  elChamp.hidden=!h;elChamp.className='lb-champ'+(h?' '+s:'');if(elChamp.getAttribute('data-h')!==h){elChamp.innerHTML=h;elChamp.setAttribute('data-h',h);}}
+function chRefresh(){if(ch.busy)return;ch.busy=true;ch.last=Date.now();var t0=Date.now();
+  rpc('get_champion_status',{p_event:CH_EVENT,p_player_id:playerId()}).then(function(st){var t1=Date.now();if(st&&st.server_now)ch.off=Date.parse(st.server_now)+(t1-t0)/2-t1;ch.st=st;chRender();})
+   .catch(function(e){if(window.console&&console.warn)console.warn('[MEOWTEOR champion] '+(e&&e.message||e));}).then(function(){ch.busy=false;});}
+function chTick(){if(!ch.st)return;var s=chState();
+  if(s==='deciding'&&Date.now()-ch.poll>4000){ch.poll=Date.now();chRefresh();}
+  else if(s==='pending'&&Date.parse(ch.st.deadline)-chNow()<1500&&Date.now()-ch.poll>1500){ch.poll=Date.now();setTimeout(chRefresh,1600);}
+  else if(Date.now()-ch.last>60000&&!document.hidden)chRefresh();
+  if(s!==ch.state)chRender();else if(s==='pending'){var b=elChamp&&elChamp.querySelector('.lb-champ-time');if(b)b.textContent=chCountdown();}}
+if(elChamp){document.addEventListener('lag:lang',function(){elChamp.removeAttribute('data-h');chRender();});chRefresh();setInterval(chTick,1000);}
+window.LAGLeaderboardMeowteor={refresh:refresh,playerId:playerId,champion:function(){return{state:chState(),st:ch.st,offset:ch.off};}};
 })();

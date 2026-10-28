@@ -118,6 +118,10 @@ while a dialog is open, and it moves the link inside the game's `#stage`, just u
 - The global leaderboard is a Supabase project. Its URL and public (publishable) key are at the top of the game's
   `src/05_leaderboard.js` and at the top of `assets/js/leaderboard-meowteor.js`. If you ever change them, change both.
   The database side (the `get_top_scores`, `get_my_rank` and `submit_score` functions) is set up by the game's `supabase.sql`.
+- **Leaderboard Champion event (1-of-1 skin):** the game and the info page both show a countdown above the board
+  (server clock, from the `get_champion_status` RPC), then the winner's name for 24 hours. The skin's art is never in
+  this repo or the game file: the server returns it only to the winning player's game (`claim_champion_skin`).
+  Database side: the game's `supabase_champion.sql`. Never copy anything from the game's `private/` folder here.
 - The info page's leaderboard only reads scores. It shows the top 100, refreshes every 15 seconds and pins the player's
   own position under the list when they're outside the top 100.
 

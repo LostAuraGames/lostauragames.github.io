@@ -3073,7 +3073,7 @@ function respawn(){PE.dead=false;PE.hp=Math.round(PE.maxHp*.5);PE.stun=0;GAME.mi
  else{const z=P.bind;if(GAME.map.z!==z||GAME.map.kind!=='zone'){enterZone(z,null,null);}const M=GAME.map;const h=M.npcs.find(n=>n.role==='healer');PE.x=h?h.x:M.town.cx+.5;PE.y=h?h.y+1.2:M.town.cy+2.5;}
  calcStats();}
 // ---- stealth / mount ----
-function enterStealth(force){if(P.cls!=='thief')return false;if(!force&&inCombat()){toast(t('Cannot stealth in combat'));return false;}PE.stealth=true;sfx('stealth');burst(PE.x,PE.y,'#9a8cff',12,2);if(force){GAME.mobs.forEach(m=>{if(m.tgt===PE){m.state='return';m.tgt=null;}});}return true;}
+function enterStealth(force){if(P.cls!=='thief')return false;if(!force&&inCombat()){toast(t('Cannot stealth in combat'));return false;}PE.stealth=true;sfx('stealth');burst(PE.x,PE.y,'#9a8cff',12,2);if(force){GAME.mobs.forEach(m=>{if(m.tgt===PE){m.state=m.boss?'idle':'return';m.tgt=null;}});}return true;}
 function breakStealth(){if(PE&&PE.stealth){PE.stealth=false;}}
 function toggleMount(){if(!P.mount){toast(t('You have no mount. Stablemasters in Aurelion sell them.'));return;}if(P.mounted){dismount();return;}if(inCombat()){toast(t('Cannot mount in combat'));return;}if(GAME.dun){toast(t('Cannot mount in dungeons'));return;}P.mounted=true;sfx('equip');calcStats();}
 function dismount(){if(P&&P.mounted){P.mounted=false;}}

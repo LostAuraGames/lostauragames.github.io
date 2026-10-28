@@ -730,9 +730,9 @@ const AB={
  backstab:{cls:'thief',n:'Backstab',lvl:1,kind:'melee',coef:2.1,cd:1.5,cost:35,combo:2,behind:1.5,icon:['dagger','#ff4a5a'],d:'Strike for heavy damage (+50% from behind or stealth). +2 combo points.'},
  evis:{cls:'thief',n:'Eviscerate',lvl:5,kind:'finisher',coef:.95,cd:1,cost:30,icon:['blood','#ff2a4a'],d:'Finisher: consumes combo points for damage per point.'},
  poison:{cls:'thief',n:'Poison Blade',lvl:10,kind:'buff',cd:25,cost:20,buff:{id:'poison',dur:20},icon:['vial','#3cff5a'],d:'For 20s your hits poison enemies for extra damage over time.'},
- shstep:{cls:'thief',n:'Shadowstep',lvl:16,kind:'blink',target:1,r:8,cd:15,cost:15,icon:['step','#b04cff'],d:'Teleport behind an enemy; your next hit deals +50% damage.'},
+ shstep:{cls:'thief',n:'Shadowstep',lvl:32,kind:'blink',target:1,r:8,cd:15,cost:15,icon:['step','#b04cff'],d:'Teleport behind an enemy; your next hit deals +50% damage.'},
  fan:{cls:'thief',n:'Fan of Knives',lvl:24,kind:'nova',r:2.6,coef:1.4,cd:4,cost:45,combo:1,icon:['fan','#e8dcb5'],d:'Hurl knives at every enemy around you. +1 combo point.'},
- evasion:{cls:'thief',n:'Evasion',lvl:32,kind:'buff',cd:45,cost:0,buff:{id:'evasion',dodge:60,dur:6},icon:['wind','#9fe'],d:'60% chance to dodge attacks for 6s.'},
+ evasion:{cls:'thief',n:'Evasion',lvl:18,kind:'buff',cd:45,cost:0,buff:{id:'evasion',dodge:60,dur:6},icon:['wind','#9fe'],d:'60% chance to dodge attacks for 6s.'},
  vanish:{cls:'thief',n:'Vanish',lvl:42,kind:'stealth',force:1,cd:60,cost:0,icon:['smoke','#777'],d:'Vanish into stealth even in combat; enemies lose track of you.'},
  deathmark:{cls:'thief',n:'Death Mark',lvl:60,kind:'mark',cd:30,cost:25,dur:10,amp:35,icon:['skull','#ff4a5a'],d:'Mark a target: it takes 35% more damage from you for 10s.'},
  // ---- mage ----
@@ -741,7 +741,7 @@ const AB={
  chain:{cls:'mage',n:'Chain Lightning',lvl:8,kind:'chain',coef:1.4,jumps:3,r:7,cd:6,cost:20,el:'shock',icon:['bolt','#fff27a'],d:'Lightning that leaps between up to 4 enemies.'},
  blink:{cls:'mage',n:'Blink',lvl:12,kind:'blink',r:5,cd:12,cost:10,icon:['step','#7fb2ff'],d:'Teleport 5 tiles in the direction you aim.'},
  meteor:{cls:'mage',n:'Meteor',lvl:20,kind:'ground',r:2.6,coef:3.5,delay:.9,cd:14,cost:35,el:'fire',icon:['meteor','#ff5a1e'],d:'Call down a meteor on the target area.'},
- manashield:{cls:'mage',n:'Mana Shield',lvl:28,kind:'buff',cd:30,cost:0,buff:{id:'manashield',dur:10},icon:['orb','#4a9bff'],d:'For 10s, damage drains mana instead of health.'},
+ manashield:{cls:'mage',n:'Mana Shield',lvl:16,kind:'buff',cd:30,cost:0,buff:{id:'manashield',dur:10},icon:['orb','#4a9bff'],d:'For 10s, damage drains mana instead of health.'},
  blizzard:{cls:'mage',n:'Blizzard',lvl:38,kind:'ground',r:3,coef:.65,ticks:6,cd:20,cost:40,el:'frost',slow:1,icon:['flake','#c8f0ff'],d:'Ice storm over an area for 6s that slows and damages.'},
  pyro:{cls:'mage',n:'Pyroblast',lvl:55,kind:'proj',coef:6,splash:1.6,cd:18,cost:50,spd:7,el:'fire',big:1,icon:['flame','#ff3a1e'],d:'An enormous ball of fire.'},
  surge:{cls:'mage',n:'Arcane Surge',lvl:80,kind:'buff',cd:90,cost:0,buff:{id:'surge',dmg:40,free:1,dur:8},icon:['star','#e2c2ff'],d:'+40% spell damage and spells cost no mana for 8s.'},
@@ -752,7 +752,7 @@ const AB={
  decay:{cls:'summoner',n:'Curse of Decay',lvl:11,kind:'ground',r:2.2,coef:.4,ticks:8,cd:8,cost:18,el:'dark',icon:['blood','#7a3cff'],d:'Curse an area: enemies rot over 8 seconds.'},
  wraith:{cls:'summoner',n:'Summon Wraith',lvl:18,kind:'summon',minion:'wraith',cd:10,cost:30,icon:['ghost','#9fe'],d:'Summon a wraith that blasts enemies from range. Limit 1 (2 at rank 4).'},
  cexplode:{cls:'summoner',n:'Corpse Explosion',lvl:26,kind:'corpse',r:2.6,coef:2.8,cd:6,cost:20,el:'bone',icon:['burst','#ff8a1e'],d:'Detonate a corpse near the target, damaging everything around it.'},
- bonearmor:{cls:'summoner',n:'Bone Armor',lvl:36,kind:'shield',pct:30,cd:30,cost:20,icon:['shield','#e8dcb5'],d:'A bone shell absorbs damage equal to 30% of your max health.'},
+ bonearmor:{cls:'summoner',n:'Bone Armor',lvl:14,kind:'shield',pct:30,cd:30,cost:20,icon:['shield','#e8dcb5'],d:'A bone shell absorbs damage equal to 30% of your max health.'},
  abom:{cls:'summoner',n:'Raise Abomination',lvl:50,kind:'summon',minion:'abom',cd:60,cost:50,icon:['golem','#6a9a5a'],d:'Stitch together a huge abomination that taunts and smashes. Limit 1.'},
  army:{cls:'summoner',n:'Army of the Dead',lvl:75,kind:'summon',minion:'army',cd:120,cost:60,icon:['skulls','#e8dcb5'],d:'Six skeletons burst from the ground for 20s.'},
 };
@@ -1190,6 +1190,57 @@ function buildQuests(){
 buildQuests();
 function questXP(q){const base=xpToNext(q.lvl);return Math.round(base*(q.dungeon?.6:q.main?.28:.2));}
 function questGold(q){return Math.round(goldDrop(q.lvl)*(q.dungeon?30:q.main?9:7));}
+
+// ================= Hand-written main questline: Whisperwood, Aurelion, Burned Lands =================
+// Overrides quest offer text (text) and adds turn-in dialogue (done). Other regions keep the generated text.
+const STORY_RICH={
+ m0_1:{text:"Easy now — you've slept two days. Hunters found you at the forest's edge, cold as river stone, and that mark on your palm was glowing like a coal.\n\nI am Maren, elder of Hearthmoor. I have no answers for you yet, only trouble: the Whisperwood has turned against us. Ants the size of ponies are pouring from the trees, and our palisade was built for wolves, not this.\n\nWhoever you were before, Hearthmoor needs you to be someone now.",
+  done:"You are steadier on your feet than you have any right to be. Good. The mark on your hand flared when you stood — I have read of such things in the old songs. Stay close to the village for now. There is work, and there is little time."},
+ m0_2:{text:"Look at the fields — the worker ants strip a barley row in an hour and carry it back into the forest. Ants do not plan like this. Something is feeding them, driving them.\n\nCut down the workers in the fields and the forest edge. Every one you slay is a mouth that does not reach our granary.",
+  done:"Six fewer, and the rest pulled back into the trees. They did not flee... they withdrew, like soldiers. That frightens me more than the swarm itself."},
+ m0_3:{text:"The soldier ants spit an acid that eats through oak and iron alike. Our east gate is half gone.\n\nOld Teodric, our alchemist, swears he can brew a counter-salve — but he needs their mandibles, fresh, with the acid glands still inside. Bring him what he needs. Mind your hands.",
+  done:"Teodric cut one open and went pale. There is ash in the glands — black ash, the kind that comes from no fire in this forest. Someone has been feeding the swarm something far older than hunger."},
+ m0_4:{text:"Our scouts found where they breed: Anthill Hollow, north of the Moonwell. The ground there is a carpet of egg sacs, each one pulsing with that same black ash.\n\nBurn them. If the next brood hatches, Hearthmoor falls before the first snow.",
+  done:"The hunters saw the smoke from the walls and cheered. But they also saw a shape standing on the Hollow Altar, watching the fire. Tall. Wrong. Not an ant."},
+ m0_5:{text:"The Hollow Altar — a ruin older than Hearthmoor. Children are told never to go there. Now something stands upon it and the swarm moves when it moves.\n\nIt calls itself Kzzrak, the Brood Overseer. The ants are not its children; they are its weapon. End it, and bring me anything it carries.",
+  done:"A sigil of black iron: a crown, with nothing inside it.\n\nThe Hollow Crown. My grandmother sang of them — men and women who believe humanity was the world's great mistake, and serve a king with no heart called Vharos. They want every hearth cold and every road empty. I thought them a story.\n\nAnd your mark... the songs call it the Lost Aura. The last light that answers when the Crown rises."},
+ m0_6:{text:"The Overseer is dead but the Queen beneath the forest still breeds. That is a fight for later — when you are stronger.\n\nFirst, this sigil must be seen by people with swords and walls. Take it east through the trees to Reeve Hollis in Briarford. If the Hollow Crown is moving here, it is moving everywhere.\n\nGo with the light, child. Hearthmoor will remember you.",
+  done:"(Reeve Hollis turns the sigil over in his hands for a long while.) Maren sent you? Then it's true, and I'm a fool for laughing at the old songs."},
+ d_hive:{text:"Now you are ready to hear it. Beneath the Whisperwood, under the roots of the oldest tree, lies a Hive. In its heart lives Myrmexa, the Brood Queen — once a common ant queen, now swollen with Hollow sorcery until she is the size of a barn.\n\nAs long as she lives, the swarm returns, season after season, until every village on the forest's edge is gone. The Crown planted her here to bleed us slowly.\n\nGo down into the Brood Hive. Kill her. Bring potions — many — and do not let her slams catch you.",
+  done:"The forest is... quiet. For the first time in a year I hear birds at dawn. Whatever she guarded down there, keep it. You earned it, champion of Hearthmoor."},
+ m2_1:{text:"So the hero of the Whisperwood arrives bearing Hollow coin and a bandit's orders. Kneel if you like; I am tired of ceremony.\n\nI am Aldric, and this is my kingdom — what is left of it. My father spoke of the Hollow Crown: a faith that teaches humanity is a sickness, and that the kindest thing is to end it. Their priests now preach openly on my roads, and my own lords pretend not to hear.\n\nThat mark you carry... my court sorcerer would give her left eye to see it. I would rather see it used.",
+  done:"You did not flinch when I named them. Good. Most of my court did. Aurelion has walls, merchants, and ten thousand souls who do not yet know what is coming. Help me keep them that way."},
+ m2_2:{text:"The cultists gather crowds at the crossroads. They tell farmers that their king has abandoned them, that the Crown will give them peace — the peace of the grave.\n\nI will not jail people for listening. But the preachers carry daggers, and three of my tax-riders are already dead. Break the cult's grip on the crownlands.",
+  done:"The crossroads are quiet. My guards found lists on the bodies — names of every family that refused to listen. Marked for 'unmaking'. Those lists are ash now. Thank you."},
+ m2_3:{text:"Grave robbers have broken into the Old Graveyard and taken the signet rings of my ancestors from their tombs. Petty theft, you would think.\n\nBut a signet can seal a royal order. With seven kings' seals, the Crown could command half my garrisons to march wherever they please. Get them back.",
+  done:"Seven signets... and one more I have never seen: the seal of Sir Varric, my grandfather's champion, who betrayed him and was buried beneath the city in chains. That grave was supposed to be sealed forever."},
+ m2_4:{text:"The cultists are raising effigies in the Old Graveyard — straw kings with empty crowns, soaked in blood and pitch. My priests say each one thins the wall between the living and what lies beneath.\n\nTear them down. Burn them. Let my people see that the Crown's idols fall like any other straw.",
+  done:"The priests say the graveyard 'breathes easier'. I do not know what that means, and I am not sure I want to."},
+ m2_5:{text:"All of it leads to one man: Deacon Malvray, once my own chaplain. He holds rites at the Sunken Shrine below the old aqueduct, and he is the voice the cultists obey.\n\nHe baptized my daughter. Now he would drown the kingdom. Silence him, and bring me whatever he writes in.",
+  done:"His ledger. Pages of names, payments in black gold... and orders, written in a cold, beautiful hand and signed only with an empty crown.\n\nThey are building something in the Burned Lands. A foundry, it says. Cindermaw's forge. 'To poison the bread of men.'"},
+ m2_6:{text:"The Burned Lands were once the breadbasket of my realm. Now nothing grows there, and my scouts come back coughing blood. If Malvray's ledger is right, the Crown is poisoning the earth itself to starve us and breed monsters from the slag.\n\nCaptain Sera Vex holds the fort at Cinderwatch with what is left of the Ember Guard. Go to her. Tell her the king has not forgotten her — and that help is finally coming.",
+  done:"(Captain Vex reads the king's seal and laughs, short and hard.) 'Help is coming.' He's been saying that for two years. And they sent... you. Well. You'd better be as good as the stories."},
+ d_crypt:{text:"Sir Varric the Oathless. My grandfather's champion, who opened the gates to raiders for a bag of gold and was buried alive beneath this city in silver chains.\n\nThe cultists broke those chains. My guards hear armor marching in the Catacombs of Aurelion at night, and the royal dead do not rest. Varric is raising an army of kings under my very throne.\n\nGo down. Put him back in his grave, and this time make sure he stays.",
+  done:"The bells rang on their own when he fell. The priests are calling it a miracle. I am calling it a debt — one Aurelion will repay you."},
+ m3_1:{text:"Look around you. This was the breadbasket of the realm. My grandmother farmed barley where that slag heap stands. Now the soil is rust, the rain burns skin, and the wells taste of copper.\n\nEvery bit of it is the work of the Hollow foundries. Their chimneys never stop. They are poisoning the land so the cities starve — and out of the poison, they grow soldiers.\n\nI'm Sera Vex. Welcome to the end of the world.",
+  done:"You came. That's more than most. The Ember Guard is forty souls and three working crossbows. Whatever you are, you're our best weapon now."},
+ m3_2:{text:"The slag golems are the worst of it. They crawl out of the Black Chimneys — molten waste given legs by Hollow rites — and they walk until they cool, burning everything they touch.\n\nSmash them before they reach the farmsteads that are still trying to grow something. Aim for the cracks; the cores burn hottest there.",
+  done:"They break like pottery once they cool. Good to know. The Guard is already calling you 'the golem breaker'. Try not to let it go to your head."},
+ m3_3:{text:"The cinder imps carry burning cores — little hearts of foundry fire. My smith thinks she can turn them into fire-bombs, and we'd love to give the Crown a taste of its own smoke.\n\nBring me cores. Don't hold them too long; they bite back.",
+  done:"Ha! Smith Odda threw one at a slag heap and it went up like a festival. We have teeth again."},
+ m3_4:{text:"The Sludge Pits are fed by valves from the foundry — runoff so foul it kills birds that fly over it. Every drop that seeps into the earth is another field lost forever.\n\nSeal those valves. All of them. We can't heal the land yet, but we can stop the bleeding.",
+  done:"The Ashen Farmstead's well ran clear this morning. Clear. Old Haskin wept into the bucket. You did that."},
+ m3_5:{text:"The foundry slaves are men and women from Aurelion's villages, taken in the night and chained to the furnaces. Overseer Grakk works them until they drop, then feeds them to the slag.\n\nHe holds the Black Chimneys. Kill him, free whoever you can, and bring me anything he carries. If we're going to strike the foundry itself, we need to know how it works.",
+  done:"Foundry schematics. Not for weapons — for engines. Plague engines, crated and sent south to the Mirewood Fen.\n\nThey're not just starving us. They mean to sicken whoever's left. This was never a war for land. It's a war to end us."},
+ m3_6:{text:"These schematics must reach Mother Ilse in Bogmere before the plague engines do. She knows the fen and its witches better than anyone alive.\n\nI'd go myself, but if I leave, Cinderwatch falls. So it's you again. It's always you, isn't it? Ride south. And thank you — I don't say that often.",
+  done:"(Mother Ilse takes the schematics with shaking hands.) Plague engines... so that is what the witches have been brewing. Sit, champion. This will be a long night."},
+ d_foundry:{text:"At the heart of the Burned Lands stands the Slag Foundry, and at its heart, Cindermaw the Artificer — a Hollow smith who forged the golems, poisoned the rivers, and built the plague engines with his own scorched hands.\n\nAs long as his furnaces burn, nothing will ever grow here again. Go into the Slag Foundry and put out his fire for good.\n\nThe Ember Guard will hold the gate behind you. Come back to us.",
+  done:"The chimneys went dark at dawn. All of them. For the first time in two years I can see the stars over Cinderwatch. Drink with us tonight, champion. Tomorrow the land starts healing."},
+};
+for(const id in STORY_RICH){const q=QUESTS[id];if(!q)continue;Object.assign(q,STORY_RICH[id]);}
+// translated quest dialogue: QTR[lang][questId] = {text, done}
+const QTR={es:{},fr:{},de:{},pt:{},it:{}};
+function qtx(q,f){const tr=QTR[LANG]&&QTR[LANG][q.id];return(tr&&tr[f])||q[f];}
 
 // ================= PROCEDURAL PIXEL ART =================
 const TS=16;// tile size (world pixels)
@@ -2156,7 +2207,7 @@ const RENDERERS={
  quests:{mk:()=>win('quests',t('Quest Log'),560),draw(W){const act=Object.keys(P.quests.a).map(id=>QUESTS[id]).filter(Boolean);W.bd.innerHTML='<div class="grey">'+t('{a} active · {d} completed of {n}',{a:act.length,d:Object.keys(P.quests.d).length,n:QUEST_LIST.length})+'</div>';
   if(!act.length)W.bd.insertAdjacentHTML('beforeend','<p>'+t('No active quests. Look for ! above townsfolk.')+'</p>');
   act.sort((a,b)=>(b.main||0)-(a.main||0)||a.lvl-b.lvl).forEach(q=>{const d=el('div',{class:'panel',style:'margin:6px 0;padding:6px'});const done=qComplete(q);
-   d.innerHTML='<div class="'+(done?'green':'gold')+'">'+(q.main?'★ ':q.dungeon?'⚔ ':'')+esc(q.title)+' <span class="grey">['+q.lvl+'] · '+esc(ZONES[q.z].n)+'</span></div><div class="qtext" style="font-size:12px">'+esc(q.text)+'</div>'+q.obj.map((o,i)=>'<div class="'+(objProgress(q,o,i)>=objNeed(o)?'green':'')+'">• '+esc(objText(q,o,i))+'</div>').join('')+(done?'<div class="green">'+t('Return to {n}',{n:esc(npcName(q.turn||q.giver))})+'</div>':'');
+   d.innerHTML='<div class="'+(done?'green':'gold')+'">'+(q.main?'★ ':q.dungeon?'⚔ ':'')+esc(q.title)+' <span class="grey">['+q.lvl+'] · '+esc(ZONES[q.z].n)+'</span></div><div class="qtext" style="font-size:12px">'+esc(qtx(q,'text'))+'</div>'+q.obj.map((o,i)=>'<div class="'+(objProgress(q,o,i)>=objNeed(o)?'green':'')+'">• '+esc(objText(q,o,i))+'</div>').join('')+(done?'<div class="green">'+t('Return to {n}',{n:esc(npcName(q.turn||q.giver))})+'</div>':'');
    const ab=el('div',{class:'btn sm red'},t('Abandon'));ab.onclick=()=>modal(t('Abandon {q}?',{q:esc(q.title)}),[{t:t('Abandon'),c:'red',f:()=>abandonQuest(q.id)},{t:t('Cancel')}]);d.appendChild(ab);W.bd.appendChild(d);});}},
  book:{mk:()=>win('book',t('Adventure Book'),620),draw(W){W.bd.innerHTML='<div class="grey">'+t('Dungeons open to you from level 20 as the story reveals them. Possible boss loot is listed for every unlocked dungeon.')+'</div>';
   DUNGEONS.forEach(D=>{const un=!!(qState('d_'+D.id)||qDone('d_'+D.id));const d=el('div',{class:'panel',style:'margin:6px 0;padding:6px'});
@@ -2206,11 +2257,11 @@ function drawNPCWin(greet){const W=UI.wins.npc;const npc=UI.npc;if(!npc)return;W
  if(['general','armorer','weapons','provisioner','jeweler','bags','enchanter','scribe','stable'].includes(role))btn(t('Trade'),()=>{closeWin('npc');openShop(npc);},'gold');
  if(sp){if(sp===P.cls)btn(t('Train'),()=>{closeWin('npc');UI.npc=npc;openWin('spec');},'green');else W.bd.insertAdjacentHTML('beforeend','<div class="grey">'+t('Only a {c} may train here. Seek the {s}.',{c:t(CLASSES[sp].n),s:t(CLASSES[P.cls].spec)})+'</div>');}
  btn(t('Goodbye'),()=>closeWin('npc'));W.bd.appendChild(row);}
-function showQuestDialog(npc,q,kind){const W=UI.wins.npc;W.bd.innerHTML='<div class="gold h2">'+(q.main?'★ ':'')+esc(q.title)+'</div><div class="qtext">'+esc(kind==='turn'?(q.main?t('Well done. The Lost Aura burns brighter in you.'):t('Excellent work! Here is your reward.')):q.text)+'</div>';
- W.bd.insertAdjacentHTML('beforeend','<div style="margin-top:6px">'+q.obj.map((o,i)=>'<div class="'+(objProgress(q,o,i)>=objNeed(o)?'green':'')+'">• '+esc(objText(q,o,i))+'</div>').join('')+'</div><div class="grey" style="margin-top:4px">'+t('Reward')+': '+fmt(questXP(q))+' XP · '+fmt(questGold(q))+'g'+(q.dungeon||q.main?' · '+t('equipment'):'')+'</div>');
+function showQuestDialog(npc,q,kind){const W=UI.wins.npc;W.bd.innerHTML='<div class="gold h2">'+(q.main?'★ ':'')+esc(q.title)+'</div><div class="qtext">'+esc(kind==='turn'||kind==='after'?(qtx(q,'done')||(q.main?t('Well done. The Lost Aura burns brighter in you.'):t('Excellent work! Here is your reward.'))):qtx(q,'text'))+'</div>';
+ if(kind!=='after')W.bd.insertAdjacentHTML('beforeend','<div style="margin-top:6px">'+q.obj.map((o,i)=>'<div class="'+(objProgress(q,o,i)>=objNeed(o)?'green':'')+'">• '+esc(objText(q,o,i))+'</div>').join('')+'</div><div class="grey" style="margin-top:4px">'+t('Reward')+': '+fmt(questXP(q))+' XP · '+fmt(questGold(q))+'g'+(q.dungeon||q.main?' · '+t('equipment'):'')+'</div>');
  const row=el('div',{class:'row',style:'margin-top:8px'});const b=(l,f,c)=>{const e=el('div',{class:'btn '+(c||'')},l);e.onclick=f;row.appendChild(e);};
- if(kind==='give')b(t('Accept'),()=>{acceptQuest(q);if(q.obj.every((o,i)=>objProgress(q,o,i)>=objNeed(o))&&(q.turn||q.giver)===npc.id){turnInQuest(q);}drawNPCWin();},'green');
- if(kind==='turn')b(t('Complete Quest'),()=>{turnInQuest(q);drawNPCWin();},'gold');b(t('Back'),()=>drawNPCWin());W.bd.appendChild(row);}
+ if(kind==='give')b(t('Accept'),()=>{acceptQuest(q);if(q.obj.every((o,i)=>objProgress(q,o,i)>=objNeed(o))&&(q.turn||q.giver)===npc.id){turnInQuest(q);if(qtx(q,'done')){showQuestDialog(npc,q,'after');return;}}drawNPCWin();},'green');
+ if(kind==='turn')b(t('Complete Quest'),()=>{turnInQuest(q);drawNPCWin();},'gold');b(kind==='after'?t('Continue'):t('Back'),()=>drawNPCWin());W.bd.appendChild(row);}
 // ---- shop ----
 function openShop(npc){UI.npc=npc;const W=win('shop',npc.n,480,'L');W.tt.textContent=npc.n;W.e.classList.add('on');UI.open.add('shop');renderWin('shop');placeWin(W);if(!UI.open.has('inv'))openWin('inv');else renderWin('inv');}
 RENDERERS.shop={mk:()=>win('shop','',480,'L'),draw(W){const npc=UI.npc;if(!npc){closeWin('shop');return;}const items=shopStock(npc);W.bd.innerHTML='<div class="row" style="justify-content:space-between"><span class="gold">'+fmt(P.gold)+'g</span><span class="grey" style="font-size:11px">'+(IS_TOUCH?t('Tap to buy'):t('Click to buy · Right-click your items to sell'))+'</span></div>';

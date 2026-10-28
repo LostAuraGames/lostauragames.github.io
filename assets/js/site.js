@@ -29,7 +29,7 @@ function card(g){var play=url(g.play),info=url(g.info);var main=info||play;
    (main?'<a class="thumb" href="'+esc(main)+'" tabindex="-1" aria-hidden="true">':'<div class="thumb">')+
    (g.art?artCanvas(g):g.image?'<img src="'+esc(url(g.image))+'" alt="" loading="lazy" width="640" height="360">':'<div class="thumb-empty">?</div>')+
    (main?'</a>':'</div>')+
-   '<div class="body"><span class="badge">'+esc(g.status||'')+'</span>'+
+   '<div class="body"><span class="badge'+(g.badge?' '+esc(g.badge):'')+'">'+esc(g.status||'')+'</span>'+
    '<h3>'+(main?'<a href="'+esc(main)+'">'+esc(g.title)+'</a>':esc(g.title))+'</h3>'+
    (g.subtitle?'<p class="sub">'+esc(g.subtitle)+'</p>':'')+
    '<p>'+esc(g.blurb||'')+'</p>'+

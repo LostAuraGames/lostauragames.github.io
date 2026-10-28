@@ -33,7 +33,7 @@
  <section class="legal-head" aria-labelledby="lg-h">
   <p class="kicker">Legal</p>
   <h1 id="lg-h" style="font-size:clamp(26px,4.6vw,40px)">Privacy Policy</h1>
-  <p class="muted">Last updated: October 27, 2026</p>
+  <p class="muted">Last updated: October 28, 2026</p>
   <div class="panel tmpl-note"><p><b>Template, not legal advice.</b> These pages are a starting point written for Lost Aura Games and have not been reviewed by a lawyer.</p><p>The legal text below is only available in English.</p><p>Coin purchases are not open yet. The purchase sections apply once they launch.</p></div>
   <nav class="legal-nav" aria-label="Legal pages"><a class="btn" href="terms.html">Terms of Service</a><a class="btn gold" href="privacy.html" aria-current="page">Privacy Policy</a><a class="btn" href="refunds.html">Refund Policy</a><a class="btn" href="contact.html">Contact & Imprint</a></nav>
  </section>
@@ -45,13 +45,14 @@
 <ul class="pix">
 <li>No ads, no analytics, no tracking pixels, no advertising cookies. We do not sell or share your personal information for targeted advertising.</li>
 <li>Playing as a guest stores your progress only in your own browser.</li>
-<li>We only store data on a server if you use MEOWTEOR's leaderboard or create an account (an account is only needed to buy Coins).</li>
+<li>We only store data on a server if you use MEOWTEOR's leaderboard, create an account (needed to buy Coins or to play Mythweald online), or play Mythweald online.</li>
+<li>Mythweald is an online game in Open Beta: other players can see your character name and what you write in global or party chat. Chat and names are filtered for profanity and slurs, and you can block players.</li>
 <li>Payments are handled by Lemon Squeezy, our Merchant of Record. We never see your full card number.</li>
 </ul>
 
 <h2 id="p3">3. What we collect and why</h2>
 <h3>a) In your browser (localStorage)</h3>
-<p>Our pages and games use your browser's localStorage, not tracking cookies, to remember game saves and settings, your language (<code>lag.lang</code>), a random MEOWTEOR leaderboard player ID, and, if you sign in, your login session (<code>lag.auth.v1</code>). This stays on your device; you can delete it by clearing your browser's site data. Signing out removes the session.</p>
+<p>Our pages and games use your browser's localStorage, not tracking cookies, to remember game saves and settings, your language (<code>lag.lang</code>), a random MEOWTEOR leaderboard player ID, Mythweald characters and settings (<code>mythweald.chars.v1</code>, <code>mythweald.opt</code>), and, if you sign in, your login session (<code>lag.auth.v1</code>). This stays on your device; you can delete it by clearing your browser's site data. Signing out removes the session.</p>
 <h3>b) MEOWTEOR leaderboard (optional)</h3>
 <p>If you choose a player name, we store that name, your best score, a random player ID made by your browser, and timestamps. Names and scores are shown publicly on the leaderboard. Purpose: running the leaderboard you asked to join.</p>
 <h3>c) Accounts (optional)</h3>
@@ -60,7 +61,18 @@
 <p>For signed-in players we store your Coin balance in each game and a history (ledger) of changes: Coins earned per run, Coins spent with the item bought, guest Coins moved into your account, purchases, refunds and chargebacks, with dates. For each purchase we store the order number from Lemon Squeezy, the bundle, the amount and currency, its status, and the email used at checkout. Purpose: delivering what you bought, preventing fraud and cheating, handling refunds, and keeping business and tax records.</p>
 <h3>e) Payments</h3>
 <p>Checkout is run by Lemon Squeezy, LLC as Merchant of Record. It collects your name, email, billing country / address, payment details and IP address to process the payment, calculate tax and prevent fraud, and it sends us order details (order number, email, product, price, country and status). Lemon Squeezy handles that data under its own <a href="https://www.lemonsqueezy.com/privacy" target="_blank" rel="noopener">privacy policy</a>.</p>
-<h3>f) Messages</h3>
+<h3>f) Mythweald online play (Open Beta, optional)</h3>
+<p>Mythweald can be played as a guest, with characters saved only in your browser. If you sign in and play an online character, we store, with our cloud database provider:</p>
+<ul class="pix">
+<li><b>Your character:</b> its name (shown publicly to other players), class, level, save data (quests, skills, position and settings), gold, and the equipment and bag items it owns, each with a random item ID.</li>
+<li><b>Trading and market data:</b> trades you make (both character names, the items and gold offered, and the result), your Unity of the Trade listings (your character name, the item, the price, status and dates; active listings are visible to every signed-in player), purchases, the 1% market tax, mail (sale proceeds, bought items, returned listings), and a ledger of these economy events with dates, kept to prevent duplication, cheating and fraud.</li>
+<li><b>Location checks:</b> the map region and coordinates your game reports from time to time, so the server can check that trades and market use happen in range and in a hub town.</li>
+<li><b>Chat:</b> whispers (private messages: sender, recipient, text and time) and global chat messages (character name, text and time). Global chat is shown to every player who is online. Party chat, party combat updates and player positions are sent live to the players in the same party or region and are not stored by us.</li>
+<li><b>Your block list:</b> the players you block. Blocked players cannot whisper you or trade with you, and their chat is hidden for you.</li>
+</ul>
+<p><b>Chat safety:</b> profanity and slurs are automatically masked (shown as <code>#%$</code>) in chat, and character names that contain them are refused. Whispers and global chat are filtered and rate-limited on our server; party chat is filtered in the game. This is automatic filtering, not live moderation, so it can miss things; if you report a player to us, we may read the relevant stored messages to act on the report.</p>
+<p><b>Beta:</b> Mythweald is an Open Beta. Characters, levels, gold, items, listings and mail may be reset or deleted at any time while we develop the game. Purpose of this processing: running the online features you choose to use (characters, trading, market, mail, parties and chat), keeping them fair and safe, and preventing cheating and abuse.</p>
+<h3>g) Messages</h3>
 <p>If you email us, we keep the conversation to answer you and for our records.</p>
 
 <h2 id="p4">4. Legal bases (EEA / UK)</h2>
@@ -70,6 +82,7 @@
 <ul class="pix">
 <li><b>Supabase</b> (Supabase, Inc.): database, authentication, password-reset emails and server functions for accounts, wallets, purchases and the leaderboard. See <a href="https://supabase.com/privacy" target="_blank" rel="noopener">supabase.com/privacy</a>.</li>
 <li><b>Lemon Squeezy</b>: checkout and payments as Merchant of Record (see above).</li>
+<li><b>Cloud database provider</b>: our cloud database provider (the provider above) also stores Mythweald's online data and relays its real-time messages (chat, parties and player positions).</li>
 <li><b>GitHub Pages</b> (GitHub, Inc.): hosts this website; like any web host it processes IP addresses in server logs.</li>
 <li><b>Email</b>: our contact mailbox is hosted by Google (Gmail). If we later send account emails through another email provider, we will list it here.</li>
 </ul>
@@ -80,15 +93,17 @@
 <li>Account data and balances: until you delete your account.</li>
 <li>Purchase, refund and ledger records: up to 7 years for tax, accounting and fraud-prevention reasons. After your account is deleted they are kept only with a random account ID and are no longer linked to your email.</li>
 <li>Leaderboard entries: while the leaderboard runs, or until you ask us to remove yours.</li>
+<li>Mythweald characters, items, gold, listings and mail: until you delete your account, or until a beta reset.</li>
+<li>Mythweald chat and history: whispers are deleted after about 2 days and global chat messages after about 1 day (clean-up runs automatically, so it can take a little longer); closed market listings after about 14 days and finished trades after about 7 days. The Mythweald economy ledger stays with your account until it is deleted.</li>
 <li>localStorage: until you clear it.</li>
 </ul>
 
 <h2 id="p7">7. Your rights and deleting your data</h2>
 <p>Depending on where you live (for example the EU/EEA, the UK, California and other US states), you may have the right to access, correct, delete or receive a copy of your personal data, to object to or restrict some processing, and to withdraw consent. We do not sell personal information or share it for cross-context behavioral advertising, and we do not use it for profiling with legal effects. We will not treat you differently for using your rights.</p>
-<p><b>To delete your account or make any request,</b> email <a href="mailto:lostauragames@gmail.com">lostauragames@gmail.com</a> from the email address on your account with the subject "Privacy request". For a leaderboard entry, include the player name (and, if you can, the player ID saved in your browser). We may ask you to verify that the request is yours and will reply within 30 days (45 days where US state law allows). Deleting your account permanently removes your login and Coin balances; unused Coins are lost. You can also complain to your local data protection authority.</p>
+<p><b>To delete your account or make any request,</b> email <a href="mailto:lostauragames@gmail.com">lostauragames@gmail.com</a> from the email address on your account with the subject "Privacy request". To report a Mythweald player, include their character name and roughly when it happened. For a leaderboard entry, include the player name (and, if you can, the player ID saved in your browser). We may ask you to verify that the request is yours and will reply within 30 days (45 days where US state law allows). Deleting your account permanently removes your login and Coin balances; unused Coins are lost. You can also complain to your local data protection authority.</p>
 
 <h2 id="p8">8. Children</h2>
-<p>Our games are made for a general audience and can be played without giving us any personal information. Children under 13 must not create an account or make purchases, and we do not knowingly collect personal information from children under 13. Players aged 13 to 17 need a parent's or guardian's permission to create an account or buy anything. If you believe a child under 13 has given us personal information, email us and we will delete it.</p>
+<p>Our games are made for a general audience and can be played without giving us any personal information. Children under 13 must not create an account or make purchases, and we do not knowingly collect personal information from children under 13. Players aged 13 to 17 need a parent's or guardian's permission to create an account or buy anything. Mythweald has public chat with other players. It is filtered automatically but not moderated live, so parents may want to keep an eye on younger players and show them the block feature (<code>/block NAME</code>). If you believe a child under 13 has given us personal information, email us and we will delete it.</p>
 
 <h2 id="p9">9. Security</h2>
 <p>We use HTTPS, hashed passwords, row-level security in our database so each player can only read their own data, and keep server keys and payment secrets out of the website code. No system is perfectly secure, so please use a unique password.</p>

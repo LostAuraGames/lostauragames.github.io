@@ -49,6 +49,20 @@ window.LAG_GAMES = [
     artAlt: "Croak & Dagger key art: a hooded hero with a dagger faces a top-hatted frog on a lily pad under a full moon",
     tags: ["Single player", "Browser", "Mouse / Touch / Keyboard"],
     featured: false                              // true = shown in the big "Featured" box on the home page
+  },
+  {
+    id: "mythweald",
+    title: "Mythweald",
+    subtitle: "The Hollow Crown",
+    blurb: "A top-down mythological MMO: 4 classes, a huge world, dungeons from level 20, max level 200, trading, the Unity of the Trade market, parties of up to 4 and chat.",
+    genre: "Online RPG / MMO",
+    status: "Open Beta",
+    badge: "beta",                               // optional extra badge style ("beta" = orange Open Beta badge)
+    play: "games/mythweald/",
+    info: "games/mythweald.html",
+    image: "assets/img/games/mythweald/cover.png",
+    tags: ["Online multiplayer", "Browser", "Open Beta", "Keyboard / Mouse / Touch"],
+    featured: false                              // MEOWTEOR stays the featured game
   }
   // , { id: "my-next-game", title: "My Next Game", ... }
 ];

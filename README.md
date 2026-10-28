@@ -17,6 +17,9 @@ games/orbit-hills.html         Info page for Orbit Hills
 games/orbit-hills/             Orbit Hills itself (one self-contained index.html)
 games/meowteor.html            Info page for MEOWTEOR (with the live global leaderboard)
 games/meowteor/                MEOWTEOR itself (one self-contained index.html)
+games/mythweald.html           Info page for Mythweald (Open Beta)
+games/mythweald/               Mythweald itself (one self-contained index.html, built from the game repo's build.sh)
+playtest/q0ps37b7m6/           Old private Mythweald playtest URL: now only redirects to games/mythweald/ (same origin, saves carry over)
 assets/css/site.css            All the site styling
 assets/js/games.js             >>> THE GAME LIST <<< (the home page grid is built from this)
 assets/js/site.js              Draws the background and logos, and builds the game grid
@@ -34,6 +37,7 @@ site.webmanifest               App name and icons for phones
 
 No analytics or tracking are used, and everything loads from this folder. The one outside service is MEOWTEOR's
 global leaderboard (Supabase), which the game and its info page talk to directly from the browser.
+Mythweald (Open Beta) uses the same backend for its online play (accounts, characters, chat, trading, market and mail).
 
 ## Preview it on your own computer
 

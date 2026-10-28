@@ -808,7 +808,7 @@ function statRating(v,L){return v/(10+3*L);}
 const ZONES=[
  {n:'Whisperwood',town:'Hearthmoor',lvl:[1,10],gx:0,gy:2,music:'forest',g:['#2f6b2a','#3a7d33','#285c24','#8a7348'],water:'#2a5a8a',obs:{tree:.34,mtree:.05,rock:.02,bush:.05,shroom:.04},dark:0,
   d:'An ancient enchanted forest ringing the village of Hearthmoor. Giant ants have begun pouring out of the earth beneath its roots.',
-  mobs:[['ant_w','Giant Worker Ant','ant',['#7a2a1a','#4a160c','#b0503a','#ffd24a'],0,''],['ant_s','Giant Soldier Ant','ant',['#3a1a12','#1d0c08','#6a3a2a','#ff4a3a'],.45,'T'],['wolf_f','Whisperwood Wolf','wolf',['#6d6a72','#45434a','#9a96a0','#ffe066'],.25,'B'],['spider_g','Glade Spider','spider',['#3d5a2a','#22351a','#6a8a3a','#ff3a3a'],.35,'B'],['sprite_m','Moss Sprite','wisp',['#7affb0','#2aa860','#d0ffe0','#fff'],.55,'R'],['bear_b','Barkhide Bear','bear',['#5a3a1e','#36220f','#7d5530','#ffd24a'],.85,'BT']],
+  mobs:[['ant_w','Giant Worker Ant','ant',['#7a2a1a','#4a160c','#b0503a','#ffd24a'],0,''],['ant_s','Giant Soldier Ant','ant',['#3a1a12','#1d0c08','#6a3a2a','#ff4a3a'],.2,'T'],['wolf_f','Whisperwood Wolf','wolf',['#6d6a72','#45434a','#9a96a0','#ffe066'],.25,'B'],['spider_g','Glade Spider','spider',['#3d5a2a','#22351a','#6a8a3a','#ff3a3a'],.35,'B'],['sprite_m','Moss Sprite','wisp',['#7affb0','#2aa860','#d0ffe0','#fff'],.55,'R'],['bear_b','Barkhide Bear','bear',['#5a3a1e','#36220f','#7d5530','#ffd24a'],.85,'BT']],
   herb:'Silverleaf',hide:'Light Hide',ore:'Copper Ore'},
  {n:'Thornvale Meadows',town:'Briarford',lvl:[8,16],gx:1,gy:2,music:'wild',g:['#5a8a34','#6a9a3c','#4d7a2c','#9a8050'],water:'#3a6a9a',obs:{tree:.06,bush:.1,rock:.04,thorn:.06,flower:.08},
   d:'Rolling meadows choked with thorns. Bandits prey on travelers on the road to the Kingdom.',
@@ -2097,6 +2097,12 @@ function genZone(z){const Z=ZONES[z];const r=mulberry(1000+z*7919);const W=MAPW,
    const cand=mobs.filter(m=>m[4]<=f+.12);const m=cand.length?cand[Math.floor(Math.pow(r(),.7)*cand.length)]:mobs[0];
    const lvl=Math.round(clamp(Z.lvl[0]+(Z.lvl[1]-Z.lvl[0])*clamp(f+(r()-.5)*.15,0,1),Z.lvl[0],Z.lvl[1]));const n=m[5].includes('T')?1:(r()<.22?2:1);
    M.spawns.push({x:x+.5,y:y+.5,mob:m[0],lvl,n,alive:0,timer:0,f});break;}}
+ // Whisperwood: guaranteed low-level soldier ants beside the roads out of Hearthmoor, none high-level near the early path
+ if(z===0){const sid=Z.mobs[1][0];const cand=[];for(let y=2;y<H-2;y++)for(let x=2;x<W-2;x++){const d=Math.hypot(x-tx,y-ty);if(d<22||d>34)continue;if(M.ground[I(x,y)]!==G_PATH)continue;
+   for(const [ox,oy] of [[3,0],[-3,0],[0,3],[0,-3]]){if(free(x+ox,y+oy,10))cand.push([x+ox,y+oy]);}}
+  const pickd=[];for(let t=0;t<400&&pickd.length<8&&cand.length;t++){const c=cand[Math.floor(r()*cand.length)];if(pickd.some(o=>Math.hypot(o[0]-c[0],o[1]-c[1])<7))continue;pickd.push(c);}
+  pickd.forEach(([x,y],i)=>M.spawns.push({x:x+.5,y:y+.5,mob:sid,lvl:3+(i%2),n:1,alive:0,timer:0,f:.2,road:1}));
+  M.spawns.forEach(s=>{if(s.mob===sid&&!s.road){const d=Math.hypot(s.x-tx,s.y-ty);if(d<58)s.lvl=Math.min(s.lvl,5);}});}
  // guarantee every mob type (quest targets) has spawns inside its own level band, not only deeper in the zone
  Z.mobs.forEach(md=>[.12,.25].forEach(w=>{const lo=md[4],hi=md[4]+w;const band=M.spawns.filter(s=>s.f>=lo&&s.f<=hi);const have=band.filter(s=>s.mob===md[0]).length;let need=Math.max(0,10-have);
   const cnt={};band.forEach(s=>cnt[s.mob]=(cnt[s.mob]||0)+1);

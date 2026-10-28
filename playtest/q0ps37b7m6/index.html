@@ -84,6 +84,14 @@ input.txt{font:bold 18px "Courier New",monospace;background:#000;color:var(--bon
 #chatlog{max-height:120px;overflow:hidden;text-shadow:1px 1px 0 #000,2px 2px 0 #000;display:flex;flex-direction:column;justify-content:flex-end}
 #chatlog div{margin-top:1px;word-wrap:break-word}
 #chatin{display:none;width:100%;font:bold 12px "Courier New",monospace;background:#000c;color:#fff;border:2px solid var(--bone2);padding:4px;user-select:text;-webkit-user-select:text}
+#chattabs{display:none;flex-wrap:wrap;gap:3px;margin-bottom:3px}
+.ctab{font-size:11px;padding:2px 6px;background:#000a;border:2px solid #4a4250;color:#cfc6b0;cursor:pointer;white-space:nowrap}.ctab.on{border-color:var(--gold);color:#fff}.ctab.wh{color:#ff9aff}.ctab.pt{color:#8fd8ff}.ctab b{color:#ffd24a}.ctab .cx{margin-left:5px;color:#ff8a8a}
+.cname{cursor:pointer}#namemenu{position:fixed;z-index:60;background:#120f16;border:3px solid var(--bone);box-shadow:3px 3px 0 #000;padding:4px;display:none;min-width:150px}#namemenu .btn{display:block;margin:3px 0;text-align:left}
+#mailind{font-size:11px;color:#ffd24a;cursor:pointer;text-shadow:1px 1px 0 #000;display:none}
+#pframes{position:absolute;left:8px;top:120px;display:flex;flex-direction:column;gap:4px;z-index:5}.pf{background:#000b;border:2px solid #4a4250;padding:3px 5px;width:150px;font-size:11px;cursor:pointer}.pf .hb{height:6px;background:#3a0d12;margin-top:2px}.pf .hb i{display:block;height:100%;background:#3cff5a}.pf.off{opacity:.5}
+#dunwait{position:fixed;inset:0;background:#000d;z-index:55;display:none;align-items:center;justify-content:center;flex-direction:column;text-align:center;color:var(--bone)}
+.mailrow,.mrow{padding:4px;border-bottom:1px solid #2a2430;font-size:12px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}.mrow .sp{flex:1}.mfilt{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px}.mfilt select,.mfilt input{font:bold 11px "Courier New",monospace;background:#000;color:var(--bone);border:2px solid #4a4250;padding:2px}
+.tcol{flex:1;min-width:180px;border:2px solid #4a4250;padding:5px;margin:3px}.tcol.lk{border-color:#3cff5a}.tcol.cf{border-color:var(--gold)}
 #online{font-size:10px;color:#9fe;text-shadow:1px 1px 0 #000}
 #toast{position:fixed;left:50%;top:22%;transform:translateX(-50%);z-index:60;pointer-events:none;display:flex;flex-direction:column;align-items:center;gap:4px}
 #lootfeed{position:fixed;right:10px;bottom:96px;z-index:55;pointer-events:none;display:flex;flex-direction:column;align-items:flex-end;gap:2px}
@@ -161,13 +169,13 @@ body.touch #mmc{width:110px;height:110px}
  <div id="hud">
   <div id="pframe" class="pe"><div id="pname"></div><div class="bar" id="hpb"><i></i><span></span></div><div class="bar mp" id="mpb"><i></i><span></span></div><div id="buffs"></div></div>
   <div id="tframe"><div id="tname"></div><div class="bar" id="thpb"><i></i><span></span></div></div>
-  <div id="mmwrap" class="pe"><canvas id="mmc" class="px" width="150" height="150"></canvas><div id="zonelbl"></div><div id="online"></div></div>
+  <div id="mmwrap" class="pe"><canvas id="mmc" class="px" width="150" height="150"></canvas><div id="zonelbl"></div><div id="online"></div><div id="mailind"></div></div>
   <div id="tracker"></div>
   <div id="castbar"><div class="bar en" id="castb"><i></i><span></span></div></div>
   <div id="xpbar"><div class="bar xp" id="xpb"><i></i><span></span></div></div>
   <div id="hotbar" class="pe"></div>
   <div id="menubtns" class="pe"></div>
-  <div id="chat" class="pe"><div id="chatlog"></div><input id="chatin" maxlength="120" autocomplete="off"></div>
+  <div id="chat" class="pe"><div id="chattabs"></div><div id="chatlog"></div><input id="chatin" maxlength="120" autocomplete="off"></div>
  </div>
  <div id="touch"><div id="joy"><div id="joyk"></div></div><div id="tbtns"></div></div>
 </div>
@@ -1352,7 +1360,10 @@ function bossLoot(d){if(BOSS_LOOT[d.id])return BOSS_LOOT[d.id];const r=mulberry(
 function mkLegendary(d){const Lg=LEGENDARIES[d.id];const L=d.lvl;const r=mulberry(777+d.idx);let it;
  if(Lg.arm)it=genGear(L,4,{slot:Lg.slot,arm:Lg.arm,cls:Lg.cls},r);else it=genGear(L,4,{wt:Lg.fam,cls:Lg.cls},r);
  it.n=Lg.n;it.leg=d.id;it.fx=Lg.fx;it.fxd=Lg.fxd;it.req=L;it.val=gearVal(L,4)*3;if(it.dmg)it.dmg=Math.round(it.dmg*1.15);return it;}
-function cloneItem(it){const c=JSON.parse(JSON.stringify(it));c.uid=uid();return c;}
+function cloneItem(it){const c=JSON.parse(JSON.stringify(it));c.uid=uid();delete c.gid;return c;}
+// Account Locked (A) = quest/dungeon/boss/legendary drops; Valued (V) = everything else (tradeable)
+function itemLabel(it){if(!it)return'V';if(it.lb==='A'||it.k==='quest'||it.named||it.leg||(it.rar||0)>=4)return'A';return'V';}
+function itemTradeable(it){return!!it&&(it.k==='gear'||it.k==='bag')&&itemLabel(it)==='V';}
 
 // ================= STORY & QUESTS =================
 // Story: the Hollow Crown — servants of Vharos the Hollow King — want to collapse humanity by corrupting the world
@@ -2632,6 +2643,7 @@ function npcSprite(role,z,f){const key='npc|'+role+'|'+z+'|'+f;return cached(key
   else if(role==='spec_mage'){o.robe='#3a5ad8';o.chest='#3a5ad8';o.hood='#2a3a9a';o.wpn='staff';o.wcol='#ff8a1e';}
   else if(role==='spec_summoner'){o.robe='#3a1a4a';o.chest='#3a1a4a';o.hood='#22102d';o.wpn='sceptre';o.wcol='#b04cff';o.skin='#c8d0c0';}
   else if(role==='armorer'||role==='weapons'){o.chest='#5a3a2a';o.arms=o.skin;o.belt='#2a1a10';o.wpn=role==='weapons'?'axe':'mace';o.beard=o.hair;}
+  else if(role==='market'){o.robe='#d8a02a';o.chest='#d8a02a';o.hood='#7a3a9a';}
   else if(role==='healer'){o.robe='#e8e8f0';o.chest='#e8e8f0';o.hood='#c8d8ff';o.skin='#c8e0ff';}
   else if(role==='provisioner'){o.chest='#8a6a3a';o.belt='#fff';}
   else if(role==='guard'){o.chest='#c8ccd4';o.helm='#c8ccd4';o.wpn='sword2';o.cape='#8a1a2a';}
@@ -2847,6 +2859,7 @@ function genZone(z){const Z=ZONES[z];const r=mulberry(1000+z*7919);const W=MAPW,
  return M;}
 function edgeObj(Z){const o=Object.keys(Z.obs);return o.find(t=>OBJ_SOLID[t]&&!['bush','thorn','fence'].includes(t))||'rock';}
 // ---- towns ----
+const MARKET_ZONES=[2,6,7,9,12];// Unity of the Trade hubs: Aurelion, Khepri Oasis, Port Nerei, Thunderhold, Basalt Gate (server: mw_hubs())
 function buildTown(M,z,r){const T=M.town,W=M.w;const I=(x,y)=>y*W+x;const npc=(role,x,y,name)=>{M.npcs.push({id:npcId(z,role),role,z,x:x+.5,y:y+.5,n:name||NPC_NAMES[role]||role});};
  const house=(x,y,v)=>{for(let j=0;j<3;j++)for(let k=0;k<3;k++){M.solid[I(x+k,y-j)]=1;}M.bigs.push({t:'house',x,y,v});};
  const obj=(x,y,t,v=0)=>{const i=I(x,y);M.obj[i]=OBJ_IDX[t];M.objv[i]=v;if(OBJ_SOLID[t])M.solid[i]=1;};
@@ -2861,16 +2874,17 @@ function buildTown(M,z,r){const T=M.town,W=M.w;const I=(x,y)=>y*W+x;const npc=(r
   st.forEach(([role,dx,dy],i)=>{obj(T.cx+dx,T.cy+dy-1,'stall',i);npc(role,T.cx+dx,T.cy+dy);});
   ['spec_knight','spec_thief','spec_mage','spec_summoner'].forEach((role,i)=>npc(role,T.cx-6+i*4,T.cy+12));
   npc('villager',T.cx+6,T.cy+1,'Lady Corwen');npc('board',T.cx-4,T.cy+1,'Bounty Board');npc('waystone',T.cx,T.cy+5,'Waystone');npc('healer',T.cx+9,T.cy+12,'Spirit Healer');
-  obj(T.cx,T.cy-1,'well');
+  obj(T.cx,T.cy-1,'well');npc('mailbox',T.cx-3,T.cy+5,'Mailbox');
  }else{
   [[T.x+2,T.y+4],[T.x+7,T.y+4],[T.x+T.w-10,T.y+4],[T.x+T.w-5,T.y+4],[T.x+2,T.y+T.h-2],[T.x+T.w-5,T.y+T.h-2]].forEach((p,i)=>house(p[0],p[1],i));
   obj(T.cx,T.cy-3,'well');
   npc('elder',T.cx,T.cy-5,ELDERS[z]);npc('board',T.cx-3,T.cy-5,'Bounty Board');npc('villager',T.cx+4,T.cy-4,['Hunter Ash','Farmer Tobin','Sister Halde','Scout Imra','Old Pell','Skald Torvi','Trader Yusuf','Diver Nyla','Tracker Mbeki','Herder Isla','Acolyte Rien','Gravekeeper Lute','Sergeant Dax','Lamplighter Bo','Sentinel Kyra'][z]);
   const st=[['general',-9,1],['armorer',-5,1],['weapons',5,1],['provisioner',9,1]];st.forEach(([role,dx,dy],i)=>{obj(T.cx+dx,T.cy+dy-1,'stall',i);npc(role,T.cx+dx,T.cy+dy);});
   ['spec_knight','spec_thief','spec_mage','spec_summoner'].forEach((role,i)=>npc(role,T.cx-6+i*4,T.cy+5));
-  npc('waystone',T.cx,T.cy+1,'Waystone');npc('healer',T.cx+10,T.cy+6,'Spirit Healer');
+  npc('waystone',T.cx,T.cy+1,'Waystone');npc('healer',T.cx+10,T.cy+6,'Spirit Healer');npc('mailbox',T.cx-2,T.cy+2,'Mailbox');
   for(let k=0;k<8;k++){const x=T.x+2+Math.floor(r()*(T.w-4)),y=T.y+T.h-1;if(!M.solid[I(x,y)])obj(x,y,'flower',k);}
- }}
+ }
+ if(MARKET_ZONES.includes(z)){const mx=Z.kingdom?T.cx+4:T.cx+3,my=Z.kingdom?T.cy+7:T.cy+2;M.solid[I(mx,my)]=0;M.obj[I(mx,my)]=0;npc('market',mx,my,'Unity of the Trade');}}
 // ---- dungeons ----
 function genDungeon(did){const D=DUNGEON_BY_ID[did];const r=mulberry(5000+D.idx*131);const W=90,H=90;const M=newMap(W,H);M.kind='dungeon';M.d=did;M.z=D.zone;const I=(x,y)=>y*W+x;
  for(let i=0;i<W*H;i++){M.solid[i]=1;M.ground[i]=G_WALL;}
@@ -2921,8 +2935,8 @@ function fixSave(p){// keep older saves loadable and restore uid counter
  const cap=invCap(p);while(p.inv.length<cap)p.inv.push(null);return p;}
 function invCap(p=P){let n=BASE_INV;(p.bags||[]).forEach(b=>{if(b)n+=b.size;});return n;}
 // ---- inventory helpers ----
-function invRoomFor(it){if(!it)return false;if(P.inv.indexOf(null)>=0)return true;if(!(it.stack>1))return false;let room=0;for(const s of P.inv)if(s&&s.id===it.id)room+=Math.max(0,s.stack-s.q);return room>=(it.q||1);}
-function invAdd(it,quiet){if(!it)return false;if(!invRoomFor(it)){if(!quiet)toast(t('Inventory full!'),'#ff4a5a');return false;}if(it.stack>1){for(const s of P.inv){if(s&&s.id===it.id&&s.q<s.stack){const take=Math.min(it.q,s.stack-s.q);s.q+=take;it.q-=take;if(it.q<=0)break;}}if(it.q<=0){afterLoot(it,quiet);return true;}}
+function invRoomFor(it){if(!it)return false;if(P.inv.indexOf(null)>=0)return true;if(!(it.stack>1))return false;let room=0;for(const s of P.inv)if(s&&s.id===it.id&&itemLabel(s)===itemLabel(it))room+=Math.max(0,s.stack-s.q);return room>=(it.q||1);}
+function invAdd(it,quiet){if(!it)return false;if(!invRoomFor(it)){if(!quiet)toast(t('Inventory full!'),'#ff4a5a');return false;}if(it.stack>1){for(const s of P.inv){if(s&&s.id===it.id&&s.q<s.stack&&itemLabel(s)===itemLabel(it)){const take=Math.min(it.q,s.stack-s.q);s.q+=take;it.q-=take;if(it.q<=0)break;}}if(it.q<=0){afterLoot(it,quiet);return true;}}
  const i=P.inv.indexOf(null);if(i<0){if(!quiet)toast(t('Inventory full!'),'#ff4a5a');return false;}P.inv[i]=it;afterLoot(it,quiet);return true;}
 function afterLoot(it,quiet){if(!quiet){const h='<span style="color:'+RAR[it.rar||0].c+'">'+esc(it.k==='quest'?tqi(it.n):it.n)+(it.q>1?' x'+it.q:'')+'</span>';if((it.rar||0)>=3)toast(h);else lootFeed(h);}if(it.rar>=3&&!quiet){sfx('epic');if(it.rar===4){P.st.legs=(P.st.legs||0)+1;banner(t('LEGENDARY!'),it.n,4000);}else P.st.epics=(P.st.epics||0)+1;}questOnItem(it);UI.dirty=1;}
 function invCount(id){let n=0;for(const s of P.inv)if(s&&s.id===id)n+=s.q||1;return n;}
@@ -3005,17 +3019,17 @@ function enterZone(z,fromDir,pos){leaveDungeon(true);const M=getZoneMap(z);GAME.
 // ---- dungeons ----
 function enterDungeon(did){const D=DUNGEON_BY_ID[did];const M=genDungeon(did);GAME.dun={id:did,ret:{z:GAME.map.z,x:PE.x,y:PE.y+1.5},map:M,bossDead:false,t0:GAME.time};
  GAME.map=M;GAME.mobs=[];GAME.projs=[];GAME.grounds=[];GAME.loot=[];GAME.corpses=[];GAME.target=null;PE.x=M.start.x;PE.y=M.start.y;GAME.minions.forEach(m=>{m.x=PE.x;m.y=PE.y;});
- M.spawns.forEach(s=>{s.alive=0;s.timer=0;s.mobs=[];});banner(D.n,t('Dungeon — Level {n}',{n:D.lvl}),3000);sfx('boss');startMusic('dungeon');net.joinZone(null);UI.mmDirty=1;UI.dirty=1;
- chat(t('You enter {d}. Defeat {b}.',{d:D.n,b:D.boss.n}),'#ff8a1e');}
-function leaveDungeon(silent){if(!GAME.dun)return;const R=GAME.dun.ret;GAME.dun=null;if(!silent){const M=getZoneMap(R.z);GAME.map=null;enterZone(R.z,null,{x:R.x,y:R.y});}}
+ M.spawns.forEach(s=>{s.alive=0;s.timer=0;s.mobs=[];});banner(D.n,t('Dungeon — Level {n}',{n:D.lvl}),3000);sfx('boss');startMusic('dungeon');net.joinZone(PARTY.dunKey(did));UI.mmDirty=1;UI.dirty=1;
+ chat(t('You enter {d}. Defeat {b}.',{d:D.n,b:D.boss.n}),'#ff8a1e');PARTY.onEnterDungeon(did);}
+function leaveDungeon(silent){if(!GAME.dun)return;{const W=$('#dunwait');if(W)W.style.display='none';}const R=GAME.dun.ret;GAME.dun=null;if(!silent){const M=getZoneMap(R.z);GAME.map=null;enterZone(R.z,null,{x:R.x,y:R.y});}}
 // ---- spawning ----
 function mobDef(id){for(const Z of ZONES)for(const m of Z.mobs)if(m[0]===id)return m;return null;}
 function makeMob(def,lvl,x,y,opts={}){const [id,name,arch,pal,,flags]=def;const tough=flags.includes('T'),fast=flags.includes('F');
- let hpM=tough?1.5:fast?.8:1,dmM=tough?1.15:1;if(opts.elite){hpM*=4;dmM*=1.6;}if(opts.boss){hpM*=10;dmM*=1.5;}if(opts.dun&&!opts.boss&&!opts.elite){hpM*=1.25;}
+ let hpM=tough?1.5:fast?.8:1,dmM=tough?1.15:1;if(opts.elite){hpM*=4;dmM*=1.6;}if(opts.boss){hpM*=10;dmM*=1.5;}if(opts.dun&&!opts.boss&&!opts.elite){hpM*=1.25;}if(opts.dun)hpM*=PARTY.dunHpMul();
  const hp=Math.round(mobHPBase(lvl)*(1+lvl/120)*hpM);
  return{id:uid(),kind:'mob',mid:id,name:opts.name||name,arch,pal,lvl,hp,maxHp:hp,dmg:mobDmgBase(lvl)*dmM,x,y,sx:x,sy:y,spd:(fast?3.6:2.5)*(opts.boss?1.05:1),ranged:flags.includes('R'),beast:flags.includes('B'),tough,elite:!!opts.elite,boss:!!opts.boss,
   state:'idle',tgt:null,atk:rnd(0,1),stun:0,root:0,slow:0,dots:[],aggro:opts.boss?9:(lvl<=10?4.2:5.2),wander:rnd(1,4),fx:1,anim:rnd(0,2),flash:0,spawn:opts.spawn||null,quest:opts.quest||null,size:opts.boss?2:(opts.elite?1.35:1),dun:!!opts.dun,mark:0,special:opts.boss?6:9,adds:opts.boss?14:0,enr:false,qitem:opts.qitem||null,taunt:0};}
-function updateSpawns(dt){const M=GAME.map;for(const s of M.spawns){const d=Math.hypot(s.x-PE.x,s.y-PE.y);
+function updateSpawns(dt){const M=GAME.map;const mir=PARTY.mirroring();for(const s of M.spawns){if(mir)break;const d=PARTY.nearDist(s.x,s.y);
   if(s.mobs&&s.mobs.length){s.mobs=s.mobs.filter(m=>m.hp>0);if(!s.mobs.length){if(s.once){s.done=1;}else s.timer=rnd(30,55);}
    else if(d>58&&!s.once&&s.mobs.every(m=>m.state==='idle')){s.mobs.forEach(m=>{m.gone=1;});GAME.mobs=GAME.mobs.filter(m=>!m.gone);s.mobs=[];s.timer=0;}continue;}
   if(s.done)continue;if(s.timer>0){s.timer-=dt;continue;}if(d>(M.kind==='dungeon'?60:46))continue;if(d<9&&M.kind==='zone')continue;
@@ -3053,18 +3067,19 @@ function playerHit(m,base,o={}){if(!m||m.hp<=0)return 0;let d=base*PS.pow*PS.dmg
  if(o.el==='fire'&&PS.M.burn){m.dots.push({dps:d*.04*PS.M.burn/15,t:4,c:'#ff8a1e'});}
  if(P.cls==='knight'&&!o.noGain)gainRes(6);
  return d;}
-function damageMob(m,d,crit,el){if(m.hp<=0)return;m.hp-=d;m.flash=.12;floater(m.x,m.y,(crit?'*':'')+fmt(d),crit?'#ffd24a':el==='fire'?'#ff8a1e':el==='frost'?'#9fe':el==='shock'?'#fff27a':el==='dark'?'#c25cff':'#fff',crit);sfx(crit?'crit':'hit');
+function damageMob(m,d,crit,el){if(m.hp<=0)return;if(m.proxy){PARTY.proxyDmg(m,d,crit,el);return;}m.hp-=d;m.flash=.12;floater(m.x,m.y,(crit?'*':'')+fmt(d),crit?'#ffd24a':el==='fire'?'#ff8a1e':el==='frost'?'#9fe':el==='shock'?'#fff27a':el==='dark'?'#c25cff':'#fff',crit);sfx(crit?'crit':'hit');
  if(m.state==='idle'||m.state==='return'){m.state='chase';m.tgt=PE;alertPack(m);}if(m.hp<=0)killMob(m);}
 function alertPack(m){for(const o of GAME.mobs){if(o!==m&&o.state==='idle'&&((m.spawn&&o.spawn===m.spawn)||Math.hypot(o.x-m.x,o.y-m.y)<2.5)){o.state='chase';o.tgt=PE;}}}
-function killMob(m){m.hp=0;sfx('die');burst(m.x,m.y,m.pal[0],12);GAME.mobs=GAME.mobs.filter(o=>o!==m);if(GAME.target===m)GAME.target=null;
+function killMob(m){if(!m.proxy)PARTY.hostKill(m);m.hp=0;sfx('die');burst(m.x,m.y,m.pal[0],12);GAME.mobs=GAME.mobs.filter(o=>o!==m);if(GAME.target===m)GAME.target=null;
  GAME.corpses.push({x:m.x,y:m.y,arch:m.arch,pal:m.pal,t:30,beast:m.beast,tier:tierOf(m.lvl),lvl:m.lvl,skinned:false,size:m.size,boss:m.boss});if(GAME.corpses.length>40)GAME.corpses.shift();
  // xp & gold
- const diff=m.lvl-P.lvl;let xm=diff<-10?.1:diff<-5?.5:diff>3?1.25:1;let xp=mobXP(m.lvl)*xm*(m.elite?3:1)*(m.boss?25:1)*(m.dun&&!m.boss?1.3:1);gainXP(xp);
+ const diff=m.lvl-P.lvl;let xm=diff<-10?.1:diff<-5?.5:diff>3?1.25:1;let xp=mobXP(m.lvl)*xm*(m.elite?3:1)*(m.boss?25:1)*(m.dun&&!m.boss?1.3:1);gainXP(PARTY.xp(xp,m));
  const g=Math.max(1,Math.round(goldDrop(m.lvl)*rnd(.6,1.4)*(m.elite?3:1)*(m.boss?30:1)*PS.gold));P.gold+=g;floater(m.x,m.y-.6,'+'+fmt(g)+'g','#ffd24a');sfx('gold');
  P.st.kills++;questOnKill(m);
  // loot
  let drops=[];if(m.boss){drops=bossDrops(GAME.map.d);}else drops=rollMobLoot(m.lvl,m,P);
- if(m.qitem){drops.push(mkQuest(m.quest,m.qitem));}
+ if(m.qitem&&(!m.proxy||P.quests.a[m.quest])){drops.push(mkQuest(m.quest,m.qitem));}
+ if(GAME.dun||m.dun||m.boss||m.quest)drops.forEach(it=>{it.lb='A';});
  drops.forEach((it,i)=>GAME.loot.push({x:m.x+rnd(-.6,.6),y:m.y+rnd(-.4,.4),it,t:120,bob:rnd(0,6)}));
  if(m.boss)onBossKilled();
  if(P.cls==='thief'&&PS.M.ambushReset&&Math.random()<.3&&!PE.stealth){enterStealth(true);}
@@ -3076,7 +3091,7 @@ function bossDrops(did){const D=DUNGEON_BY_ID[did];const list=bossLoot(D);const 
 function onBossKilled(){const D=DUNGEON_BY_ID[GAME.map.d];GAME.dun.bossDead=true;P.st.dungeons[D.id]=(P.st.dungeons[D.id]||0)+1;banner(t('VICTORY'),t('{b} has fallen!',{b:D.boss.n}),4000);sfx('level');
  const qid='d_'+D.id;if(P.quests.a[qid]){P.quests.a[qid].p[0]=1;sfx('quest');chat(t('Quest complete: {q}. Return to {n}.',{q:QUESTS[qid].title,n:npcName(QUESTS[qid].giver)}),'#3cff5a');}
  const R=GAME.map.rooms[GAME.map.rooms.length-1];GAME.map.exitPortal2={x:R.cx+.5,y:R.cy-3.5};chat(t('A portal out has opened.'),'#9fe');}
-function damagePlayer(d,src){if(PE.dead||d<=0)return;if(GAME.godmode)return;
+function damagePlayer(d,src){if(PE.dead||d<=0)return;if(GAME.godmode)return;if(src&&src.kind==='mob')d*=PARTY.dmgMul();
  if(Math.random()*100<PS.dodge+(GAME.abuffs.find(b=>b.id==='evasion')?60:0)){floater(PE.x,PE.y,t('Dodge'),'#9fe');return;}
  if(PS.block&&Math.random()*100<PS.block){d*=.4;floater(PE.x,PE.y-.3,t('Block'),'#7fb2ff');}
  d*=(1-PS.drArmor)*(1-PS.dr/100);if(GAME.abuffs.find(b=>b.id==='bulwark'))d*=.5;d=Math.max(1,Math.round(d*rnd(.9,1.1)));
@@ -3123,7 +3138,7 @@ function updateProjs(dt){const M=GAME.map;for(const p of GAME.projs){p.t+=dt;if(
      if(p.splash){explode(p.x,p.y,p.splash*PS.splash,p.dmg,p.el,p.c);p.dead=1;break;}
      if(p.minion){damageMob(m,Math.round(p.dmg),false,p.el);}else playerHit(m,p.dmg,{melee:false,el:p.el});if(!p.pierce){p.dead=1;break;}}}
    if(p.dead&&p.splash&&!p.exploded){p.exploded=1;}}
-  else{const targets=[PE,...GAME.minions];for(const e of targets){if(e===PE&&PE.dead)continue;if(Math.hypot(e.x-p.x,e.y-.5-p.y)<.5){if(e===PE)damagePlayer(p.dmg,p.src);else e.hp-=p.dmg*.8;p.dead=1;burst(p.x,p.y,p.c,6);break;}}}}
+  else{const targets=[PE,...GAME.minions];for(const e of targets){if(e===PE&&PE.dead)continue;if(Math.hypot(e.x-p.x,e.y-.5-p.y)<.5){if(!p.dmg)continue;if(e===PE)damagePlayer(p.dmg,p.src);else e.hp-=p.dmg*.8;p.dead=1;burst(p.x,p.y,p.c,6);break;}}}}
  GAME.projs=GAME.projs.filter(p=>!p.dead);}
 function explode(x,y,r,dmg,el,c){fx_ring(x,y+.3,c||'#ff8a1e',r);burst(x,y,c||'#ff8a1e',18,4);sfx(el==='frost'?'frost':'fire');for(const m of mobsNear(x,y+.5,r)){playerHit(m,dmg,{melee:false,el});}}
 // ---- abilities ----
@@ -3194,22 +3209,22 @@ function chaseMove(e,T,sp,dt,r){const dx=T.x-e.x,dy=T.y-e.y,d=Math.hypot(dx,dy)|
  const ox=e.x,oy=e.y;moveEnt(e,dx/d*sp*dt,dy/d*sp*dt,r);
  if(Math.hypot(e.x-ox,e.y-oy)<sp*dt*.5)e.stuck=(e.stuck||0)+dt;else e.stuck=0;}
 function updateMobs(dt){const M=GAME.map;const stealthR=PE.stealth?1.6:1;
- for(const m of GAME.mobs){m.anim+=dt*(m.state==='idle'?2:6);if(m.flash>0)m.flash-=dt;
+ for(const m of GAME.mobs){if(m.proxy){PARTY.proxyUpdate(m,dt);continue;}m.anim+=dt*(m.state==='idle'?2:6);if(m.flash>0)m.flash-=dt;
   for(const d of m.dots){const dmg=d.dps*Math.min(dt,d.t);d.t-=dt;d.acc=(d.acc||0)+dmg;if(d.acc>=1){const n=Math.floor(d.acc);d.acc-=n;m.hp-=n;if(Math.random()<.15)floater(m.x,m.y,fmt(n),d.c);}}m.dots=m.dots.filter(d=>d.t>0);if(m.hp<=0){killMob(m);continue;}
   if(m.stun>0){m.stun-=dt;continue;}if(m.root>0)m.root-=dt;if(m.slow>0)m.slow-=dt;if(m.taunt>0)m.taunt-=dt;
   const dP=Math.hypot(PE.x-m.x,PE.y-m.y);
   if(m.state==='idle'){m.wander-=dt;if(m.wander<=0){m.wander=rnd(2,5);m.wx=m.sx+rnd(-2.5,2.5);m.wy=m.sy+rnd(-2.5,2.5);}if(m.wx!=null&&!m.boss){const dx=m.wx-m.x,dy=m.wy-m.y,d=Math.hypot(dx,dy);if(d>.2){moveEnt(m,dx/d*m.spd*.35*dt,dy/d*m.spd*.35*dt);m.fx=dx>0?1:-1;}}
-   const ag=PE.stealth?(m.boss?2.5:1.5):m.aggro*(m.lvl>P.lvl+5?1.3:m.lvl<P.lvl-8?.5:1);if(!PE.dead&&dP<ag&&!P.mountedSafe&&losClear(m,PE)){m.state='chase';m.tgt=PE;alertPack(m);}
+   const ag=PE.stealth?(m.boss?2.5:1.5):m.aggro*(m.lvl>P.lvl+5?1.3:m.lvl<P.lvl-8?.5:1);if(!PE.dead&&dP<ag&&!P.mountedSafe&&losClear(m,PE)){m.state='chase';m.tgt=PE;alertPack(m);}else if(PARTY.role==='host'){for(const a of PARTY.allies){if(!a.dead&&Math.hypot(a.x-m.x,a.y-m.y)<m.aggro&&losClear(m,a)){m.state='chase';m.tgt=a;alertPack(m);break;}}if(m.state==='chase')continue;}
    for(const mn of GAME.minions){if(Math.hypot(mn.x-m.x,mn.y-m.y)<3.5){m.state='chase';m.tgt=mn;break;}}continue;}
   if(m.state==='return'){const dx=m.sx-m.x,dy=m.sy-m.y,d=Math.hypot(dx,dy);m.hp=Math.min(m.maxHp,m.hp+m.maxHp*.2*dt);if(d<.4){m.state='idle';m.hp=m.maxHp;}else{m.x+=dx/d*m.spd*1.4*dt;m.y+=dy/d*m.spd*1.4*dt;m.fx=dx>0?1:-1;}continue;}
   // chase / attack
-  let T=m.tgt;if(T&&(T.hp<=0||(T===PE&&(PE.dead||(PE.stealth&&dP>1.5&&!m.boss))))){T=null;}
+  let T=m.tgt;if(T&&(T.hp<=0||(T===PE&&(PE.dead||(PE.stealth&&dP>1.5&&!m.boss)))||(T.kind==='ally'&&(T.dead||!PARTY.allies.includes(T))))){T=null;}
   const abom=GAME.minions.find(x=>x.taunt&&Math.hypot(x.x-m.x,x.y-m.y)<6);if(abom&&!m.boss)T=abom;
-  if(!T){const near=GAME.minions.find(x=>Math.hypot(x.x-m.x,x.y-m.y)<4);T=near||(!PE.dead&&dP<m.aggro*1.5&&!PE.stealth?PE:null);}
+  if(!T){const near=GAME.minions.find(x=>Math.hypot(x.x-m.x,x.y-m.y)<4);T=near||(!PE.dead&&dP<m.aggro*1.5&&!PE.stealth?PE:null);if(!T&&PARTY.role==='host')T=PARTY.allies.find(a=>!a.dead&&Math.hypot(a.x-m.x,a.y-m.y)<m.aggro*1.5)||null;}
   m.tgt=T;if(!T||Math.hypot(m.x-m.sx,m.y-m.sy)>(m.boss?18:(m.lvl<=12?15:24))){m.state='return';m.tgt=null;continue;}
   const dx=T.x-m.x,dy=T.y-m.y,d=Math.hypot(dx,dy)||1;m.fx=dx>0?1:-1;const reach=m.ranged?5.5:.9+.35*m.size+(T.size||1)*.25;
   if(d>reach||(m.ranged&&!losClear(m,T))){if(m.root<=0){const sp=m.spd*(m.slow>0?.5:1)*(m.enr?1.3:1);chaseMove(m,T,sp,dt,.3*Math.min(m.size,1.3));}}
-  else{m.atk-=dt;if(m.atk<=0){m.atk=(m.ranged?1.8:1.4)*(m.enr?.75:1);if(m.ranged){shoot({x:m.x,y:m.y-.6,dx:dx/d,dy:dy/d,spd:7,dmg:m.dmg*.9,c:m.pal[3],r:.3,life:1.2,from:'m',src:m});}else{if(T===PE)damagePlayer(m.dmg*(m.enr?1.3:1),m);else{T.hp-=m.dmg*.7;T.flash=.1;}m.lunge=.15;}}}
+  else{m.atk-=dt;if(m.atk<=0){m.atk=(m.ranged?1.8:1.4)*(m.enr?.75:1);if(m.ranged){const al=T.kind==='ally';if(al)PARTY.hitAlly(T,m.dmg*.9,m);shoot({x:m.x,y:m.y-.6,dx:dx/d,dy:dy/d,spd:7,dmg:al?0:m.dmg*.9,c:m.pal[3],r:.3,life:1.2,from:'m',src:m});}else{if(T===PE)damagePlayer(m.dmg*(m.enr?1.3:1),m);else if(T.kind==='ally')PARTY.hitAlly(T,m.dmg*(m.enr?1.3:1),m);else{T.hp-=m.dmg*.7;T.flash=.1;}m.lunge=.15;}}}
   if(m.lunge>0)m.lunge-=dt;
   // boss & elite specials
   if(m.boss){m.special-=dt;m.adds-=dt;if(!m.enr&&m.hp<m.maxHp*.3){m.enr=true;banner(m.name.split(',')[0]+' '+t('is enraged!'),'',1800);sfx('boss');}
@@ -3217,9 +3232,9 @@ function updateMobs(dt){const M=GAME.map;const stealthR=PE.stealth?1.6:1;
    if(m.adds<=0){m.adds=24;const D=DUNGEON_BY_ID[GAME.map.d];for(let i=0;i<2;i++){const dm=D.mobs[i%D.mobs.length];const a=makeMob(['d_'+dm[2],dm[2],dm[0],dm[1],0,dm[3]?'R':''],m.lvl-3,m.x+rnd(-3,3),m.y+rnd(-2,2),{dun:1});if(!canStand(GAME.map,a.x,a.y,.3)){a.x=m.x;a.y=m.y;}a.state='chase';a.tgt=PE;GAME.mobs.push(a);}chat(m.name.split(',')[0]+' '+t('calls for aid!'),'#ff4a5a');}}
   else if(m.elite){m.special-=dt;if(m.special<=0&&d<6){m.special=9;GAME.grounds.push({warn:1,x:m.x,y:m.y,r:2.2,t:0,delay:1.1,boss:m,c:'#ff8a1e',dmg:m.dmg*1.6});}}}
  // separation
- for(let i=0;i<GAME.mobs.length;i++){const a=GAME.mobs[i];for(let j=i+1;j<GAME.mobs.length;j++){const b=GAME.mobs[j];const dx=b.x-a.x,dy=b.y-a.y,d=Math.hypot(dx,dy);const md=.45*(a.size+b.size);if(d<md&&d>.001){const p=(md-d)*.5;moveEnt(a,-dx/d*p,-dy/d*p);moveEnt(b,dx/d*p,dy/d*p);}}}}
+ for(let i=0;i<GAME.mobs.length;i++){const a=GAME.mobs[i];for(let j=i+1;j<GAME.mobs.length;j++){const b=GAME.mobs[j];if(a.proxy||b.proxy)continue;const dx=b.x-a.x,dy=b.y-a.y,d=Math.hypot(dx,dy);const md=.45*(a.size+b.size);if(d<md&&d>.001){const p=(md-d)*.5;moveEnt(a,-dx/d*p,-dy/d*p);moveEnt(b,dx/d*p,dy/d*p);}}}}
 function updateWarnings(dt){for(const g of GAME.grounds){if(!g.warn)continue;g.delay-=dt;if(g.delay<=0){g.done=1;fx_ring(g.x,g.y,g.c,g.r,.35);burst(g.x,g.y,g.c,20,g.r*2);GAME.shake=7;sfx('mhit');
-   if(!PE.dead&&Math.hypot(PE.x-g.x,PE.y-g.y)<g.r)damagePlayer(g.dmg,g.boss);for(const mn of GAME.minions)if(Math.hypot(mn.x-g.x,mn.y-g.y)<g.r)mn.hp-=g.dmg*.6;}}
+   if(!PE.dead&&Math.hypot(PE.x-g.x,PE.y-g.y)<g.r)damagePlayer(g.dmg,g.boss);if(PARTY.role==='host'&&g.dmg>0)PARTY.aoeAllies(g);for(const mn of GAME.minions)if(Math.hypot(mn.x-g.x,mn.y-g.y)<g.r)mn.hp-=g.dmg*.6;}}
  GAME.grounds=GAME.grounds.filter(g=>!g.done);}
 // ================= MINIONS =================
 function updateMinions(dt){for(const m of GAME.minions){m.anim+=dt*5;if(m.flash>0)m.flash-=dt;if(m.ttl!=null){m.ttl-=dt;if(m.ttl<=0)m.hp=0;}
@@ -3253,6 +3268,7 @@ function turnInQuest(q){if(!qComplete(q))return;q.obj.forEach(o=>{if(o.item)invR
  // item reward
  let it=null;if(q.dungeon)it=genGear(q.lvl,2,{cls:P.cls,arm:pick(CLASSES[P.cls].armor.filter(a=>a!=='plate'||P.plate))});else if(q.main&&q.obj[0].t!=='talk')it=genGear(Math.max(1,q.lvl),Math.random()<.25?2:1,{cls:P.cls,...(Math.random()<.5?{wt:pick(CLASSES[P.cls].weapons.filter(w=>w!=='shield'))}:{arm:pick(CLASSES[P.cls].armor.filter(a=>a!=='plate'||P.plate))})});
  else if(!q.main){const r=Math.random();if(r<.35)it=genGear(q.lvl,1,{cls:P.cls});else{it=mkPotion('hp',potTier(q.lvl));it.q=3;}}
+ if(it)it.lb='A';
  if(it){if(!invAdd(it))GAME.loot.push({x:PE.x,y:PE.y+.5,it,t:300,bob:0});}
  gainXP(questXP(q));
  if(q.next){/* next zone's chain continues automatically */}
@@ -3313,7 +3329,7 @@ function sellPrice(it){return it.k==='quest'?0:Math.max(1,Math.floor((it.val||1)
 function buyItem(npc,it){const price=it.price;if(P.gold<price){toast(t('Not enough gold'),'#ff4a5a');sfx('err');return;}if(it.k==='mount'){if(P.lvl<it.req){toast(t('Requires level {n}',{n:it.req}));return;}if(P.mounts&&P.mounts.includes(it.mid)){toast(t('You already own this mount'));return;}}
  const c=cloneItem(it);delete c.price;if(c.k==='mount'){P.gold-=price;P.mounts=P.mounts||[];P.mounts.push(c.mid);if(!P.mount||MOUNTS[c.mid].sp>MOUNTS[P.mount].sp)P.mount=c.mid;sfx('buy');toast(t('Mount acquired: {m}. Press R to ride.',{m:c.n}),'#ffd24a');UI.dirty=1;return;}
  if(!invAdd(c,true)){toast(t('Inventory full!'),'#ff4a5a');return;}P.gold-=price;sfx('buy');UI.dirty=1;}
-function sellItem(idx){const it=P.inv[idx];if(!it)return;if(it.k==='quest'){toast(t('Quest items cannot be sold'));return;}const g=sellPrice(it);P.gold+=g;P.inv[idx]=null;GAME.buyback=GAME.buyback||[];GAME.buyback.unshift(it);GAME.buyback=GAME.buyback.slice(0,8);sfx('gold');toast(t('Sold {i} for {g}g',{i:it.n,g:fmt(g)}));UI.dirty=1;}
+function sellItem(idx){const it=P.inv[idx];if(!it)return;if(it.k==='quest'){toast(t('Quest items cannot be sold'));return;}const g=sellPrice(it);P.gold+=g;P.inv[idx]=null;delete it.gid;GAME.buyback=GAME.buyback||[];GAME.buyback.unshift(it);GAME.buyback=GAME.buyback.slice(0,8);sfx('gold');toast(t('Sold {i} for {g}g',{i:it.n,g:fmt(g)}));UI.dirty=1;}
 function sellJunk(){let g=0;P.inv.forEach((it,i)=>{if(it&&(it.k==='junk'||(it.k==='gear'&&it.rar===0&&itemClasses(it)&&!itemClasses(it).includes(P.cls)))){g+=sellPrice(it);P.inv[i]=null;}});if(g){P.gold+=g;sfx('gold');toast(t('Sold junk for {g}g',{g:fmt(g)}));}UI.dirty=1;}
 function provisionerTrades(){const out=[];for(let t0=0;t0<ZONES.length;t0++){FOODS.forEach((f,fi)=>{if(fi===6&&t0<6)return;out.push({t:t0,fi,n:f.n+' ('+ZONES[t0].ore+' x5)',mat:'mat_ore_'+t0,q:5});});}return out;}
 // ================= CONSUMABLES =================
@@ -3462,9 +3478,11 @@ function render(){const x=R.x,M=GAME.map;if(!M||!PE)return;const Zm=R.Z;const vw
  const it=GAME.interact;if(it){label((IS_TOUCH?t('TAP ✋'):'[E] ')+it.label,it.x,it.y-(it.h||1.8),'#ffd24a',12);}
  if(GAME.shake>0)GAME.shake=Math.max(0,GAME.shake-.5);}
 function lvlColor(L){const d=L-P.lvl;return d>=5?'#ff4a4a':d>=3?'#ff8a1e':d>=-2?'#ffd24a':d>=-8?'#3cff5a':'#9a9a9a';}
-function drawNPC(x,n){const f=Math.floor(GAME.time*1.5+n.x)%2;if(n.role==='waystone'){drawWaystone(x,n.x,n.y);return;}if(n.role==='board'){drawBoard(x,n.x,n.y);return;}
+function drawNPC(x,n){const f=Math.floor(GAME.time*1.5+n.x)%2;if(n.role==='waystone'){drawWaystone(x,n.x,n.y);return;}if(n.role==='board'){drawBoard(x,n.x,n.y);return;}if(n.role==='mailbox'){drawMailbox(x,n.x,n.y);return;}
  const s=npcSprite(n.role,n.z,f&&0);x.fillStyle='rgba(0,0,0,.3)';x.fillRect(n.x*TS-5,n.y*TS-1,10,3);x.drawImage(s,Math.round(n.x*TS-9),Math.round(n.y*TS-25));}
 function drawWaystone(x,wx,wy){x.fillStyle='#5a5a6a';x.fillRect(wx*TS-5,wy*TS-22,10,22);x.fillStyle='#7a7a8a';x.fillRect(wx*TS-5,wy*TS-22,10,2);x.fillStyle='#4af0ff';const a=.5+.5*Math.sin(GAME.time*3);x.globalAlpha=a;x.fillRect(wx*TS-2,wy*TS-18,4,4);x.fillRect(wx*TS-1,wy*TS-12,2,6);x.globalAlpha=1;}
+function drawMailbox(x,wx,wy){const X=wx*TS,Y=wy*TS;x.fillStyle='rgba(0,0,0,.3)';x.fillRect(X-6,Y-1,12,3);x.fillStyle='#5a3a1e';x.fillRect(X-1,Y-12,3,12);x.fillStyle='#2a4a9a';x.fillRect(X-7,Y-21,14,10);x.fillStyle='#3a6ad0';x.fillRect(X-7,Y-21,14,3);x.fillStyle='#e8dcb5';x.fillRect(X-4,Y-16,8,1);x.fillStyle='#c83a3a';x.fillRect(X+6,Y-25,2,8);x.fillRect(X+6,Y-25,5,3);
+ if(isCloud()&&CL.mail>0){x.fillStyle='#ffd24a';x.fillRect(X-1,Y-31+Math.sin(GAME.time*4)*1.5,3,4);x.fillRect(X-1,Y-26+Math.sin(GAME.time*4)*1.5,3,2);}}
 function drawBoard(x,wx,wy){x.fillStyle='#5a3a1e';x.fillRect(wx*TS-8,wy*TS-20,2,20);x.fillRect(wx*TS+6,wy*TS-20,2,20);x.fillStyle='#8a6a3a';x.fillRect(wx*TS-9,wy*TS-22,18,13);x.fillStyle='#e8dcb5';x.fillRect(wx*TS-7,wy*TS-20,5,6);x.fillRect(wx*TS,wy*TS-19,6,7);x.fillStyle='#c83a3a';x.fillRect(wx*TS-5,wy*TS-20,1,1);}
 function drawPortal(x,wx,wy,c,gate){const T=GAME.time;x.fillStyle='#1a1020';x.beginPath();x.ellipse(wx*TS,wy*TS-10,10,14,0,0,6.283);x.fill();for(let i=0;i<3;i++){x.strokeStyle=c;x.globalAlpha=.4+.2*i;x.lineWidth=1.5;x.beginPath();x.ellipse(wx*TS,wy*TS-10,9-i*3+Math.sin(T*3+i)*1,13-i*4+Math.sin(T*3+i),0,0,6.283);x.stroke();}x.globalAlpha=1;
  if(gate){x.fillStyle='#4a4a52';x.fillRect(wx*TS-13,wy*TS-26,4,26);x.fillRect(wx*TS+9,wy*TS-26,4,26);x.fillRect(wx*TS-13,wy*TS-28,26,4);}}
@@ -3530,6 +3548,7 @@ function itemTip(it,cmp){if(!it)return'';const R=RAR[it.rar||0];let h='<div clas
   if(cmp){const s1=itemScore(it),s0=itemScore(cmp);const d=s0?Math.round((s1-s0)/s0*100):100;h+='<div class="'+(d>=0?'green':'red')+'">'+(d>=0?'▲ ':'▼ ')+Math.abs(d)+'% '+t('vs equipped')+'</div>';}}
  else{const D={pot:t('Potion'),bandage:t('Bandage — heals over 5s, out of combat'),scroll:SCROLLS[it.sc]?SCROLLS[it.sc].d:'',food:FOODS[it.fi]?t('Food (15 min): ')+FOODS[it.fi].d:'',junk:t('Junk — sell to a merchant'),mat:t('Crafting material'),quest:t('Quest item'),ench:ENCH[it.ei]?(t('Apply to an equipped item')+(ENCH[it.ei].d?': '+ENCH[it.ei].d:'')):'',bag:t('Bag — adds inventory slots'),mount:t('Mount — press R to ride')};h+='<div class="grey">'+esc(D[it.k]||'')+'</div>';
   if(it.k==='pot')h+='<div>'+(it.pt==='hp'?t('Restores ~{n} health',{n:fmt(baseHPAt(POT_TIERS[it.tier][0],P.cls)*.55+40)}):t('Restores mana'))+'</div>';if(it.req>1)h+='<div class="'+(P.lvl>=it.req?'grey':'red')+'">'+t('Requires level {n}',{n:it.req})+'</div>';}
+ {const lb=itemLabel(it);h+='<div style="color:'+(lb==='A'?'#ff9a6a':'#7fe0a0')+'">'+(lb==='A'?'🔒 '+t('Account Locked'):'◆ '+t('Valued'))+'</div>';}
  if(it.price!=null)h+='<div class="gold">'+t('Price')+': '+fmt(it.price)+'g</div>';else if(it.k!=='quest')h+='<div class="gold">'+t('Sells for')+' '+fmt(sellPrice(it))+'g</div>';return h;}
 function slotEl(it,opts={}){const s=el('div',{class:'slot'+(it?' b'+(it.rar||0):' empty')+(opts.cls?' '+opts.cls:'')});if(it){s.appendChild(canvasIcon(itemIcon(it)));if((it.q||1)>1)s.appendChild(el('div',{class:'q'},String(it.q)));
   if(it.k==='gear'){const c=itemClasses(it);if((c&&!c.includes(P.cls))||P.lvl<it.req||(it.arm==='plate'&&!P.plate&&P.cls==='knight'))s.classList.add('bad');}
@@ -3609,7 +3628,7 @@ const RENDERERS={
 };
 function sortInv(){const items=P.inv.filter(Boolean);const ord={gear:0,pot:1,bandage:2,food:3,scroll:4,ench:5,bag:6,mount:7,mat:8,quest:9,junk:10};items.sort((a,b)=>(ord[a.k]-ord[b.k])||((b.rar||0)-(a.rar||0))||((b.ilvl||b.tier||0)-(a.ilvl||a.tier||0))||String(a.n).localeCompare(b.n));P.inv=items.concat(new Array(P.inv.length-items.length).fill(null));UI.dirty=1;}
 // ---- NPC interactions ----
-function talkTo(npc){UI.npc=npc;questOnTalk(npc);if(npc.role==='waystone'){if(!P.ways.includes(npc.z))P.ways.push(npc.z);P.bind=npc.z;openWin('way');chat(t('{t} is now your home. You will return here when you fall or recall.',{t:ZONES[npc.z].town}),'#9fe');return;}
+function talkTo(npc){if(npc.role==='mailbox'){openMailbox();return;}if(npc.role==='market'){openMarket(npc);return;}UI.npc=npc;questOnTalk(npc);if(npc.role==='waystone'){if(!P.ways.includes(npc.z))P.ways.push(npc.z);P.bind=npc.z;openWin('way');chat(t('{t} is now your home. You will return here when you fall or recall.',{t:ZONES[npc.z].town}),'#9fe');return;}
  if(npc.role==='healer'){P.bind=npc.z;healPlayer(0);openNPC(npc,t('Rest, traveler. If you fall, the Lost Aura will return you to me.'),[]);return;}
  openNPC(npc);}
 function openNPC(npc,greet){const W=win('npc','',560);W.tt.textContent=npc.n;W.e.classList.add('on');UI.open.add('npc');UI.npc=npc;drawNPCWin(greet);placeWin(W);sfx('open');}
@@ -3677,10 +3696,22 @@ function updateHUD(){if(!P||!PE)return;const C=CLASSES[P.cls];$('#pname').innerH
 function updateTracker(){const act=Object.keys(P.quests.a).map(id=>QUESTS[id]).filter(Boolean).sort((a,b)=>(b.main||0)-(a.main||0)||(b.dungeon?1:0)-(a.dungeon?1:0)||a.lvl-b.lvl).slice(0,5);
  $('#tracker').innerHTML=act.map(q=>{const done=qComplete(q);return'<div class="q"><div class="qt">'+(q.main?'★ ':q.dungeon?'⚔ ':'')+esc(qtitle(q))+'</div>'+(done?'<div class="done">'+t('Return to {n}',{n:esc(npcName(q.turn||q.giver))})+'</div>':q.obj.map((o,i)=>'<div class="'+(objProgress(q,o,i)>=objNeed(o)?'done':'')+'">- '+esc(objText(q,o,i))+'</div>').join(''))+'</div>';}).join('')||'<div class="grey">'+t('No active quests')+'</div>';}
 // ---- chat ----
-const CHATLOG=[];function chat(msg,col,from){CHATLOG.push({msg,col,from,t:Date.now()});if(CHATLOG.length>60)CHATLOG.shift();const L=$('#chatlog');const d=el('div',{style:'color:'+(col||'#e8dcb5')},(from?'<span style="color:#7fd8ff">['+esc(from)+']</span> ':'')+esc(msg));L.appendChild(d);while(L.children.length>9)L.firstChild.remove();setTimeout(()=>{d.style.opacity=.55;},20000);}
+const CHATLOG=[];const CHAT={tabs:[{id:'g',n:'General',log:[],unread:0,fixed:1}],active:'g',lastW:null};
+function chatTab(id){return CHAT.tabs.find(x=>x.id===id);}
+function chat(msg,col,from,tabId){tabId=tabId||'g';let T=chatTab(tabId);if(!T)T=chatTab('g');const e={msg,col,from,t:Date.now()};T.log.push(e);if(T.log.length>80)T.log.shift();T.last=Date.now();if(tabId==='g'){CHATLOG.push(e);if(CHATLOG.length>60)CHATLOG.shift();}
+ if(CHAT.active===T.id){chatLine(e,true);}else{T.unread++;renderChatTabs();}}
+function chatLine(e,fade){const L=$('#chatlog');if(!L)return;const d=el('div',{style:'color:'+(e.col||'#e8dcb5')},(e.from?'<span class="cname" data-n="'+esc(e.from)+'" style="color:#7fd8ff">['+esc(e.from)+']</span> ':'')+esc(e.msg));L.appendChild(d);while(L.children.length>9)L.firstChild.remove();if(fade)setTimeout(()=>{d.style.opacity=.55;},20000);}
+function renderChatLog(){const L=$('#chatlog');if(!L)return;L.innerHTML='';const T=chatTab(CHAT.active)||CHAT.tabs[0];T.log.slice(-9).forEach(e=>chatLine(e,false));}
+function renderChatTabs(){const B=$('#chattabs');if(!B)return;B.innerHTML='';B.style.display=CHAT.tabs.length>1?'flex':'none';
+ CHAT.tabs.forEach(T=>{const b=el('span',{class:'ctab'+(T.id===CHAT.active?' on':'')+(T.id[0]==='w'?' wh':T.id==='p'?' pt':''),'data-tab':T.id},esc(T.id==='g'?t('General'):T.id==='p'?t('Party'):'@'+T.n)+(T.unread?' <b>'+T.unread+'</b>':''));
+  b.onclick=ev=>{ev.stopPropagation();chatSwitch(T.id);};if(!T.fixed){const x=el('span',{class:'cx'},'✕');x.onclick=ev=>{ev.stopPropagation();chatClose(T.id);};b.appendChild(x);}B.appendChild(b);});}
+function chatSwitch(id){const T=chatTab(id);if(!T)return;CHAT.active=id;T.unread=0;renderChatTabs();renderChatLog();}
+function chatOpenTab(id,n){let T=chatTab(id);if(!T){T={id,n,log:[],unread:0,last:Date.now()};CHAT.tabs.push(T);}renderChatTabs();return T;}
+function chatClose(id){const T=chatTab(id);if(!T||T.fixed)return;CHAT.tabs=CHAT.tabs.filter(x=>x!==T);if(CHAT.active===id)CHAT.active='g';renderChatTabs();renderChatLog();}
 function openChat(){const i=$('#chatin');i.style.display='block';i.focus();}
-function sendChat(){const i=$('#chatin');const v=i.value.trim();i.value='';i.style.display='none';i.blur();if(!v)return;if(v.startsWith('/')){slashCmd(v);return;}const clean=chatFilter(v);GAME.say=clean;GAME.sayT=Date.now()+5000;chat(clean,'#fff',P.name);net.sendChat(clean);}
-function slashCmd(v){const [c]=v.slice(1).split(' ');if(c==='who'){const o=Object.values(net.others);chat(t('{n} other players in this zone',{n:o.filter(x=>x.zone===net.zoneKey).length})+(o.length?': '+o.map(x=>x.name+' ('+x.lvl+')').join(', '):''),'#9fe');}else if(c==='help'){showHelp();}else chat(t('Commands: /who /help'),'#9fe');}
+function sendChat(){const i=$('#chatin');const v=i.value.trim();i.value='';i.style.display='none';i.blur();if(!v)return;if(v.startsWith('/')){slashCmd(v);return;}const clean=chatFilter(v);if(!clean)return;
+ if(CHAT.active==='p'){partySay(clean);return;}if(CHAT.active[0]==='w'){whisper(chatTab(CHAT.active).n,v);return;}GAME.say=clean;GAME.sayT=Date.now()+5000;chat(clean,'#fff',P.name);net.sendChat(clean);}
+function slashCmd(v){slashCmd2(v);}
 function showHelp(){modal('<div class="h1">'+t('Controls')+'</div><div style="text-align:left;font-size:13px;line-height:1.6">'+
  t('Move')+': WASD / '+t('arrows')+'<br>'+t('Attack')+': '+t('hold left mouse or Space (aims at cursor / nearest enemy)')+'<br>'+t('Select target')+': '+t('click an enemy · Tab cycles')+'<br>'+t('Abilities')+': 1-9<br>'+t('Health potion')+': Q · '+t('Mana potion')+': G · '+t('Bandage')+': F<br>'+t('Interact / talk / loot / harvest')+': E ('+t('or click')+')<br>'+t('Mount')+': R<br>'+
  t('Character')+' C · '+t('Bag')+' B/I · '+t('Skills')+' K · '+t('Abilities')+' P · '+t('Quests')+' L/J · '+t('Adventure Book')+' O · '+t('Map')+' M · '+t('Crafting')+' N · '+t('Chat')+' Enter · '+t('Menu')+' Esc<br><br>'+
@@ -3693,21 +3724,31 @@ const SB_URL='https://fugfgorircipfntzopon.supabase.co',SB_KEY='sb_publishable_9
 const net={ws:null,ref:1,ok:false,zoneKey:null,topic:null,others:{},online:0,presence:{},lastSend:0,lastPos:'',hb:null,retry:0,sid:Math.random().toString(36).slice(2,10),chatT:[],
  status(){if(!OPT.online||/[?&]offline/.test(location.search))return t('Offline mode');if(!this.ok)return t('Connecting…');const n=Object.values(this.others).filter(o=>o.zone===this.zoneKey).length;return t('Online: {n}',{n:Math.max(1,this.online)})+(this.zoneKey?' · '+t('{n} nearby',{n}):'');},
  start(){if(!OPT.online||this.ws||/[?&]offline/.test(location.search))return;try{this.ws=new WebSocket(SB_URL.replace('https','wss')+'/realtime/v1/websocket?apikey='+SB_KEY+'&vsn=1.0.0');}catch(e){this.ws=null;return;}
-  const ws=this.ws;ws.onopen=()=>{this.ok=true;this.retry=0;this.join('realtime:mw-chat',{presence:{key:this.sid}});if(this.zoneKey)this.join('realtime:mw-'+this.zoneKey,{});this.hb=setInterval(()=>this.send('phoenix','heartbeat',{}),25000);};
+  const ws=this.ws;ws.onopen=()=>{this.ok=true;this.retry=0;this.join('realtime:mw-chat',{presence:{key:this.sid}});if(this.zoneKey)this.join('realtime:mw-'+this.zoneKey,{});if(this.userT)this.joinUser(true);if(this.mktT)this.joinMkt(true);if(PARTY.pid)this.join('realtime:mw-p-'+PARTY.pid,{});this.hb=setInterval(()=>this.send('phoenix','heartbeat',{}),25000);};
   ws.onmessage=e=>{let m;try{m=JSON.parse(e.data);}catch(_){return;}this.onMsg(m);};
   ws.onclose=()=>{this.ok=false;clearInterval(this.hb);this.ws=null;this.others={};if(OPT.online&&this.retry<8){this.retry++;setTimeout(()=>this.start(),3000*this.retry);}};ws.onerror=()=>{};},
  stop(){if(this.ws){try{this.ws.close();}catch(e){}}this.ws=null;this.ok=false;this.others={};},
  send(topic,event,payload){if(!this.ws||this.ws.readyState!==1)return;this.ws.send(JSON.stringify({topic,event,payload,ref:String(this.ref++)}));},
- join(topic,cfg){this.send(topic,'phx_join',{config:Object.assign({broadcast:{self:false,ack:false},presence:{key:''},private:false},cfg)});if(topic==='realtime:mw-chat')setTimeout(()=>this.track(),400);},
- track(){if(!P)return;this.send('realtime:mw-chat','presence',{type:'presence',event:'track',payload:{n:P.name,c:P.cls,l:P.lvl}});},
+ join(topic,cfg,tok){const p={config:Object.assign({broadcast:{self:false,ack:false},presence:{key:''},private:false},cfg)};if(tok)p.access_token=tok;this.send(topic,'phx_join',p);if(topic==='realtime:mw-chat')setTimeout(()=>this.track(),400);},
+ track(){if(!P)return;this.send('realtime:mw-chat','presence',{type:'presence',event:'track',payload:{n:P.name,c:P.cls,l:P.lvl,o:isCloud()?1:0}});},
+ pgSubs(){const u=CL.uid;return[{event:'*',schema:'public',table:'mw_trades',filter:'a=eq.'+u},{event:'*',schema:'public',table:'mw_trades',filter:'b=eq.'+u},{event:'INSERT',schema:'public',table:'mw_mail',filter:'owner=eq.'+u},{event:'INSERT',schema:'public',table:'mw_whispers',filter:'to_id=eq.'+u}];},
+ async joinUser(re){if(!isCloud()||!this.ok){this.userT=isCloud()?'realtime:mw-u-'+CL.uid:null;return;}const tk=await AUTH.token().catch(()=>null);if(!tk)return;const T='realtime:mw-u-'+CL.uid;if(this.userT&&this.userT!==T)this.send(this.userT,'phx_leave',{});this.userT=T;this.join(T,{postgres_changes:this.pgSubs()},tk);},
+ leaveUser(){if(this.userT&&this.ok)this.send(this.userT,'phx_leave',{});this.userT=null;},
+ async joinMkt(re){this.mktT='realtime:mw-mkt';if(!this.ok)return;const tk=await AUTH.token().catch(()=>null);if(!tk)return;this.join(this.mktT,{postgres_changes:[{event:'*',schema:'public',table:'mw_market'}]},tk);},
+ leaveMkt(){if(this.mktT&&this.ok)this.send(this.mktT,'phx_leave',{});this.mktT=null;},
+ setToken(tk){[this.userT,this.mktT].forEach(T=>{if(T)this.send(T,'access_token',{access_token:tk});});},
+ findOnline(name){const N=String(name||'').toUpperCase();for(const k in this.presence){const m=this.presence[k];if(m&&String(m.n).toUpperCase()===N)return Object.assign({sid:k},m);}return null;},
  updateMeta(){this.track();this.lastPos='';},
  joinZone(key){if(this.zoneKey===key)return;if(this.zoneKey&&this.ok){this.send('realtime:mw-'+this.zoneKey,'phx_leave',{});}this.zoneKey=key;this.others={};if(key&&this.ok)this.join('realtime:mw-'+key,{});this.lastPos='';},
- onMsg(m){if(m.event==='presence_state'){this.presence=m.payload||{};this.online=Object.keys(this.presence).length;return;}
-  if(m.event==='presence_diff'){const p=m.payload||{};for(const k in p.joins||{})this.presence[k]=1;for(const k in p.leaves||{})delete this.presence[k];this.online=Object.keys(this.presence).length;return;}
+ onMsg(m){if(m.event==='postgres_changes'){const d=m.payload&&m.payload.data;if(d)onPgChange(d);return;}
+  if(m.event==='presence_state'){this.presence={};const p=m.payload||{};for(const k in p)this.presence[k]=(p[k].metas||[])[0]||{};this.online=Object.keys(this.presence).length;return;}
+  if(m.event==='presence_diff'){const p=m.payload||{};for(const k in p.joins||{})this.presence[k]=((p.joins[k].metas||[])[0])||{};for(const k in p.leaves||{})delete this.presence[k];this.online=Object.keys(this.presence).length;return;}
   if(m.event!=='broadcast')return;const b=m.payload||{};const d=b.payload||{};if(!d||d.sid===this.sid)return;
   if(b.event==='pos'&&m.topic==='realtime:mw-'+this.zoneKey){if(typeof d.x!=='number'||typeof d.y!=='number')return;const nm=sanitizeName(d.n);if(!nm)return;const o=this.others[d.sid]||(this.others[d.sid]={});
    Object.assign(o,{name:nm,cls:CLASSES[d.c]?d.c:'knight',lvl:clamp(d.l|0,1,MAX_LEVEL),tx:d.x,ty:d.y,fx:d.f===-1?-1:1,moving:!!d.m,t:Date.now(),zone:this.zoneKey,look:sanitizeLook(d.k)});if(o.x==null){o.x=d.x;o.y=d.y;}}
-  if(b.event==='chat'&&m.topic==='realtime:mw-chat'){const nm=sanitizeName(d.n);if(!nm)return;const msg=chatFilter(String(d.m||'').slice(0,120));if(!msg)return;chat(msg,'#fff',nm);const o=this.others[d.sid];if(o){o.say=msg;o.sayT=Date.now()+5000;}}},
+  if(m.topic&&m.topic.startsWith('realtime:mw-p-')){PARTY.onMsg(b.event,d,m.topic);return;}
+  if(m.topic==='realtime:mw-chat'&&(b.event==='pinv'||b.event==='pans'||b.event==='pfull')){partyInviteMsg(b.event,d);return;}
+  if(b.event==='chat'&&m.topic==='realtime:mw-chat'){const nm=sanitizeName(d.n);if(!nm)return;if(CL.blocks.has(nm))return;const msg=chatFilter(String(d.m||'').slice(0,120));if(!msg)return;chat(msg,'#fff',nm);const o=this.others[d.sid];if(o){o.say=msg;o.sayT=Date.now()+5000;}}},
  tick(dt){if(!this.ok||!PE||!P)return;const now=performance.now();for(const k in this.others){const o=this.others[k];if(Date.now()-o.t>8000){delete this.others[k];continue;}o.x=lerp(o.x,o.tx,Math.min(1,dt*8));o.y=lerp(o.y,o.ty,Math.min(1,dt*8));}
   if(!this.zoneKey)return;const pos=PE.x.toFixed(2)+','+PE.y.toFixed(2);const iv=pos!==this.lastPos?250:2500;if(now-this.lastSend<iv)return;this.lastSend=now;this.lastPos=pos;
   this.send('realtime:mw-'+this.zoneKey,'broadcast',{type:'broadcast',event:'pos',payload:{sid:this.sid,n:P.name,c:P.cls,l:P.lvl,x:+PE.x.toFixed(2),y:+PE.y.toFixed(2),f:PE.fx,m:PE.moving?1:0,k:playerLook(P)}});},
@@ -3726,8 +3767,659 @@ function validateName(raw){const n=cleanName(raw);if(n.length<3)return{ok:false,
  if(lbBlocked(raw)||lbBlocked(n))return{ok:false,err:t("That name isn't allowed")};
  if(BAD_SUB.some(w=>squash.includes(w)||dedup.includes(w)))return{ok:false,err:t('Please pick a friendlier name.')};
  const words=norm.split(/[^a-z]+/).filter(Boolean);if(words.some(w=>BAD_WORD.includes(w))||BAD_WORD.includes(squash))return{ok:false,err:t('Please pick a friendlier name.')};return{ok:true,name:n};}
-function chatFilter(s){s=String(s).replace(/[\u0000-\u001f<>]/g,'').trim();if(!s)return'';if(lbBlocked(s.replace(/\s+/g,'')))return'***';
- return s.split(/(\s+)/).map(w=>{const n=lbNormalize(w).replace(/[^a-z]/g,'');if(!n)return w;if(lbBlocked(w)||BAD_SUB.some(b=>n.includes(b))||BAD_WORD.includes(n))return'*'.repeat(Math.min(6,w.length));return w;}).join('');}
+function chatFilter(s){s=String(s).replace(/[\u0000-\u001f<>]/g,'').replace(/\s+/g,' ').trim();if(!s)return'';return mwMask(s);}
+
+// ================= ACCOUNT, CLOUD CHARACTER & ECONOMY (Supabase Auth + SECURITY DEFINER RPCs) =================
+// Sign-in reuses the Lost Aura account (same GoTrue email+password, same localStorage session "lag.auth.v1" as lag-account.js).
+// Gold + equipment/bags of an ONLINE character live server-side; trades, market and mailbox are atomic server RPCs.
+const AUTH={KEY:'lag.auth.v1',S:null,ref:null,
+ read(){try{const s=JSON.parse(localStorage.getItem(this.KEY)||'null');return s&&s.access_token&&s.user&&s.user.id?s:null;}catch(e){return null;}},
+ write(s){this.S=s;try{if(s)localStorage.setItem(this.KEY,JSON.stringify(s));else localStorage.removeItem(this.KEY);}catch(e){}},
+ from(j){return{access_token:j.access_token,refresh_token:j.refresh_token,expires_at:j.expires_at||Math.floor(Date.now()/1000)+(j.expires_in||3600),user:{id:j.user.id,email:j.user.email}};},
+ async http(path,o={}){const r=await fetch(SB_URL+path,{method:o.method||'GET',keepalive:!!o.keepalive,headers:Object.assign({apikey:SB_KEY,'Content-Type':'application/json'},o.token?{Authorization:'Bearer '+o.token}:{}),body:o.body!=null?JSON.stringify(o.body):undefined});
+  const tx=await r.text();let j=null;try{j=tx?JSON.parse(tx):null;}catch(e){j=tx;}
+  if(!r.ok){const m=(j&&(j.message||j.msg||j.error_description||j.error))||('HTTP '+r.status);const e=new Error(m);e.status=r.status;throw e;}return j;},
+ user(){if(!this.S)this.S=this.read();return this.S&&this.S.user||null;},
+ async token(){if(!this.S)this.S=this.read();if(!this.S)return null;if(this.S.expires_at*1000-Date.now()>60000)return this.S.access_token;
+  if(!this.ref)this.ref=(async()=>{try{const cur=this.read();if(cur&&cur.expires_at*1000-Date.now()>60000){this.S=cur;return cur.access_token;}
+    const j=await this.http('/auth/v1/token?grant_type=refresh_token',{method:'POST',body:{refresh_token:(cur||this.S).refresh_token}});this.write(this.from(j));net.setToken(this.S.access_token);return this.S.access_token;}
+   catch(e){if(e.status>=400&&e.status<500)this.write(null);throw e;}finally{this.ref=null;}})();
+  return this.ref;},
+ async signIn(email,pw){const j=await this.http('/auth/v1/token?grant_type=password',{method:'POST',body:{email,password:pw}});this.write(this.from(j));return this.S.user;},
+ async signUp(email,pw){const j=await this.http('/auth/v1/signup',{method:'POST',body:{email,password:pw}});if(j&&j.access_token){this.write(this.from(j));return this.S.user;}return this.signIn(email,pw);},
+ signOut(){const tk=this.S&&this.S.access_token;if(tk)this.http('/auth/v1/logout',{method:'POST',token:tk}).catch(()=>{});this.write(null);CL.on=false;CL.uid=null;CL.char=undefined;net.leaveUser();}};
+addEventListener('storage',e=>{if(e.key===AUTH.KEY)AUTH.S=AUTH.read();});
+async function rpc(fn,args,o={}){const tk=await AUTH.token();if(!tk)throw new Error('not_signed_in');return AUTH.http('/rest/v1/rpc/'+fn,{method:'POST',body:args||{},token:tk,keepalive:o.keepalive});}
+async function sbGet(q){const tk=await AUTH.token();if(!tk)throw new Error('not_signed_in');return AUTH.http('/rest/v1/'+q,{token:tk});}
+const ERRMSG={not_online:'That player is not online.',not_same_region:'That player is not in your region.',too_far:'You must be within 10 tiles of each other.',level_5_required:'Both players must be level 5+ to trade.',
+ level_gap:'Players must be within 10 levels of each other.',gold_trade_level_50:'Gold trading unlocks at level 50 (both players).',account_locked:'Account Locked items cannot be traded or listed.',item_unavailable:'That item is no longer available.',
+ busy:'One of you is already in a trade.',blocked:'You cannot interact with this player.',you_blocked:'You have blocked this player.',no_such_player:'No player by that name.',listing_gone:'That listing is no longer available.',own_listing:'That is your own listing.',
+ not_enough_gold:'Not enough gold.',not_at_market:'You must be at a Unity of the Trade market.',listing_limit:'You can have at most 20 active listings.',bad_price:'Enter a valid price.',inventory_full:'Not enough free bag space.',
+ offer_changed:'The offer changed — review it again.',both_must_lock:'Both players must lock their offers first.',slow_down:'Slow down.',name_taken:'That name is taken.',name_blocked:"That name isn't allowed",
+ name_invalid:'Names are 3-12 letters or numbers, starting with a letter.',not_signed_in:'Sign in to trade',already_has_character:'This account already has an online character.',no_such_trade:'That trade is no longer open.',
+ cannot_trade_self:'You cannot do that with yourself.',cannot_whisper_self:'You cannot do that with yourself.',cannot_block_self:'You cannot do that with yourself.',too_many_items:'Up to 8 items per side.',no_character:'No online character on this account.',
+ 'Invalid login credentials':'Wrong email or password.','User already registered':'An account with that email already exists.'};
+function errText(e){const m=String(e&&e.message||e);if(ERRMSG[m])return t(ERRMSG[m]);if(/password/i.test(m)&&/6|8|least/i.test(m))return t('Password must be at least 8 characters.');if(/email/i.test(m)&&/invalid/i.test(m))return t('Please enter a valid email address.');if(/fetch|network/i.test(m))return t('Network error — try again.');return t('Something went wrong: {e}',{e:m.slice(0,80)});}
+
+// ---- cloud state ----
+const CL={on:false,uid:null,seq:0,base:0,q:Promise.resolve(),lastSave:0,lastPing:0,mail:0,blocks:new Set(),char:undefined,errs:0};
+function clQ(fn){const p=CL.q.then(()=>fn());CL.q=p.catch(()=>{});return p;}
+function isCloud(){return!!(CL.on&&P&&P.cloud&&P.cloud===CL.uid);}
+function needCloud(){if(isCloud())return true;chat(t('Sign in to trade')+' — '+t('online features need a signed-in online character.'),'#ff9a6a');return false;}
+function newGid(){if(window.crypto&&crypto.randomUUID)return crypto.randomUUID();const b=crypto.getRandomValues(new Uint8Array(16));b[6]=b[6]&15|64;b[8]=b[8]&63|128;const h=[...b].map(x=>x.toString(16).padStart(2,'0')).join('');return h.slice(0,8)+'-'+h.slice(8,12)+'-'+h.slice(12,16)+'-'+h.slice(16,20)+'-'+h.slice(20);}
+function uniqKind(it){return!!it&&(it.k==='gear'||it.k==='bag');}
+function allUniq(p=P){const out=[];for(const k in p.eq){const it=p.eq[k];if(uniqKind(it))out.push(it);}p.inv.forEach(it=>{if(uniqKind(it))out.push(it);});(p.bags||[]).forEach(it=>{if(uniqKind(it))out.push(it);});return out;}
+function itemData(it){const d=Object.assign({},it);delete d.uid;delete d.gid;delete d.price;return d;}
+function wireItems(p=P){return allUniq(p).map(it=>{if(!it.gid)it.gid=newGid();it.lb=itemLabel(it);return{gid:it.gid,lb:it.lb,data:itemData(it)};});}
+function dropGid(g,p=P){for(const k in p.eq)if(p.eq[k]&&p.eq[k].gid===g)delete p.eq[k];p.inv.forEach((it,i)=>{if(it&&it.gid===g)p.inv[i]=null;});(p.bags||[]).forEach((it,i)=>{if(it&&it.gid===g)p.bags[i]=null;});}
+function placeSrvItem(x,p=P){const it=Object.assign({},x.data,{uid:uid(),gid:x.gid,lb:x.lb||'V'});const i=p.inv.indexOf(null);if(i<0)p.inv.push(it);else p.inv[i]=it;return true;}
+function freeSlots(){return P.inv.filter(s=>!s).length;}
+function hasGid(g,p=P){return allUniq(p).some(it=>it.gid===g);}
+function srvGold(g){const d=Math.floor(P.gold)-CL.base;CL.base=g;P.gold=Math.max(0,g+d);UI.dirty=1;}
+function mapKey(){const M=GAME.map;if(!M)return'';return M.kind==='zone'?'z'+M.z:'d'+M.d;}
+function snapshotP(){P.saved=Date.now();if(GAME.map&&GAME.map.kind==='zone'&&PE){P.zone=GAME.map.z;P.x=PE.x;P.y=PE.y;}if(PE){P.hp=PE.hp;P.res=PE.res;}}
+function saveLocal(p){try{const all=allSaves().filter(x=>x.id!==p.id);all.unshift(p);localStorage.setItem(SAVE_KEY,JSON.stringify(all.slice(0,6)));}catch(e){}}
+function cloudSave(opt={}){if(!isCloud())return Promise.resolve();const p=P;snapshotP();return clQ(async()=>{if(!CL.on||p.cloud!==CL.uid)return;if(P===p&&PE)snapshotP();const items=wireItems(p);const sentGold=Math.floor(p.gold);
+  const body={p_save:p,p_lvl:p.lvl,p_gold:sentGold,p_base:CL.base,p_items:items,p_seq:CL.seq};const ka=!!opt.unload&&JSON.stringify(body).length<60000;
+  const r=await rpc('mw_save',body,{keepalive:ka});CL.lastSave=Date.now();CL.errs=0;
+  p.gold=Math.max(0,r.gold+(Math.floor(p.gold)-sentGold));CL.base=r.gold;
+  (r.stripped||[]).forEach(g=>dropGid(g,p));if(r.stripped&&r.stripped.length)chat(t('{n} item(s) were not accepted by the server and were removed.',{n:r.stripped.length}),'#ff9a6a');
+  if(r.gold_clamped>0)chat(t('The server limited a gold gain of {g}g.',{g:fmt(r.gold_clamped)}),'#ff9a6a');
+  (r.incoming||[]).forEach(x=>{if(!hasGid(x.gid,p))placeSrvItem(x,p);});CL.seq=r.econ_seq;CL.mail=r.mail|0;if(P===p){calcStats();UI.dirty=1;}saveLocal(p);return r;});}
+function cloudPing(){if(!isCloud()||!PE)return;CL.lastPing=Date.now();rpc('mw_ping',{p_map:mapKey(),p_x:+PE.x.toFixed(2),p_y:+PE.y.toFixed(2)}).then(r=>{CL.mail=r&&r.mail|0;},()=>{CL.errs++;});}
+setInterval(()=>{if(!isCloud()||!GAME.running)return;const n=Date.now();if(n-CL.lastPing>8000)cloudPing();if(n-CL.lastSave>30000){CL.lastSave=n;cloudSave().catch(e=>{CL.errs++;if(CL.errs===3)chat(t('Cloud save failed — check your connection.'),'#ff4a5a');});}},1000);
+addEventListener('beforeunload',()=>{if(isCloud())cloudSave({unload:true});});
+document.addEventListener('visibilitychange',()=>{if(document.hidden&&isCloud())cloudSave();});
+
+// ---- sign in / sign up ----
+function authModal(after){const d=el('div',{},'<div class="h1">'+t('Lost Aura account')+'</div><div class="grey" style="font-size:12px;max-width:340px;margin:0 auto 8px">'+t('Sign in to trade, use the market and mailbox, join parties and whisper. Your online character is saved to the cloud.')+'</div>');
+ const em=el('input',{class:'txt',type:'email',placeholder:t('Email'),autocomplete:'email',id:'au-em'});const pw=el('input',{class:'txt',type:'password',placeholder:t('Password (8+ characters)'),autocomplete:'current-password',id:'au-pw'});
+ [em,pw].forEach(i=>{i.style.cssText='display:block;margin:6px auto;width:min(300px,80vw)';d.appendChild(i);});const er=el('div',{class:'red',id:'au-err',style:'min-height:18px;font-size:12px'});d.appendChild(er);
+ const go=async(up)=>{er.textContent=t('Please wait…');try{const e=em.value.trim(),p=pw.value;if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)){er.textContent=t('Please enter a valid email address.');return;}if(p.length<8){er.textContent=t('Password must be at least 8 characters.');return;}
+   await(up?AUTH.signUp(e,p):AUTH.signIn(e,p));closeModal();CL.char=undefined;await cloudAccountInit();toast(t('Signed in'));after?after():(GAME.running?0:showTitle());}catch(x){er.textContent=errText(x);sfx('err');}};
+ modal(d,[{t:t('Sign in'),c:'gold',keep:1,f:()=>go(false)},{t:t('Create account'),keep:1,f:()=>go(true)},{t:t('Cancel')}]);setTimeout(()=>em.focus(),50);}
+async function cloudAccountInit(){const u=AUTH.user();if(!u){CL.on=false;CL.char=null;return null;}try{await AUTH.token();}catch(e){CL.on=false;CL.char=null;return null;}if(!AUTH.user()){CL.on=false;CL.char=null;return null;}
+ CL.on=true;CL.uid=u.id;try{const s=await rpc('mw_load',{});CL.char=s||null;}catch(e){CL.char=null;}return CL.char;}
+function cloudTitle(B){const u=AUTH.user();const box=el('div',{style:'margin:10px auto 0;max-width:520px;font-size:12px'});
+ if(!u){box.innerHTML='<div class="grey">'+t('Guest play stays on this device. Sign in to trade, use the market, mail, parties and whispers.')+'</div>';const b=el('div',{class:'btn blue'},'☁ '+t('Sign in / Create account'));b.onclick=()=>{ac();authModal();};box.appendChild(b);B.appendChild(box);return;}
+ box.innerHTML='<div class="grey">'+t('Signed in as {e}',{e:esc(u.email||'')})+'</div>';const so=el('div',{class:'btn sm'},t('Sign out'));so.onclick=()=>{AUTH.signOut();showTitle();};
+ const area=el('div',{});box.appendChild(area);box.appendChild(so);B.appendChild(box);
+ const fill=()=>{area.innerHTML='';const c=CL.char;if(c===undefined){area.innerHTML='<div class="grey">'+t('Loading…')+'</div>';return;}
+  if(c){const b=el('div',{class:'btn gold'},'☁ '+t('Play {n} (online)',{n:esc(c.name)})+' · '+t('Level {n}',{n:c.lvl}));b.onclick=()=>{ac();playCloud();};area.appendChild(b);}
+  else{const b=el('div',{class:'btn gold'},'☁ '+t('Create online character'));b.onclick=()=>{ac();showCreate(true);};area.appendChild(b);
+   if(allSaves().some(s=>!s.cloud)){const m=el('div',{class:'btn'},t('Move a local character online'));m.onclick=()=>{ac();showSelect();};area.appendChild(m);}}};
+ fill();if(CL.char===undefined)cloudAccountInit().then(fill);}
+async function cloudNameCheck(raw){const v=validateName(raw||'');if(!v.ok)return{ok:false,err:v.err};const n=v.name;if(!/^[A-Z][A-Z0-9]{2,11}$/.test(n))return{ok:false,err:t(ERRMSG.name_invalid)};
+ try{const r=await rpc('mw_name_check',{p_name:n});if(r!=='ok')return{ok:false,err:t(ERRMSG['name_'+r]||ERRMSG.name_invalid)};}catch(e){return{ok:false,err:errText(e)};}return{ok:true,name:n};}
+async function cloudCreate(p){const u=AUTH.user();const items=wireItems(p);p.cloud=u.id;
+ const r=await rpc('mw_create',{p_name:p.name,p_cls:p.cls,p_save:p,p_lvl:1,p_gold:Math.floor(p.gold),p_items:items,p_migrate:false});(r.stripped||[]).forEach(g=>dropGid(g,p));p.gold=r.gold;CL.char=r;return r;}
+function migrateLocal(s){const d=el('div',{},'<div class="h1">'+t('Move {n} online',{n:esc(s.name)})+'</div><div class="grey" style="font-size:12px;max-width:380px;margin:0 auto">'+t('One time only: this character becomes your online character (one per account). Its gold and gear are checked against server limits. Afterwards it needs sign-in to play.')+'</div>');
+ const nm=el('input',{class:'txt',maxlength:'12',value:String(s.name).replace(/[^A-Z0-9]/gi,'').toUpperCase().slice(0,12)});nm.style.cssText='display:block;margin:8px auto';d.appendChild(nm);const er=el('div',{class:'red',style:'min-height:18px;font-size:12px'});d.appendChild(er);
+ modal(d,[{t:t('Move online'),c:'gold',keep:1,f:async()=>{er.textContent=t('Please wait…');const c=await cloudNameCheck(nm.value);if(!c.ok){er.textContent=c.err;return;}
+   try{const p=fixSave(JSON.parse(JSON.stringify(s)));p.name=c.name;const items=wireItems(p);p.cloud=AUTH.user().id;
+    const r=await rpc('mw_create',{p_name:c.name,p_cls:p.cls,p_save:p,p_lvl:p.lvl,p_gold:Math.floor(p.gold),p_items:items,p_migrate:true});(r.stripped||[]).forEach(g=>dropGid(g,p));
+    const lost=Math.floor(s.gold)-r.gold;p.gold=r.gold;const all=allSaves().filter(x=>x.id!==s.id);all.unshift(p);localStorage.setItem(SAVE_KEY,JSON.stringify(all.slice(0,6)));CL.char=r;closeModal();
+    if(lost>0||(r.stripped||[]).length)toast(t('Moved online. Server limits adjusted {g}g and {n} item(s).',{g:fmt(Math.max(0,lost)),n:(r.stripped||[]).length}),'#ff9a6a');else toast(t('Moved online!'));playCloud();}
+   catch(x){er.textContent=errText(x);}}},{t:t('Cancel')}]);}
+async function playCloud(){const u=AUTH.user();if(!u){authModal(playCloud);return;}let s;try{await cloudAccountInit();s=CL.char;}catch(e){modal(errText(e));return;}
+ if(!s){modal(t('No online character on this account.'));return;}
+ const local=allSaves().find(x=>x.cloud===u.id);let p=(local&&s.save&&local.saved>(s.save.saved||0))||(!s.save||!s.save.cls)?local:s.save;if(!p||!p.cls){modal(t('Online save is empty.'));return;}
+ p=JSON.parse(JSON.stringify(p));p.cloud=u.id;p.name=s.name;p.gold=s.gold;if(p.lvl<s.lvl)p.lvl=s.lvl;
+ const srv=new Map((s.items||[]).map(x=>[x.gid,x]));allUniq(p).forEach(it=>{if(it.gid&&!srv.has(it.gid))dropGid(it.gid,p);else if(it.gid)it.lb=srv.get(it.gid).lb;});
+ (s.items||[]).forEach(x=>{if(!hasGid(x.gid,p))placeSrvItem(x,p);});
+ CL.on=true;CL.uid=u.id;CL.seq=s.econ_seq;CL.base=s.gold;CL.mail=s.mail|0;CL.lastSave=Date.now();startGame(p,!p.woke);}
+function onGameStart(){if(!isCloud()){net.leaveUser();return;}net.joinUser();cloudPing();loadBlocks();setTimeout(()=>cloudSave().catch(()=>{}),1500);if(CL.mail>0)chat(t('You have mail waiting — visit any town mailbox.'),'#ffd24a');}
+function onGameQuit(){if(isCloud())cloudSave().catch(()=>{});mktClose();tradeClose(true);partyLeave(true);}
+async function loadBlocks(){try{const l=await rpc('mw_block_list',{});CL.blocks=new Set((l||[]).map(n=>String(n).toUpperCase()));}catch(e){}}
+
+// ---- mailbox (in every town) ----
+RENDERERS.mail={mk:()=>win('mail',t('Mailbox'),440),draw(W){if(W._drawn&&!W._force)return;W._drawn=1;W._force=0;drawMail(W);}};
+function openMailbox(){if(!needCloud())return;const W=RENDERERS.mail.mk();W._drawn=0;openWin('mail');}
+async function drawMail(W){W.tt.textContent=t('Mailbox');W.bd.innerHTML='<div class="grey">'+t('Loading…')+'</div>';let rows=[];
+ try{rows=await sbGet('mw_mail?collected_at=is.null&select=id,kind,gold,item,reason,note,created_at&order=id.asc&limit=100');}catch(e){W.bd.innerHTML='<div class="red">'+esc(errText(e))+'</div>';return;}
+ CL.mail=rows.length;const R={sale:t('Sold on the market'),purchase:t('Market purchase'),cancelled:t('Listing cancelled'),expired:t('Listing expired')};
+ W.bd.innerHTML=rows.length?'':'<div class="grey">'+t('No mail.')+'</div>';
+ rows.forEach(m=>{const d=el('div',{class:'mailrow'});const it=m.item;d.innerHTML=(m.kind==='gold'?'<span class="gold">+'+fmt(m.gold)+'g</span>':'<span style="color:'+RAR[(it&&it.rar)||0].c+'">'+esc(it&&it.n||'?')+'</span>')+' <span class="grey">· '+esc(R[m.reason]||m.reason)+(m.note&&m.kind==='gold'?' ('+esc(m.note)+')':'')+'</span>';
+  if(it){d.onmouseenter=ev=>showTip(itemTip(Object.assign({lb:'V'},it)),ev);d.onmouseleave=hideTip;}W.bd.appendChild(d);});
+ if(rows.length){const nItems=rows.filter(r=>r.kind==='item').length;const b=el('div',{class:'btn gold'},t('Collect all'));b.onclick=()=>collectMail(W);W.bd.appendChild(b);
+  if(nItems>freeSlots())W.bd.insertAdjacentHTML('beforeend','<div class="grey" style="font-size:11px">'+t('Only {n} item(s) fit in your bags; the rest stay in the mailbox.',{n:freeSlots()})+'</div>');}}
+function collectMail(W){clQ(async()=>{const r=await rpc('mw_mail_collect',{p_free:freeSlots()});srvGold(r.gold);(r.items||[]).forEach(x=>{if(!hasGid(x.gid))placeSrvItem(x);});CL.mail=r.left|0;sfx('gold');
+  toast(t('Collected {g}g and {n} item(s).',{g:fmt(r.got_gold||0),n:(r.items||[]).length}));saveGame(true);}).catch(e=>toast(errText(e),'#ff4a5a')).then(()=>{if(W){W._force=1;renderWin('mail');}UI.dirty=1;});}
+
+// ================= CHAT: profanity mask, tabs, whispers, blocks, slash commands, player menu =================
+// Mask mirrors the server function public.mw_mask (whispers are masked server-side; global/party chat is masked on send AND receive).
+const MASK_ALLOW=/(scunthorp|shitak|matsushit|fukushim|retardant|sniger|nigeri)/g;
+const MASK_SUB=/(fuck|fuk|shit|bitch|biatch|cunt|nig(er|a|uh|ah|az|let|nog)|ashole|motherf|pusy|whore|slut|fagot|faget|twat|wanker|retard|bastard|dickhead|cocksuck|kike)/;
+const MASK_EXACT=new Set(['ass','asses','arse','dick','dicks','cock','cocks','fag','fags','fck','fk','fking','fcking','sht','btch','nga','spic','chink']);
+const MASK_OK=new Set(['niger','shiite','shiites']);
+function mwTokNorm(p,collapse){const m={'0':'o','1':'i','!':'i','|':'i','3':'e','4':'a','@':'a','5':'s','$':'s','7':'t','+':'t','9':'g','6':'g'};
+ let x=String(p||'').toLowerCase().replace(/^[^a-z0-9$@+]+|[^a-z0-9$@+]+$/g,'').replace(/[01!|34@5$7+96]/g,c=>m[c]).replace(/[^a-z]/g,'');return collapse?x.replace(/(.)\1+/g,'$1'):x;}
+function mwTokBad(p){const n1=mwTokNorm(p,false);if(!n1||MASK_OK.has(n1))return false;const n2=mwTokNorm(p,true).replace(MASK_ALLOW,'');return MASK_SUB.test(n2)||MASK_EXACT.has(n1);}
+function mwMask(s){const T=String(s||'').split(' ');const out=[];let i=0;const one=w=>mwTokNorm(w,false).length===1;
+ while(i<T.length){if(one(T[i])){let j=i,run='';while(j<T.length&&one(T[j])){run+=T[j];j++;}if(j-i>=3&&mwTokBad(run)){out.push('#%$');i=j;continue;}}out.push(mwTokBad(T[i])?'#%$':T[i]);i++;}return out.join(' ');}
+
+// ---- whispers ----
+function whisper(name,msg){if(!needCloud())return;name=String(name||'').toUpperCase().replace(/[^A-Z0-9]/g,'');if(!name)return;msg=String(msg||'').replace(/[\u0000-\u001f<>]/g,'').trim();const T=chatOpenTab('w:'+name,name);
+ if(!msg){chatSwitch(T.id);openChat();return;}
+ rpc('mw_whisper',{p_to:name,p_msg:msg}).then(r=>{T.n=r.to.toUpperCase();chat(r.msg,'#ffb0ff',t('To {n}',{n:T.n}),T.id);if(!r.online)chat(t('{n} is offline.',{n:T.n}),'#8d8577',null,T.id);chatSwitch(T.id);},e=>chat(errText(e),'#ff4a5a',null,T.id));}
+function onWhisper(r){const from=String(r.from_name||'').toUpperCase();if(!from||CL.blocks.has(from))return;const T=chatOpenTab('w:'+from,from);CHAT.lastW=from;chat(chatFilter(r.msg),'#ff9aff',from,T.id);sfx('click');
+ if(CHAT.active!==T.id)toast('✉ '+esc(from)+': '+esc(chatFilter(r.msg).slice(0,60)));}
+// temporary whisper tabs delete themselves after 15 minutes idle
+const WHISPER_IDLE_MS=15*60*1000;function chatNow(){return Date.now()+(CHAT.skew||0);}
+setInterval(()=>{CHAT.tabs.filter(T=>T.id[0]==='w'&&chatNow()-(T.last||0)>WHISPER_IDLE_MS).forEach(T=>chatClose(T.id));},20000);
+function chatSweep(){CHAT.tabs.filter(T=>T.id[0]==='w'&&chatNow()-(T.last||0)>WHISPER_IDLE_MS).forEach(T=>chatClose(T.id));}
+// ---- blocks (server-enforced for whispers/trades; global & party chat from blocked names is hidden) ----
+function blockName(name,on){if(!needCloud())return Promise.resolve();name=String(name||'').toUpperCase();return rpc('mw_block',{p_name:name,p_on:!!on}).then(()=>{if(on){CL.blocks.add(name);chat(t('{n} is blocked.',{n:name}),'#ff9a6a');}else{CL.blocks.delete(name);chat(t('{n} is unblocked.',{n:name}),'#9fe');}if(UI.open.has('opts'))renderWin('opts');},e=>chat(errText(e),'#ff4a5a'));}
+function blockListUI(){const d=el('div',{},'<div class="h1">'+t('Blocked players')+'</div>');const list=[...CL.blocks].sort();if(!list.length)d.insertAdjacentHTML('beforeend','<div class="grey">'+t('Nobody is blocked.')+'</div>');
+ list.forEach(n=>{const r=el('div',{class:'mrow'},'<span class="sp">'+esc(n)+'</span>');const b=el('div',{class:'btn sm'},t('Unblock'));b.onclick=()=>{blockName(n,false).then(()=>{closeModal();blockListUI();});};r.appendChild(b);d.appendChild(r);});modal(d);}
+// ---- slash commands ----
+function slashCmd2(v){const parts=v.slice(1).split(' ');const c=(parts[0]||'').toLowerCase();const a1=parts[1]||'';const rest=parts.slice(2).join(' ');
+ if(c==='who'){const o=Object.values(net.others);chat(t('{n} other players in this zone',{n:o.filter(x=>x.zone===net.zoneKey).length})+(o.length?': '+o.map(x=>x.name+' ('+x.lvl+')').join(', '):''),'#9fe');return;}
+ if(c==='help'||c==='?'){chatHelp();return;}
+ if(c==='trade'){tradeStart(a1);return;}
+ if(c==='inv'||c==='invite'){partyInvite(a1);return;}
+ if(c==='wisp'||c==='w'||c==='whisper'||c==='tell'){whisper(a1,rest);return;}
+ if(c==='r'||c==='reply'){if(CHAT.lastW)whisper(CHAT.lastW,parts.slice(1).join(' '));else chat(t('Nobody has whispered you yet.'),'#9fe');return;}
+ if(c==='p'||c==='party'){partySay(chatFilter(parts.slice(1).join(' ')));return;}
+ if(c==='leave'){partyLeave();return;}
+ if(c==='kick'){partyKick(a1);return;}
+ if(c==='promote'){partyPromote(a1);return;}
+ if(c==='block'){blockName(a1,true);return;}
+ if(c==='unblock'){blockName(a1,false);return;}
+ if(c==='blocked'){blockListUI();return;}
+ if(c==='help'){showHelp();return;}
+ chat(t('Unknown command. Type /help for the list.'),'#ff9a6a');}
+function chatHelp(){[['/help',t('this list')],['/who',t('players in this region')],['/wisp NAME '+t('message'),t('private message (opens a tab)')],['/r '+t('message'),t('reply to the last whisper')],
+ ['/trade NAME',t('trade with a nearby player (level 5+, gold at 50+)')],['/inv NAME',t('invite to your party (Sync, max 4)')],['/p '+t('message'),t('party chat')],['/leave',t('leave your party')],['/kick NAME · /promote NAME',t('party leader tools')],
+ ['/block NAME · /unblock NAME',t('block or unblock a player')],['/blocked',t('your block list')]].forEach(([k,d])=>chat(k+' — '+d,'#9fe'));chat(t('Tip: tap a player or a name in chat for Trade / Invite / Whisper.'),'#8d8577');}
+// ---- tap a player (world or chat name) -> Trade / Invite / Whisper / Block ----
+function nameMenu(name,ev){name=String(name||'').toUpperCase();if(!P||!name||name===String(P.name).toUpperCase())return;const M=$('#namemenu');M.innerHTML='<div class="gold" style="padding:2px 4px">'+esc(name)+'</div>';
+ const add=(txt,f)=>{const b=el('div',{class:'btn sm'},txt);b.onclick=e=>{e.stopPropagation();M.style.display='none';f();};M.appendChild(b);};
+ add('✉ '+t('Whisper'),()=>whisper(name,''));add('⇄ '+t('Trade'),()=>tradeStart(name));add('⚑ '+t('Invite to party'),()=>partyInvite(name));
+ if(PARTY.pid&&PARTY.isLeader()&&PARTY.mem.some(m=>m.n===name)){add(t('Promote to leader'),()=>partyPromote(name));add(t('Remove from party'),()=>partyKick(name));}
+ if(CL.blocks.has(name))add(t('Unblock'),()=>blockName(name,false));else add('⛔ '+t('Block'),()=>blockName(name,true));add(t('Cancel'),()=>{});
+ M.style.display='block';const x=Math.min((ev&&ev.clientX)||innerWidth/2,innerWidth-170),y=Math.min((ev&&ev.clientY)||innerHeight/2,innerHeight-M.offsetHeight-6);M.style.left=Math.max(4,x)+'px';M.style.top=Math.max(4,y)+'px';}
+function otherAt(wx,wy){let best=null,bd=.9;for(const k in net.others){const o=net.others[k];if(o.zone!==net.zoneKey)continue;const d=Math.hypot(o.x-wx,o.y-.6-wy);if(d<bd){bd=d;best=o;}}return best;}
+addEventListener('pointerdown',e=>{const M=$('#namemenu');if(M&&M.style.display==='block'&&!M.contains(e.target))M.style.display='none';},true);
+// ---- realtime database events for this account ----
+function onPgChange(d){const r=d.record||{};if(d.table==='mw_whispers'&&d.type==='INSERT')onWhisper(r);
+ else if(d.table==='mw_mail'&&d.type==='INSERT'){CL.mail++;if(r.reason==='sale')toast('💰 '+t('Your {i} sold! Gold is waiting in any town mailbox.',{i:esc(r.note||'')}));else toast('✉ '+t('New mail — visit any town mailbox.'));if(UI.open.has('mail')){UI.wins.mail._force=1;renderWin('mail');}}
+ else if(d.table==='mw_trades')tradeOnRow(r);
+ else if(d.table==='mw_market')mktOnChange(r);}
+// ---- DOM helpers created once ----
+(function(){const add=(id)=>{if(!document.getElementById(id)){const d=document.createElement('div');d.id=id;document.body.appendChild(d);}};if(document.body){add('namemenu');add('pframes');add('dunwait');}else addEventListener('DOMContentLoaded',()=>{add('namemenu');add('pframes');add('dunwait');});})();
+setInterval(()=>{const m=$('#mailind');if(!m)return;const on=isCloud()&&CL.mail>0&&GAME.running;m.style.display=on?'block':'none';if(on)m.textContent='✉ '+t('Mail waiting ({n})',{n:CL.mail});},1000);
+
+// ================= TRADING (/trade) + UNITY OF THE TRADE (global market) =================
+const TRADE={id:null,row:null,poll:null,busy:false};
+const upName=n=>String(n||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
+function tradeMySide(r){return r&&r.a===CL.uid?'a':'b';}
+async function tradeStart(name){if(!needCloud())return;name=upName(name);if(!name){chat(t('Usage: /trade NAME'),'#9fe');return;}if(TRADE.id){toast(t('You are already in a trade.'));return;}
+ if(P.lvl<5){chat(t(ERRMSG.level_5_required),'#ff4a5a');return;}
+ const o=Object.values(net.others).find(x=>x.name===name&&x.zone===net.zoneKey);
+ if(!o){chat(t('{n} must be nearby in your region (visible on screen).',{n:name}),'#ff4a5a');return;}
+ if(Math.hypot(o.x-PE.x,o.y-PE.y)>10){chat(t(ERRMSG.too_far),'#ff4a5a');return;}
+ if(o.lvl<5){chat(t(ERRMSG.level_5_required),'#ff4a5a');return;}
+ if(Math.abs(o.lvl-P.lvl)>10){chat(t(ERRMSG.level_gap),'#ff4a5a');return;}
+ try{await rpc('mw_ping',{p_map:mapKey(),p_x:PE.x,p_y:PE.y});await cloudSave();const id=await rpc('mw_trade_request',{p_name:name});TRADE.id=id;TRADE.row={id,a:CL.uid,a_name:P.name,b_name:name,state:'pending',a_items:[],b_items:[],a_view:[],b_view:[],a_gold:0,b_gold:0,ver:0};
+  chat(t('Trade request sent to {n}.',{n:name}),'#9fe');tradeWin();tradePoll();}catch(e){chat(errText(e),'#ff4a5a');}}
+function tradePoll(){clearInterval(TRADE.poll);TRADE.poll=setInterval(()=>{if(!TRADE.id){clearInterval(TRADE.poll);return;}sbGet('mw_trades?id=eq.'+TRADE.id+'&select=*').then(r=>{if(r&&r[0])tradeOnRow(r[0]);}).catch(()=>{});},2500);}
+function tradeOnRow(r){if(!r||!r.id)return;
+ if(r.state==='pending'&&r.b===CL.uid&&!TRADE.id){const from=upName(r.a_name);if(CL.blocks.has(from)){rpc('mw_trade_respond',{p_id:r.id,p_accept:false}).catch(()=>{});return;}
+  if(TRADE.prompted===r.id)return;TRADE.prompted=r.id;sfx('open');
+  modal('<div class="h1">'+t('Trade request')+'</div>'+t('{n} wants to trade with you.',{n:esc(from)}),[{t:t('Accept'),c:'gold',f:async()=>{try{await rpc('mw_ping',{p_map:mapKey(),p_x:PE.x,p_y:PE.y});await cloudSave();await rpc('mw_trade_respond',{p_id:r.id,p_accept:true});TRADE.id=r.id;TRADE.row=Object.assign(r,{state:'open'});tradeWin();tradePoll();}catch(e){chat(errText(e),'#ff4a5a');}}},
+   {t:t('Decline'),c:'red',f:()=>rpc('mw_trade_respond',{p_id:r.id,p_accept:false}).catch(()=>{})}]);return;}
+ if(r.id!==TRADE.id)return;const prev=TRADE.row||{};TRADE.row=Object.assign({},prev,r);
+ if(r.state==='done'){if(prev.state==='done')return;const s=tradeMySide(r);(r[s+'_items']||[]).forEach(g=>dropGid(g));chat(t('Trade complete!'),'#3cff5a');sfx('quest');tradeClose();cloudSave().catch(()=>{});return;}
+ if(r.state==='declined'||r.state==='cancelled'||r.state==='failed'){chat(r.state==='failed'?t('Trade failed: {e}',{e:errText({message:r.note||''})}):r.state==='declined'?t('Trade declined.'):t('Trade cancelled.'),'#ff9a6a');tradeClose();return;}
+ tradeRender();}
+RENDERERS.trade={mk:()=>win('trade',t('Trade'),480,'L'),draw(W){if(W._drawn&&!W._force)return;W._drawn=1;W._force=0;tradeDraw(W);}};
+function tradeWin(){const W=RENDERERS.trade.mk();W._drawn=0;openWin('trade');if(!UI.open.has('inv'))openWin('inv');}
+function tradeRender(){const W=UI.wins.trade;if(W&&UI.open.has('trade')){W._force=1;renderWin('trade');}}
+function tradeClose(silent){clearInterval(TRADE.poll);if(TRADE.id&&TRADE.row&&(TRADE.row.state==='open'||TRADE.row.state==='pending'))rpc('mw_trade_cancel',{p_id:TRADE.id}).catch(()=>{});TRADE.id=null;TRADE.row=null;if(UI.open.has('trade'))closeWin('trade');}
+function tradeDraw(W){const r=TRADE.row;if(!r){W.bd.innerHTML='';return;}const s=tradeMySide(r),o=s==='a'?'b':'a';const other=upName(r[o+'_name']);W.tt.textContent=t('Trade with {n}',{n:other});
+ if(r.state==='pending'){W.bd.innerHTML='<div class="grey">'+t('Waiting for {n} to accept…',{n:esc(other)})+'</div>';const c=el('div',{class:'btn red'},t('Cancel'));c.onclick=()=>tradeClose();W.bd.appendChild(c);return;}
+ W.bd.innerHTML='';const row=el('div',{style:'display:flex;flex-wrap:wrap'});
+ const col=(who,side)=>{const C=el('div',{class:'tcol'+(r[side+'_conf']?' cf':r[side+'_lock']?' lk':'')});C.innerHTML='<div class="gold">'+esc(who)+' '+(r[side+'_conf']?'✔ '+t('Confirmed'):r[side+'_lock']?'🔒 '+t('Locked'):'')+'</div>';
+  (r[side+'_view']||[]).forEach(x=>{const it=Object.assign({},x.data,{lb:x.lb});const d=el('div',{class:'mrow'},'<span style="color:'+RAR[it.rar||0].c+'">'+esc(it.n)+'</span>');d.onmouseenter=ev=>showTip(itemTip(it),ev);d.onmouseleave=hideTip;
+   if(side===s&&!r[s+'_lock']){const x2=el('div',{class:'btn sm'},'✕');x2.onclick=()=>tradeOffer((r[s+'_items']||[]).filter(g=>g!==x.gid),r[s+'_gold']);d.appendChild(x2);}C.appendChild(d);});
+  C.insertAdjacentHTML('beforeend','<div class="gold" style="margin-top:4px">'+t('Gold')+': '+fmt(r[side+'_gold']||0)+'g</div>');return C;};
+ row.appendChild(col(t('You'),s));row.appendChild(col(other,o));W.bd.appendChild(row);
+ const other_o=Object.values(net.others).find(x=>x.name===other);const goldOk=P.lvl>=50&&(!other_o||other_o.lvl>=50);
+ if(!r[s+'_lock']){const g=el('div',{class:'mrow'});if(goldOk){const gi=el('input',{class:'txt',type:'number',min:'0',value:String(r[s+'_gold']||0),style:'width:110px'});const gb=el('div',{class:'btn sm'},t('Set gold'));gb.onclick=()=>tradeOffer(r[s+'_items']||[],Math.max(0,Math.floor(+gi.value||0)));g.appendChild(el('span',{},t('Gold')+':'));g.appendChild(gi);g.appendChild(gb);}
+   else g.innerHTML='<span class="grey" style="font-size:11px">'+t('Gold trading unlocks at level 50 (both players).')+'</span>';W.bd.appendChild(g);
+  W.bd.insertAdjacentHTML('beforeend','<div class="h2">'+t('Your items')+'</div>');const mine=P.inv.filter(it=>uniqKind(it));if(!mine.length)W.bd.insertAdjacentHTML('beforeend','<div class="grey">'+t('No equipment or bags in your bag.')+'</div>');
+  mine.forEach(it=>{const off=(r[s+'_items']||[]).includes(it.gid);const ok=itemTradeable(it);const d=el('div',{class:'mrow'},'<span class="sp" style="color:'+RAR[it.rar||0].c+'">'+esc(it.n)+'</span>'+(ok?'':'<span style="color:#ff9a6a;font-size:11px">🔒 '+t('Account Locked')+'</span>'));d.onmouseenter=ev=>showTip(itemTip(it),ev);d.onmouseleave=hideTip;
+   if(ok&&!off){const b=el('div',{class:'btn sm'},'+ '+t('Offer'));b.onclick=()=>{if((r[s+'_items']||[]).length>=8){toast(t(ERRMSG.too_many_items));return;}cloudSave().then(()=>tradeOffer((r[s+'_items']||[]).concat([it.gid]),r[s+'_gold'])).catch(e=>toast(errText(e),'#ff4a5a'));};d.appendChild(b);}W.bd.appendChild(d);});}
+ W.bd.insertAdjacentHTML('beforeend','<div class="grey" style="font-size:11px;margin-top:6px">'+t('Both players lock, then both confirm. Any change resets confirmation. Only Valued equipment and bags can be traded.')+'</div>');
+ const bt=el('div',{class:'row'});const add=(txt,c,f)=>{const b=el('div',{class:'btn '+c},txt);b.onclick=f;bt.appendChild(b);};
+ if(!r[s+'_lock'])add('🔒 '+t('Lock offer'),'blue',()=>tradeAct('mw_trade_lock',{p_id:r.id,p_ver:r.ver,p_free:freeSlots()}));
+ else if(r.a_lock&&r.b_lock&&!r[s+'_conf'])add('✔ '+t('Confirm trade'),'gold',()=>tradeAct('mw_trade_confirm',{p_id:r.id,p_ver:r.ver}));
+ else bt.appendChild(el('span',{class:'grey'},t('Waiting for {n}…',{n:esc(other)})));
+ add(t('Cancel'),'red',()=>tradeClose());W.bd.appendChild(bt);}
+function tradeOffer(gids,gold){if(!TRADE.id)return;tradeAct('mw_trade_offer',{p_id:TRADE.id,p_gids:gids,p_gold:gold||0});}
+function tradeAct(fn,args){if(TRADE.busy)return;TRADE.busy=true;rpc(fn,args).then(res=>{if(res&&res.state==='failed')chat(t('Trade failed: {e}',{e:errText({message:res.error})}),'#ff4a5a');return sbGet('mw_trades?id=eq.'+TRADE.id+'&select=*').then(x=>{if(x&&x[0])tradeOnRow(x[0]);});},e=>{chat(errText(e),'#ff4a5a');}).then(()=>{TRADE.busy=false;});}
+
+// ---------- Unity of the Trade ----------
+const MKT={tab:'browse',f:{q:'',type:'',rar:'',cls:'',lmin:'',lmax:'',sort:'price.asc'},rows:[],npc:null,t:null};
+RENDERERS.mkt={mk:()=>win('mkt',t('Unity of the Trade'),620),draw(W){if(W._drawn&&!W._force)return;W._drawn=1;W._force=0;mktDraw(W);}};
+function openMarket(npc){if(!needCloud())return;MKT.npc=npc;const W=RENDERERS.mkt.mk();W._drawn=0;openWin('mkt');net.joinMkt();cloudPing();}
+function mktClose(){net.leaveMkt();if(UI.open.has('mkt'))closeWin('mkt');MKT.npc=null;}
+function mktRefresh(){const W=UI.wins.mkt;if(W&&UI.open.has('mkt')){W._force=1;renderWin('mkt');}}
+function mktOnChange(){if(!UI.open.has('mkt'))return;clearTimeout(MKT.t);MKT.t=setTimeout(mktRefresh,600);}
+setInterval(()=>{if(MKT.npc&&UI.open.has('mkt')&&PE&&Math.hypot(MKT.npc.x-PE.x,MKT.npc.y-PE.y)>7)mktClose();if(MKT.npc&&!UI.open.has('mkt')){net.leaveMkt();MKT.npc=null;}},1000);
+const MKT_TYPES={weapon:'slot=in.(main,off)',armor:'slot=in.(head,chest,legs,hands,feet)',jewelry:'slot=in.(ring,amulet)',bag:'kind=eq.bag'};
+async function mktDraw(W){W.tt.textContent=t('Unity of the Trade');const B=W.bd;B.innerHTML='';const tabs=el('div',{class:'row'});
+ [['browse',t('Browse')],['sell',t('Sell')],['mine',t('My listings')]].forEach(([k,n])=>{const b=el('div',{class:'btn sm'+(MKT.tab===k?' sel':'')},n);b.onclick=()=>{MKT.tab=k;mktRefresh();};tabs.appendChild(b);});
+ B.appendChild(tabs);B.insertAdjacentHTML('beforeend','<div class="grey" style="font-size:11px">'+t('Global market. 1% sales tax is taken from the seller\'s proceeds. Purchases, proceeds and expired listings (48h) arrive by mail.')+' · '+t('Gold')+': <span class="gold">'+fmt(P.gold)+'g</span></div>');
+ if(MKT.tab==='sell')return mktSell(B);
+ const box=el('div',{});B.appendChild(box);
+ if(MKT.tab==='browse'){const F=MKT.f;const fl=el('div',{class:'mfilt'});const sel=(k,opts)=>{const s=el('select',{});opts.forEach(([v,n])=>{const o=el('option',{value:v},n);if(F[k]===v)o.selected=true;s.appendChild(o);});s.onchange=()=>{F[k]=s.value;mktRefresh();};fl.appendChild(s);};
+  const q=el('input',{placeholder:t('Search'),value:F.q,style:'width:110px'});q.onchange=()=>{F.q=q.value;mktRefresh();};fl.appendChild(q);
+  sel('type',[['',t('All types')],['weapon',t('Weapons')],['armor',t('Armor')],['jewelry',t('Jewelry')],['bag',t('Bags')]]);
+  sel('rar',[['',t('Any rarity')]].concat([0,1,2,3].map(i=>[String(i),t(RAR[i].n)])));
+  sel('cls',[['',t('Any class')]].concat(CLASS_KEYS.map(k=>[k,t(CLASSES[k].n)])));
+  const l1=el('input',{type:'number',placeholder:t('Min lvl'),value:F.lmin,style:'width:62px'});l1.onchange=()=>{F.lmin=l1.value;mktRefresh();};fl.appendChild(l1);
+  const l2=el('input',{type:'number',placeholder:t('Max lvl'),value:F.lmax,style:'width:62px'});l2.onchange=()=>{F.lmax=l2.value;mktRefresh();};fl.appendChild(l2);
+  sel('sort',[['price.asc',t('Price: low to high')],['price.desc',t('Price: high to low')],['created_at.desc',t('Newest')]]);box.appendChild(fl);}
+ const list=el('div',{},'<div class="grey">'+t('Loading…')+'</div>');box.appendChild(list);
+ let q='mw_market?state=eq.active&select=id,seller,seller_name,price,item,kind,slot,rar,req,iname,expires_at&limit=80';
+ if(MKT.tab==='mine')q+='&seller=eq.'+CL.uid+'&order=created_at.desc';
+ else{const F=MKT.f;q+='&expires_at=gt.'+encodeURIComponent(new Date().toISOString())+'&order='+F.sort;if(F.type&&MKT_TYPES[F.type])q+='&'+MKT_TYPES[F.type];if(F.rar!=='')q+='&rar=eq.'+(+F.rar);
+  const a=[];if(F.lmin!=='')a.push('req.gte.'+(+F.lmin|0));if(F.lmax!=='')a.push('req.lte.'+(+F.lmax|0));if(a.length)q+='&and=('+a.join(',')+')';if(F.q.trim())q+='&iname=ilike.'+encodeURIComponent('*'+F.q.trim().replace(/[*,()]/g,'')+'*');}
+ let rows;try{rows=await sbGet(q);}catch(e){list.innerHTML='<div class="red">'+esc(errText(e))+'</div>';return;}
+ if(MKT.tab==='browse'&&MKT.f.cls)rows=rows.filter(r=>{const c=itemClasses(r.item);return!c||c.includes(MKT.f.cls);});
+ list.innerHTML=rows.length?'':'<div class="grey">'+(MKT.tab==='mine'?t('You have no active listings.'):t('No listings match.'))+'</div>';
+ rows.forEach(m=>{const it=Object.assign({lb:'V'},m.item);const hrs=Math.max(0,(new Date(m.expires_at)-Date.now())/36e5);const d=el('div',{class:'mrow'});
+  d.innerHTML='<span class="sp"><span style="color:'+RAR[it.rar||0].c+'">'+esc(it.n)+'</span> <span class="grey">'+t('Lv {n}',{n:m.req})+' · '+esc(m.seller_name)+' · '+(hrs>=1?Math.floor(hrs)+'h':Math.ceil(hrs*60)+'m')+'</span></span><span class="gold">'+fmt(m.price)+'g</span>';
+  d.onmouseenter=ev=>showTip(itemTip(it),ev);d.onmouseleave=hideTip;
+  if(m.seller===CL.uid){const b=el('div',{class:'btn sm red'},t('Cancel'));b.onclick=()=>mktCancel(m);d.appendChild(b);}
+  else{const b=el('div',{class:'btn sm gold'+(P.gold<m.price?' dis':'')},t('Buy'));b.onclick=()=>mktBuy(m);d.appendChild(b);}list.appendChild(d);});}
+function mktBuy(m){modal(t('Buy {i} for {g}g? It will arrive in your mailbox.',{i:esc(m.item.n),g:fmt(m.price)}),[{t:t('Buy'),c:'gold',f:()=>{clQ(async()=>{await rpc('mw_ping',{p_map:mapKey(),p_x:PE.x,p_y:PE.y});const r=await rpc('mw_market_buy',{p_id:m.id});srvGold(r.gold);sfx('buy');toast(t('Purchased! Collect it from any town mailbox.'));CL.mail++;saveGame(true);}).catch(e=>toast(errText(e),'#ff4a5a')).then(mktRefresh);}},{t:t('Cancel')}]);}
+function mktCancel(m){clQ(()=>rpc('mw_market_cancel',{p_id:m.id})).then(()=>{toast(t('Listing cancelled — the item was returned to your mailbox.'));CL.mail++;},e=>toast(errText(e),'#ff4a5a')).then(mktRefresh);}
+function mktSell(B){const items=P.inv.filter(uniqKind);B.insertAdjacentHTML('beforeend','<div class="h2">'+t('List an item')+'</div>');if(!items.length)B.insertAdjacentHTML('beforeend','<div class="grey">'+t('No equipment or bags in your bag.')+'</div>');
+ items.forEach(it=>{const ok=itemTradeable(it);const d=el('div',{class:'mrow'},'<span class="sp" style="color:'+RAR[it.rar||0].c+'">'+esc(it.n)+'</span>');d.onmouseenter=ev=>showTip(itemTip(it),ev);d.onmouseleave=hideTip;
+  if(!ok){d.insertAdjacentHTML('beforeend','<span style="color:#ff9a6a;font-size:11px">🔒 '+t('Account Locked')+'</span>');}
+  else{const pi=el('input',{type:'number',min:'1',placeholder:t('Price'),style:'width:90px',value:String(Math.max(1,sellPrice(it)*3))});const net_=el('span',{class:'grey',style:'font-size:11px'});const upd=()=>{const p=Math.floor(+pi.value||0);net_.textContent=p>0?t('You get {g}g',{g:fmt(p-Math.floor(p*.01))}):'';};pi.oninput=upd;upd();
+   const b=el('div',{class:'btn sm gold'},t('List'));b.onclick=()=>{const p=Math.floor(+pi.value||0);if(p<1||p>1e9){toast(t(ERRMSG.bad_price),'#ff4a5a');return;}b.classList.add('dis');
+    cloudSave().then(()=>clQ(async()=>{await rpc('mw_ping',{p_map:mapKey(),p_x:PE.x,p_y:PE.y});await rpc('mw_market_list',{p_gid:it.gid,p_price:p});dropGid(it.gid);saveGame(true);toast(t('Listed {i} for {g}g.',{i:esc(it.n),g:fmt(p)}));})).catch(e=>toast(errText(e),'#ff4a5a')).then(()=>{UI.dirty=1;mktRefresh();});};
+   d.appendChild(pi);d.appendChild(net_);d.appendChild(b);}B.appendChild(d);});}
+
+// ================= SYNC PARTIES (/inv NAME): roster, party chat, mob sync, dungeon wait, XP & damage rules =================
+// Transport: Supabase Realtime broadcast. Invites travel on mw-chat ('pinv'/'pans'/'pfull'); everything else on mw-p-<pid>.
+// Mob authority ("host") per map = the leader if the leader is on that map, otherwise the first roster member who is.
+// The host runs the real mobs and streams snapshots; other members on that map mirror them as proxies, send their damage/CC
+// to the host, and receive 'hit' events. On a kill every member present gets their own XP, gold and private loot roll.
+const PARTY_MAX=4,PARTY_STALE=25000;
+const PARTY={pid:null,lead:null,mem:[],pend:{},st:{},v:0,joining:0,proxies:{},allies:[],role:'solo',dq:{},dqT:0,snapT:0,fullT:0,stT:0,rosT:0,prompt:null,
+ me(){return P?String(P.name).toUpperCase():'';},
+ topic(){return'realtime:mw-p-'+this.pid;},
+ isLeader(){return!!this.pid&&this.lead===this.me();},
+ send(ev,d){if(!this.pid)return;net.send(this.topic(),'broadcast',{type:'broadcast',event:ev,payload:Object.assign({},d||{},{sid:net.sid,n:this.me()})});},
+ names(){return this.mem.map(m=>m.n);},
+ mapOf(n){if(n===this.me())return mapKey();const s=this.st[n];return s&&Date.now()-s.t<PARTY_STALE?s.k:null;},
+ presentIn(k){if(!this.pid)return[this.me()];return this.names().filter(n=>this.mapOf(n)===k);},
+ here(){return this.pid?Math.max(1,this.presentIn(mapKey()).length):1;},
+ hostOf(k){const p=this.presentIn(k);return p.includes(this.lead)?this.lead:(p[0]||null);},
+ calcRole(){if(!this.pid||!GAME.map||this.here()<2)return'solo';return this.hostOf(mapKey())===this.me()?'host':'mirror';},
+ mirroring(){return this.role==='mirror';},hosting(){return this.role==='host';},
+ // ---- rules ----
+ dmgMul(){if(GAME.dun)return 1;const n=this.here();return n>=3?1.65:n===2?1.5:1;},
+ dunHpMul(){return GAME.dun&&this.pid?this.here():1;},
+ xp(xp,m){const n=m._pn||this.here();if(!this.pid||n<2)return xp;if(GAME.dun||m.dun)return xp/n;return m.lvl<P.lvl?xp*.3:xp;},
+ nearDist(x,y){let d=Math.hypot(x-PE.x,y-PE.y);if(this.role==='host')for(const a of this.allies)d=Math.min(d,Math.hypot(x-a.x,y-a.y));return d;},
+ // ---- incoming party-channel messages ----
+ onMsg(ev,d,topic){if(!this.pid||topic!==this.topic())return;const from=String(d.n||'').toUpperCase();if(!from||from===this.me())return;
+  if(ev==='roster'){if(from!==this.lead&&!(this.joining&&from===this.joining))return;this.applyRoster(d);return;}
+  if(!this.names().includes(from))return;
+  if(ev==='st'){this.st[from]={k:String(d.k||''),x:+d.x||0,y:+d.y||0,hp:+d.hp||0,mhp:+d.mhp||1,l:d.l|0,c:d.c,dead:!!d.dead,t:Date.now(),sid:d.sid};return;}
+  if(ev==='chat'){if(CL.blocks.has(from))return;const msg=chatFilter(String(d.m||'').slice(0,120));if(!msg)return;chatOpenTab('p','Party');chat(msg,'#8fd8ff',from,'p');return;}
+  if(ev==='leave'){this.drop(from,d.nl);chat(t('{n} left the party.',{n:from}),'#8fd8ff',null,'p');return;}
+  if(ev==='kick'){if(from===this.lead&&String(d.to||'').toUpperCase()===this.me()){chat(t('You were removed from the party.'),'#ff9a6a');partyLeave(true);}return;}
+  if(ev==='dun'){this.onDun(from,d);return;}
+  if(ev==='dunno'){if(GAME.dun&&GAME.dun.wait)chat(t("{n} isn't coming. Wait, or leave the dungeon.",{n:from}),'#ff9a6a');return;}
+  if(ev==='ms'){if(this.role==='mirror'&&d.k===mapKey()&&from===this.hostOf(mapKey()))this.onSnap(d);return;}
+  if(ev==='kill'){if(d.k===mapKey()&&this.role!=='host')this.onKill(d);return;}
+  if(ev==='gw'){if(this.role==='mirror'&&d.k===mapKey())GAME.grounds.push({warn:1,x:+d.x,y:+d.y,r:+d.r,t:0,delay:+d.dl,boss:null,c:d.c||'#ff3a3a',dmg:0});return;}
+  if(ev==='hit'){if(String(d.to||'').toUpperCase()===this.me()&&d.k===mapKey()&&!PE.dead){const m=this.proxies[d.id];if(m){m.lunge=.15;}damagePlayer(+d.d||0,m||{kind:'mob'});}return;}
+  if(ev==='dmg'){if(this.role==='host'&&d.k===mapKey())this.onDmg(from,d);return;}},
+ applyRoster(d){const mem=(Array.isArray(d.mem)?d.mem:[]).slice(0,PARTY_MAX).map(m=>({n:String(m.n||'').toUpperCase(),sid:m.sid,c:m.c,l:m.l|0})).filter(m=>m.n);
+  if(!mem.some(m=>m.n===this.me())){if(!this.joining)chat(t('You were removed from the party.'),'#ff9a6a');partyLeave(true);return;}
+  const was=this.joining;const old=new Set(this.names());this.mem=mem;this.lead=String(d.lead||'').toUpperCase();this.joining=0;this.rosT=Date.now();
+  mem.forEach(m=>{if(!this.st[m.n]&&m.n!==this.me())this.st[m.n]={k:null,t:Date.now(),l:m.l,c:m.c,hp:1,mhp:1};if(!old.has(m.n)&&!was&&m.n!==this.me())chat(t('{n} joined the party.',{n:m.n}),'#8fd8ff',null,'p');});
+  if(was){chatOpenTab('p','Party');chat(t('You joined {n}\'s party.',{n:this.lead}),'#8fd8ff',null,'p');this.sendSt();}this.frames();},
+ roster(){if(!this.isLeader())return;this.v++;this.rosT=Date.now();this.send('roster',{lead:this.lead,mem:this.mem,v:this.v});this.frames();},
+ drop(n,nl){const wasLead=n===this.lead;this.mem=this.mem.filter(m=>m.n!==n);delete this.st[n];if(!this.mem.length)return;
+  if(wasLead){const want=String(nl||'').toUpperCase();this.lead=this.names().includes(want)?want:this.mem[0].n;if(this.isLeader())chat(t('You are now the party leader.'),'#8fd8ff',null,'p');}
+  if(this.mem.length<2&&!Object.keys(this.pend).length){chat(t('Your party has disbanded.'),'#8fd8ff');partyLeave(true);return;}
+  if(this.isLeader())this.roster();this.frames();},
+ // ---- per-frame ----
+ tick(dt){if(!this.pid||!P||!PE)return;const now=Date.now();
+  for(const k in this.pend)if(now-this.pend[k]>60000){delete this.pend[k];if(this.mem.length<2&&!Object.keys(this.pend).length){chat(t('Nobody joined — party closed.'),'#8fd8ff');partyLeave(true);return;}}
+  if(this.joining&&now-this.joinT>10000){chat(t('That party invite has expired.'),'#ff9a6a');partyLeave(true);return;}
+  for(const m of this.mem.slice()){if(m.n===this.me())continue;const s=this.st[m.n];if(s&&now-s.t>45000&&now-this.rosT>5000){chat(t('{n} disconnected.',{n:m.n}),'#8fd8ff',null,'p');this.drop(m.n);if(!this.pid)return;}}
+  if(this.isLeader()&&now-this.rosT>5000)this.roster();
+  const inC=inCombat();if(now-this.stT>(inC||GAME.dun?500:1000))this.sendSt();
+  // allies (other members on my map) used by the host's mob AI
+  const k=mapKey();this.allies=this.presentIn(k).filter(n=>n!==this.me()).map(n=>{const s=this.st[n];const o=Object.values(net.others).find(o=>o.name===n&&o.zone===net.zoneKey);
+   const a=this._ally||(this._ally={});const e=a[n]||(a[n]={kind:'ally',n,size:1});e.x=o?o.x:s.x;e.y=o?o.y:s.y;e.hp=s.dead?0:Math.max(1,s.hp);e.dead=s.dead;return e;});
+  const r=this.calcRole();if(r!==this.role)this.switchRole(r);
+  if(this.role==='host'){if(now-this.snapT>(GAME.mobs.some(m=>m.state==='chase')?200:900))this.snap();this.gcFar();}
+  if(this.role==='mirror'&&now-this.dqT>100)this.flush();
+  if(GAME.dun&&GAME.dun.wait)this.waitTick();},
+ switchRole(r){const was=this.role;this.role=r;
+  if(r==='mirror'){GAME.mobs=GAME.mobs.filter(m=>m.quest&&!m.proxy);GAME.map.spawns.forEach(s=>{s.mobs=[];s.timer=0;});this.proxies={};GAME.target=null;}
+  else if(was==='mirror'){for(const m of GAME.mobs)if(m.proxy){m.proxy=0;m.sx=m.x;m.sy=m.y;m.spawn=null;m.free=1;if(m.state==='chase')m.tgt=PE;}this.proxies={};}},
+ gcFar(){if(Math.random()>.05)return;GAME.mobs=GAME.mobs.filter(m=>!(m.free&&m.state==='idle'&&this.nearDist(m.x,m.y)>60));},
+ sendSt(){this.stT=Date.now();if(!PE)return;this.send('st',{k:mapKey(),x:+PE.x.toFixed(1),y:+PE.y.toFixed(1),hp:Math.round(PE.hp),mhp:Math.round(PE.maxHp),l:P.lvl,c:P.cls,dead:PE.dead?1:0});},
+ // ---- host: snapshots, damage in, kills out ----
+ snap(){const now=Date.now();this.snapT=now;const full=now-this.fullT>1000;if(full)this.fullT=now;const k=mapKey();
+  const m=GAME.mobs.filter(x=>x.hp>0).slice(0,80).map(x=>{const r=[x.id,Math.round(x.x*10),Math.round(x.y*10),Math.round(x.hp),x.state==='chase'?1:x.state==='return'?2:0,x.fx,x.lunge>0?1:0];
+   if(full)r.push({mid:x.mid,nm:x.name,a:x.arch,p:x.pal,l:x.lvl,mh:x.maxHp,el:x.elite?1:0,bs:x.boss?1:0,sz:x.size,dn:x.dun?1:0,rg:x.ranged?1:0,bt:x.beast?1:0,q:x.quest,qi:x.qitem,ti:x.title});return r;});
+  this.send('ms',{k,f:full?1:0,m});
+  for(const g of GAME.grounds)if(g.warn&&!g._sent){g._sent=1;this.send('gw',{k,x:+g.x.toFixed(1),y:+g.y.toFixed(1),r:g.r,dl:g.delay,c:g.c});}},
+ onDmg(from,d){const a=this.allies.find(x=>x.n===from);for(const h of(Array.isArray(d.h)?d.h:[]).slice(0,60)){const m=GAME.mobs.find(x=>x.id===h[0]);if(!m||m.hp<=0)continue;const dmg=clamp(+h[1]||0,0,1e7);
+   if(h[2])m.stun=Math.max(m.stun,Math.min(+h[2],6));if(h[3])m.root=Math.max(m.root,Math.min(+h[3],8));if(h[4])m.slow=Math.max(m.slow,Math.min(+h[4],8));if(h[5])m.mark=Math.max(m.mark,GAME.time+Math.min(+h[5],12));
+   if(a&&(h[6]||m.state==='idle'||m.state==='return')){m.state='chase';m.tgt=a;alertPack(m);}if(h[6])m.taunt=Math.max(m.taunt,3);
+   if(dmg>0){m.hp-=dmg;m.flash=.12;floater(m.x,m.y,fmt(dmg),'#8fd8ff');if(m.hp<=0)killMob(m);}}},
+ hostKill(m){if(this.role!=='host')return;const n=this.here();m._pn=n;
+  this.send('kill',{k:mapKey(),id:m.id,pn:n,x:+m.x.toFixed(1),y:+m.y.toFixed(1),i:{mid:m.mid,nm:m.name,a:m.arch,p:m.pal,l:m.lvl,mh:m.maxHp,el:m.elite?1:0,bs:m.boss?1:0,sz:m.size,dn:m.dun?1:0,rg:m.ranged?1:0,bt:m.beast?1:0,q:m.quest,qi:m.qitem,ti:m.title}});},
+ hitAlly(T,d,m){this.send('hit',{k:mapKey(),to:T.n,d:Math.round(d),id:m.id});},
+ aoeAllies(g){for(const a of this.allies)if(!a.dead&&Math.hypot(a.x-g.x,a.y-g.y)<g.r)this.send('hit',{k:mapKey(),to:a.n,d:Math.round(g.dmg),id:g.boss?g.boss.id:0});},
+ // ---- mirror: proxies ----
+ mkProxy(id,s,x,y){const m=makeMob([s.mid||'p',s.nm||'?',s.a||'beast',Array.isArray(s.p)?s.p:['#888','#555','#ccc','#fff'],0,(s.rg?'R':'')+(s.bt?'B':'')],s.l|0||1,x,y,{elite:!!s.el,boss:!!s.bs,name:s.nm,quest:s.q,qitem:s.qi});
+  m.id=id;m.proxy=1;m.dun=!!s.dn;m.maxHp=+s.mh||m.maxHp;m.hp=m.maxHp;m.size=+s.sz||m.size;if(s.ti)m.title=s.ti;m.tx=x;m.ty=y;return m;},
+ onSnap(d){const seen=new Set();for(const r of(Array.isArray(d.m)?d.m:[])){const id=r[0],x=r[1]/10,y=r[2]/10;seen.add(id);let m=this.proxies[id];
+   if(!m){if(!r[7])continue;m=this.mkProxy(id,r[7],x,y);this.proxies[id]=m;GAME.mobs.push(m);}
+   if(r[7]){m.maxHp=+r[7].mh||m.maxHp;m.lvl=r[7].l|0||m.lvl;}m.tx=x;m.ty=y;m.hp=Math.min(m.maxHp,Math.max(1,r[3]));m.state=r[4]===1?'chase':r[4]===2?'return':'idle';m.fx=r[5]===-1?-1:1;if(r[6])m.lunge=.15;m.seen=Date.now();}
+  if(d.f){for(const id in this.proxies)if(!seen.has(+id)&&!seen.has(id)){const m=this.proxies[id];GAME.mobs=GAME.mobs.filter(x=>x!==m);if(GAME.target===m)GAME.target=null;delete this.proxies[id];}}},
+ onKill(d){let m=this.proxies[d.id];delete this.proxies[d.id];if(!m&&d.i)m=this.mkProxy(d.id,d.i,+d.x,+d.y);if(!m)return;m.x=+d.x||m.x;m.y=+d.y||m.y;
+  const near=GAME.dun||Math.hypot(m.x-PE.x,m.y-PE.y)<45;if(!near||PE.dead){GAME.mobs=GAME.mobs.filter(x=>x!==m);if(GAME.target===m)GAME.target=null;return;}
+  m._pn=Math.max(1,d.pn|0);killMob(m);},
+ proxyUpdate(m,dt){m.anim+=dt*(m.state==='idle'?2:6);if(m.flash>0)m.flash-=dt;if(m.lunge>0)m.lunge-=dt;
+  if(m.tx!=null){const k=Math.min(1,dt*8);m.x=lerp(m.x,m.tx,k);m.y=lerp(m.y,m.ty,k);}
+  for(const d of m.dots){const dmg=d.dps*Math.min(dt,d.t);d.t-=dt;d.acc=(d.acc||0)+dmg;if(d.acc>=1){const n=Math.floor(d.acc);d.acc-=n;this.q(m,n);m.hp=Math.max(1,m.hp-n);if(Math.random()<.15)floater(m.x,m.y,fmt(n),d.c);}}m.dots=m.dots.filter(d=>d.t>0);
+  if(m.stun>0)m.stun-=dt;if(m.root>0)m.root-=dt;if(m.slow>0)m.slow-=dt;},
+ proxyDmg(m,d,crit,el){m.flash=.12;floater(m.x,m.y,(crit?'*':'')+fmt(d),crit?'#ffd24a':el==='fire'?'#ff8a1e':el==='frost'?'#9fe':el==='shock'?'#fff27a':el==='dark'?'#c25cff':'#fff',crit);sfx(crit?'crit':'hit');m.hp=Math.max(1,m.hp-d);this.q(m,d);},
+ q(m,d){const e=this.dq[m.id]||(this.dq[m.id]={d:0});e.d+=d;},
+ flush(){this.dqT=Date.now();const h=[];for(const m of GAME.mobs){if(!m.proxy)continue;const e=this.dq[m.id];const cc=[m.stun>0&&m.stun!==m._s?m.stun:0,m.root>0&&m.root!==m._r?m.root:0,m.slow>0&&m.slow!==m._sl?m.slow:0,m.mark>GAME.time&&m.mark!==m._m?m.mark-GAME.time:0,m.taunt>0&&m.taunt!==m._t?1:0];
+   m._s=m.stun;m._r=m.root;m._sl=m.slow;m._m=m.mark;m._t=m.taunt;if((e&&e.d>0)||cc.some(Boolean))h.push([m.id,Math.round(e?e.d:0),...cc.map(v=>+(+v).toFixed(2))]);}
+  this.dq={};if(h.length)this.send('dmg',{k:mapKey(),h});},
+ // ---- dungeons ----
+ dunKey(did){return this.pid?'q'+this.pid+'_'+did:null;},
+ onEnterDungeon(did){if(!this.pid||this.mem.length<2)return;GAME.dun.wait=true;this.sendSt();this.send('dun',{did});this.waitTick(true);},
+ onDun(from,d){const did=String(d.did||'');const D=DUNGEON_BY_ID[did];if(!D||(GAME.dun&&GAME.dun.id===did))return;if(this.prompt)return;this.prompt=1;
+  modal('<div class="h1">'+esc(D.n)+'</div>'+t('{n} has entered {d}. The party waits at the entrance until everyone arrives.',{n:esc(from),d:esc(D.n)}),
+   [{t:t('Enter dungeon'),c:'gold',f:()=>{this.prompt=null;if(P.lvl<D.lvl){toast(t('You must be level {n} to enter.',{n:D.lvl}),'#ff4a5a');this.send('dunno',{did});return;}if(GAME.dun)leaveDungeon(true);enterDungeon(did);}},
+    {t:t('Not now'),f:()=>{this.prompt=null;this.send('dunno',{did});}}]);},
+ waitTick(force){const W=$('#dunwait');if(!W||!GAME.dun)return;const k=mapKey();const inside=this.presentIn(k);const all=this.names();
+  if(inside.length>=all.length||!this.pid){GAME.dun.wait=false;W.style.display='none';chat(t('The whole party is here. Good luck!'),'#3cff5a',null,'p');sfx('quest');return;}
+  if(!force&&W._t&&Date.now()-W._t<400)return;W._t=Date.now();W.style.display='flex';
+  W.innerHTML='<div class="h1">'+esc(DUNGEON_BY_ID[GAME.dun.id].n)+'</div><div style="margin:6px">'+t('Waiting for your party… ({a}/{b})',{a:inside.length,b:all.length})+'</div>'+
+   all.map(n=>'<div class="'+(inside.includes(n)?'green':'grey')+'">'+(inside.includes(n)?'✔ ':'… ')+esc(n)+(n===this.lead?' ♛':'')+'</div>').join('');
+  const b=el('div',{class:'btn red',id:'dunleave',style:'margin-top:12px'},t('Leave Dungeon'));b.onclick=()=>{W.style.display='none';leaveDungeon();};W.appendChild(b);},
+ // ---- party frames ----
+ frames(){const F=$('#pframes');if(!F)return;if(!this.pid||!GAME.running){F.innerHTML='';return;}F.innerHTML='';
+  this.mem.forEach(m=>{if(m.n===this.me())return;const s=this.st[m.n]||{};const k=s.k;const off=!k||Date.now()-s.t>PARTY_STALE;const pct=s.mhp?clamp(s.hp/s.mhp,0,1)*100:0;
+   const where=!k?'…':k[0]==='z'?(ZONES[+k.slice(1)]||{}).n||k:k[0]==='d'?((DUNGEON_BY_ID[k.slice(1)]||{}).n||k):k;
+   const d=el('div',{class:'pf'+(off?' off':''),'data-n':m.n},(m.n===this.lead?'♛ ':'')+esc(m.n)+' <span class="grey">'+t('Lv {n}',{n:s.l||m.l||'?'})+'</span><div class="hb"><i style="width:'+(s.dead?0:pct)+'%"></i></div><div class="grey" style="font-size:10px">'+esc(s.dead?t('Dead'):where)+'</div>');
+   d.onclick=ev=>nameMenu(m.n,ev);F.appendChild(d);});}};
+setInterval(()=>{if(PARTY.pid)PARTY.frames();else{const F=$('#pframes');if(F&&F.innerHTML)F.innerHTML='';}},700);
+// ---- commands ----
+function partyCreate(){PARTY.pid=Math.random().toString(36).slice(2,12);PARTY.lead=PARTY.me();PARTY.mem=[{n:PARTY.me(),sid:net.sid,c:P.cls,l:P.lvl}];PARTY.st={};PARTY.pend={};PARTY.v=0;PARTY.role='solo';net.join(PARTY.topic(),{});}
+function partyInvite(name){if(!needCloud())return;name=upName(name);if(!name){chat(t('Usage: /inv NAME'),'#9fe');return;}if(name===PARTY.me()){chat(t('You cannot do that with yourself.'),'#ff9a6a');return;}
+ if(PARTY.pid&&!PARTY.isLeader()){chat(t('Only the party leader can invite.'),'#ff9a6a');return;}
+ if(PARTY.names().includes(name)){chat(t('{n} is already in your party.',{n:name}),'#9fe');return;}
+ if(PARTY.pid&&PARTY.mem.length+Object.keys(PARTY.pend).filter(k=>k!==name).length>=PARTY_MAX){chat(t('Your party is full (max 4).'),'#ff9a6a');return;}
+ if(CL.blocks.has(name)){chat(t(ERRMSG.you_blocked),'#ff9a6a');return;}
+ const o=net.findOnline(name);if(!o||!o.o){chat(t('{n} is not online.',{n:name}),'#ff9a6a');return;}
+ if(!PARTY.pid)partyCreate();PARTY.pend[name]=Date.now();
+ net.send('realtime:mw-chat','broadcast',{type:'broadcast',event:'pinv',payload:{sid:net.sid,from:PARTY.me(),to:name,pid:PARTY.pid,l:P.lvl,c:P.cls}});
+ chat(t('Party invite sent to {n}.',{n:name}),'#8fd8ff');}
+function partyInviteMsg(ev,d){if(!P||!GAME.running)return;const me=PARTY.me();const to=String(d.to||'').toUpperCase();if(to!==me)return;const from=String(d.from||'').toUpperCase();if(!from)return;
+ const reply=(ok,why)=>net.send('realtime:mw-chat','broadcast',{type:'broadcast',event:'pans',payload:{sid:net.sid,from:me,to:from,pid:d.pid,ok:ok?1:0,why:why||'',l:P.lvl,c:P.cls}});
+ if(ev==='pinv'){if(CL.blocks.has(from))return;if(!isCloud()){reply(false,'guest');return;}if(PARTY.pid&&PARTY.mem.length>1){reply(false,'in_party');return;}if(PARTY.prompt){reply(false,'busy');return;}
+  PARTY.prompt=1;sfx('open');const tm=setTimeout(()=>{if(PARTY.prompt===1){PARTY.prompt=null;closeModal();}},55000);
+  modal('<div class="h1">'+t('Party invite')+'</div>'+t('{n} (level {l}) invites you to a Sync party.',{n:esc(from),l:d.l|0}),[{t:t('Accept'),c:'gold',f:()=>{clearTimeout(tm);PARTY.prompt=null;
+    if(PARTY.pid)partyLeave(true);PARTY.pid=String(d.pid||'').replace(/[^a-z0-9]/g,'').slice(0,16);PARTY.lead=from;PARTY.joining=from;PARTY.joinT=Date.now();PARTY.mem=[{n:from,sid:d.sid},{n:me,sid:net.sid}];PARTY.st={};PARTY.role='solo';
+    net.join(PARTY.topic(),{});setTimeout(()=>reply(true),300);}},{t:t('Decline'),c:'red',f:()=>{clearTimeout(tm);PARTY.prompt=null;reply(false,'declined');}}]);return;}
+ if(ev==='pans'){if(!PARTY.pid||d.pid!==PARTY.pid||!PARTY.isLeader())return;if(!PARTY.pend[from])return;delete PARTY.pend[from];
+  if(!d.ok){chat(d.why==='in_party'?t('{n} is already in a party.',{n:from}):d.why==='guest'?t('{n} is not online.',{n:from}):t('{n} declined your invite.',{n:from}),'#ff9a6a');if(PARTY.mem.length<2&&!Object.keys(PARTY.pend).length)partyLeave(true);return;}
+  if(PARTY.mem.length>=PARTY_MAX){net.send('realtime:mw-chat','broadcast',{type:'broadcast',event:'pfull',payload:{sid:net.sid,from:me,to:from,pid:PARTY.pid}});chat(t('Your party is full (max 4).'),'#ff9a6a');return;}
+  PARTY.mem.push({n:from,sid:d.sid,c:d.c,l:d.l|0});PARTY.st[from]={k:null,t:Date.now(),l:d.l|0,hp:1,mhp:1};chatOpenTab('p','Party');chat(t('{n} joined the party.',{n:from}),'#8fd8ff',null,'p');PARTY.roster();return;}
+ if(ev==='pfull'){if(PARTY.joining&&d.pid===PARTY.pid){chat(t('That party is full.'),'#ff9a6a');partyLeave(true);}}}
+function partyLeave(silent){if(!PARTY.pid)return;const nl=PARTY.isLeader()?(PARTY.mem.find(m=>m.n!==PARTY.me())||{}).n:null;PARTY.send('leave',{nl});if(net.ok)net.send(PARTY.topic(),'phx_leave',{});
+ if(PARTY.role==='mirror')PARTY.switchRole('solo');Object.assign(PARTY,{pid:null,lead:null,mem:[],pend:{},st:{},joining:0,proxies:{},allies:[],role:'solo'});
+ if(GAME.dun&&GAME.dun.wait){GAME.dun.wait=false;const W=$('#dunwait');if(W)W.style.display='none';}
+ if(GAME.dun&&net.zoneKey&&net.zoneKey[0]==='q')net.joinZone(null);
+ chatClose('p');PARTY.frames();if(!silent||silent===2)chat(t('You left the party.'),'#8fd8ff');}
+function partyKick(name){name=upName(name);if(!PARTY.isLeader()){chat(t('Only the party leader can do that.'),'#ff9a6a');return;}if(!PARTY.names().includes(name)||name===PARTY.me())return;
+ PARTY.send('kick',{to:name});PARTY.mem=PARTY.mem.filter(m=>m.n!==name);delete PARTY.st[name];chat(t('{n} was removed from the party.',{n:name}),'#8fd8ff',null,'p');if(PARTY.mem.length<2){partyLeave(true);chat(t('Your party has disbanded.'),'#8fd8ff');return;}PARTY.roster();}
+function partyPromote(name){name=upName(name);if(!PARTY.isLeader()){chat(t('Only the party leader can do that.'),'#ff9a6a');return;}if(!PARTY.names().includes(name)||name===PARTY.me())return;
+ PARTY.v++;PARTY.send('roster',{lead:name,mem:PARTY.mem,v:PARTY.v});PARTY.lead=name;chat(t('{n} is now the party leader.',{n:name}),'#8fd8ff',null,'p');}
+function partySay(msg){if(!PARTY.pid){chat(t('You are not in a party. Use /inv NAME to invite someone.'),'#9fe');return;}msg=String(msg||'').trim();if(!msg)return;
+ const now=Date.now();net.chatT=net.chatT.filter(x=>now-x<10000);if(net.chatT.length>=5){chat(t('Slow down — chat is rate limited.'),'#ff4a5a');return;}net.chatT.push(now);
+ chatOpenTab('p','Party');PARTY.send('chat',{m:msg.slice(0,120)});chat(msg,'#8fd8ff',P.name,'p');}
+
+// ================= I18N: online features (account, trade, market, mail, chat, parties) =================
+// rows: [english, es, fr, de, pt, it]
+i18nRows([
+["Password must be at least 8 characters.","La contraseña debe tener al menos 8 caracteres.","Le mot de passe doit contenir au moins 8 caractères.","Das Passwort muss mindestens 8 Zeichen haben.","A senha deve ter pelo menos 8 caracteres.","La password deve avere almeno 8 caratteri."],
+["Please enter a valid email address.","Introduce un correo electrónico válido.","Saisis une adresse e-mail valide.","Bitte gib eine gültige E-Mail-Adresse ein.","Insira um e-mail válido.","Inserisci un indirizzo email valido."],
+["Network error — try again.","Error de red — inténtalo de nuevo.","Erreur réseau — réessaie.","Netzwerkfehler — versuch es erneut.","Erro de rede — tente novamente.","Errore di rete — riprova."],
+["Something went wrong: {e}","Algo salió mal: {e}","Un problème est survenu : {e}","Etwas ist schiefgelaufen: {e}","Algo deu errado: {e}","Qualcosa è andato storto: {e}"],
+["Sign in to trade","Inicia sesión para comerciar","Connecte-toi pour échanger","Melde dich an, um zu handeln","Entre para negociar","Accedi per commerciare"],
+["online features need a signed-in online character.","las funciones en línea necesitan un personaje en línea con sesión iniciada.","les fonctions en ligne demandent un personnage en ligne connecté.","Online-Funktionen brauchen einen angemeldeten Online-Charakter.","os recursos online exigem um personagem online conectado.","le funzioni online richiedono un personaggio online con accesso effettuato."],
+["{n} item(s) were not accepted by the server and were removed.","El servidor no aceptó {n} objeto(s) y se han eliminado.","{n} objet(s) refusé(s) par le serveur ont été retirés.","{n} Gegenstand/Gegenstände wurde(n) vom Server abgelehnt und entfernt.","{n} item(ns) não foram aceitos pelo servidor e foram removidos.","{n} oggetto/i non accettato/i dal server e rimosso/i."],
+["The server limited a gold gain of {g}g.","El servidor limitó una ganancia de oro de {g}o.","Le serveur a limité un gain de {g} po.","Der Server hat einen Goldgewinn von {g}G begrenzt.","O servidor limitou um ganho de ouro de {g}o.","Il server ha limitato un guadagno di {g}o."],
+["Cloud save failed — check your connection.","Error al guardar en la nube — revisa tu conexión.","Échec de la sauvegarde en ligne — vérifie ta connexion.","Cloud-Speichern fehlgeschlagen — prüfe deine Verbindung.","Falha ao salvar na nuvem — verifique sua conexão.","Salvataggio cloud non riuscito — controlla la connessione."],
+["Lost Aura account","Cuenta de Lost Aura","Compte Lost Aura","Lost-Aura-Konto","Conta Lost Aura","Account Lost Aura"],
+["Sign in to trade, use the market and mailbox, join parties and whisper. Your online character is saved to the cloud.","Inicia sesión para comerciar, usar el mercado y el buzón, unirte a grupos y susurrar. Tu personaje en línea se guarda en la nube.","Connecte-toi pour échanger, utiliser le marché et la boîte aux lettres, rejoindre des groupes et chuchoter. Ton personnage en ligne est sauvegardé en ligne.","Melde dich an, um zu handeln, Markt und Briefkasten zu nutzen, Gruppen beizutreten und zu flüstern. Dein Online-Charakter wird in der Cloud gespeichert.","Entre para negociar, usar o mercado e a caixa de correio, entrar em grupos e sussurrar. Seu personagem online é salvo na nuvem.","Accedi per commerciare, usare il mercato e la cassetta postale, unirti ai gruppi e sussurrare. Il tuo personaggio online viene salvato nel cloud."],
+["Email","Correo electrónico","E-mail","E-Mail","E-mail","Email"],
+["Password (8+ characters)","Contraseña (8+ caracteres)","Mot de passe (8+ caractères)","Passwort (8+ Zeichen)","Senha (8+ caracteres)","Password (8+ caratteri)"],
+["Please wait…","Espera…","Patiente…","Bitte warten…","Aguarde…","Attendi…"],
+["Signed in","Sesión iniciada","Connecté","Angemeldet","Conectado","Accesso effettuato"],
+["Sign in","Iniciar sesión","Se connecter","Anmelden","Entrar","Accedi"],
+["Create account","Crear cuenta","Créer un compte","Konto erstellen","Criar conta","Crea account"],
+["Guest play stays on this device. Sign in to trade, use the market, mail, parties and whispers.","Jugar como invitado se queda en este dispositivo. Inicia sesión para comerciar y usar el mercado, el correo, los grupos y los susurros.","En invité, la partie reste sur cet appareil. Connecte-toi pour échanger et utiliser le marché, le courrier, les groupes et les chuchotements.","Gastspiele bleiben auf diesem Gerät. Melde dich an für Handel, Markt, Post, Gruppen und Flüstern.","O modo convidado fica neste dispositivo. Entre para negociar e usar o mercado, correio, grupos e sussurros.","Il gioco da ospite resta su questo dispositivo. Accedi per commerciare e usare mercato, posta, gruppi e sussurri."],
+["Sign in / Create account","Iniciar sesión / Crear cuenta","Se connecter / Créer un compte","Anmelden / Konto erstellen","Entrar / Criar conta","Accedi / Crea account"],
+["Signed in as {e}","Sesión iniciada como {e}","Connecté en tant que {e}","Angemeldet als {e}","Conectado como {e}","Accesso come {e}"],
+["Sign out","Cerrar sesión","Se déconnecter","Abmelden","Sair","Esci"],
+["Loading…","Cargando…","Chargement…","Lädt…","Carregando…","Caricamento…"],
+["Play {n} (online)","Jugar con {n} (en línea)","Jouer {n} (en ligne)","{n} spielen (online)","Jogar com {n} (online)","Gioca con {n} (online)"],
+["Create online character","Crear personaje en línea","Créer un personnage en ligne","Online-Charakter erstellen","Criar personagem online","Crea personaggio online"],
+["Move a local character online","Pasar un personaje local a en línea","Mettre un personnage local en ligne","Lokalen Charakter online bringen","Levar um personagem local para o online","Porta online un personaggio locale"],
+["Move {n} online","Pasar a {n} a en línea","Mettre {n} en ligne","{n} online bringen","Levar {n} para o online","Porta online {n}"],
+["One time only: this character becomes your online character (one per account). Its gold and gear are checked against server limits. Afterwards it needs sign-in to play.","Solo una vez: este personaje se convierte en tu personaje en línea (uno por cuenta). Su oro y equipo se comprueban con los límites del servidor. Después necesitará iniciar sesión para jugar.","Une seule fois : ce personnage devient ton personnage en ligne (un par compte). Son or et son équipement sont vérifiés selon les limites du serveur. Ensuite, il faudra se connecter pour jouer.","Nur einmal: Dieser Charakter wird dein Online-Charakter (einer pro Konto). Gold und Ausrüstung werden mit den Server-Grenzen abgeglichen. Danach brauchst du zum Spielen eine Anmeldung.","Apenas uma vez: este personagem vira seu personagem online (um por conta). Ouro e equipamento são verificados com os limites do servidor. Depois, será preciso entrar para jogar.","Una sola volta: questo personaggio diventa il tuo personaggio online (uno per account). Oro ed equipaggiamento vengono verificati con i limiti del server. Dopo servirà l'accesso per giocare."],
+["Move online","Pasar a en línea","Mettre en ligne","Online bringen","Levar para o online","Porta online"],
+["Moved online. Server limits adjusted {g}g and {n} item(s).","Ya está en línea. Los límites del servidor ajustaron {g}o y {n} objeto(s).","En ligne. Les limites du serveur ont ajusté {g} po et {n} objet(s).","Jetzt online. Server-Grenzen haben {g}G und {n} Gegenstand/Gegenstände angepasst.","Agora online. Os limites do servidor ajustaram {g}o e {n} item(ns).","Ora online. I limiti del server hanno corretto {g}o e {n} oggetto/i."],
+["Moved online!","¡Ya está en línea!","En ligne !","Jetzt online!","Agora online!","Ora online!"],
+["No online character on this account.","No hay personaje en línea en esta cuenta.","Aucun personnage en ligne sur ce compte.","Kein Online-Charakter auf diesem Konto.","Nenhum personagem online nesta conta.","Nessun personaggio online su questo account."],
+["Online save is empty.","La partida en línea está vacía.","La sauvegarde en ligne est vide.","Der Online-Spielstand ist leer.","O save online está vazio.","Il salvataggio online è vuoto."],
+["You have mail waiting — visit any town mailbox.","Tienes correo — visita cualquier buzón de un pueblo.","Du as du courrier — passe à n'importe quelle boîte aux lettres.","Post wartet auf dich — besuche einen Briefkasten in einer Stadt.","Você tem correspondência — visite qualquer caixa de correio de uma cidade.","Hai posta in attesa — visita una cassetta postale in città."],
+["Mailbox","Buzón","Boîte aux lettres","Briefkasten","Caixa de correio","Cassetta postale"],
+["Sold on the market","Vendido en el mercado","Vendu au marché","Auf dem Markt verkauft","Vendido no mercado","Venduto al mercato"],
+["Market purchase","Compra del mercado","Achat au marché","Marktkauf","Compra no mercado","Acquisto al mercato"],
+["Listing cancelled","Anuncio cancelado","Annonce annulée","Angebot zurückgezogen","Anúncio cancelado","Inserzione annullata"],
+["Listing expired","Anuncio caducado","Annonce expirée","Angebot abgelaufen","Anúncio expirado","Inserzione scaduta"],
+["No mail.","No hay correo.","Aucun courrier.","Keine Post.","Sem correspondência.","Nessuna posta."],
+["Collect all","Recoger todo","Tout récupérer","Alles abholen","Coletar tudo","Ritira tutto"],
+["Only {n} item(s) fit in your bags; the rest stay in the mailbox.","Solo caben {n} objeto(s) en tus bolsas; el resto se queda en el buzón.","Seul(s) {n} objet(s) tien(nen)t dans tes sacs ; le reste reste dans la boîte.","Nur {n} Gegenstand/Gegenstände passt/passen in deine Taschen; der Rest bleibt im Briefkasten.","Só cabem {n} item(ns) nas bolsas; o resto fica na caixa de correio.","Solo {n} oggetto/i entra/no nelle borse; il resto resta nella cassetta."],
+["Collected {g}g and {n} item(s).","Recogiste {g}o y {n} objeto(s).","Récupéré : {g} po et {n} objet(s).","{g}G und {n} Gegenstand/Gegenstände abgeholt.","Coletado: {g}o e {n} item(ns).","Ritirati {g}o e {n} oggetto/i."],
+["That player is not online.","Ese jugador no está conectado.","Ce joueur n'est pas en ligne.","Dieser Spieler ist nicht online.","Esse jogador não está online.","Quel giocatore non è online."],
+["That player is not in your region.","Ese jugador no está en tu región.","Ce joueur n'est pas dans ta région.","Dieser Spieler ist nicht in deiner Region.","Esse jogador não está na sua região.","Quel giocatore non è nella tua regione."],
+["You must be within 10 tiles of each other.","Debéis estar a menos de 10 casillas el uno del otro.","Vous devez être à moins de 10 cases l'un de l'autre.","Ihr müsst höchstens 10 Felder voneinander entfernt sein.","Vocês precisam estar a até 10 casas um do outro.","Dovete essere entro 10 caselle l'uno dall'altro."],
+["Both players must be level 5+ to trade.","Ambos jugadores deben ser nivel 5+ para comerciar.","Les deux joueurs doivent être niveau 5+ pour échanger.","Beide Spieler müssen für den Handel Stufe 5+ sein.","Os dois jogadores precisam ser nível 5+ para negociar.","Entrambi i giocatori devono essere di livello 5+ per commerciare."],
+["Players must be within 10 levels of each other.","Los jugadores no pueden tener más de 10 niveles de diferencia.","Les joueurs doivent avoir au plus 10 niveaux d'écart.","Die Spieler dürfen höchstens 10 Stufen auseinander liegen.","Os jogadores precisam ter no máximo 10 níveis de diferença.","I giocatori devono avere al massimo 10 livelli di differenza."],
+["Gold trading unlocks at level 50 (both players).","El comercio de oro se desbloquea a nivel 50 (ambos jugadores).","L'échange d'or se débloque au niveau 50 (les deux joueurs).","Goldhandel ab Stufe 50 (beide Spieler).","A troca de ouro desbloqueia no nível 50 (os dois jogadores).","Lo scambio di oro si sblocca al livello 50 (entrambi i giocatori)."],
+["Account Locked items cannot be traded or listed.","Los objetos ligados a la cuenta no se pueden comerciar ni anunciar.","Les objets liés au compte ne peuvent être ni échangés ni mis en vente.","Accountgebundene Gegenstände können weder gehandelt noch angeboten werden.","Itens vinculados à conta não podem ser negociados nem anunciados.","Gli oggetti vincolati all'account non possono essere scambiati né messi in vendita."],
+["That item is no longer available.","Ese objeto ya no está disponible.","Cet objet n'est plus disponible.","Dieser Gegenstand ist nicht mehr verfügbar.","Esse item não está mais disponível.","Quell'oggetto non è più disponibile."],
+["One of you is already in a trade.","Uno de vosotros ya está comerciando.","L'un de vous est déjà dans un échange.","Einer von euch handelt bereits.","Um de vocês já está em uma troca.","Uno di voi è già in uno scambio."],
+["You cannot interact with this player.","No puedes interactuar con este jugador.","Tu ne peux pas interagir avec ce joueur.","Du kannst mit diesem Spieler nicht interagieren.","Você não pode interagir com este jogador.","Non puoi interagire con questo giocatore."],
+["You have blocked this player.","Has bloqueado a este jugador.","Tu as bloqué ce joueur.","Du hast diesen Spieler blockiert.","Você bloqueou este jogador.","Hai bloccato questo giocatore."],
+["No player by that name.","No hay ningún jugador con ese nombre.","Aucun joueur de ce nom.","Kein Spieler mit diesem Namen.","Nenhum jogador com esse nome.","Nessun giocatore con quel nome."],
+["That listing is no longer available.","Ese anuncio ya no está disponible.","Cette annonce n'est plus disponible.","Dieses Angebot ist nicht mehr verfügbar.","Esse anúncio não está mais disponível.","Quell'inserzione non è più disponibile."],
+["That is your own listing.","Es tu propio anuncio.","C'est ta propre annonce.","Das ist dein eigenes Angebot.","Esse anúncio é seu.","È una tua inserzione."],
+["Not enough gold.","No tienes suficiente oro.","Pas assez d'or.","Nicht genug Gold.","Ouro insuficiente.","Oro insufficiente."],
+["You must be at a Unity of the Trade market.","Debes estar en un mercado de la Unidad del Comercio.","Tu dois être à un marché de l'Unité du Commerce.","Du musst an einem Markt der Einheit des Handels sein.","Você precisa estar em um mercado da Unidade do Comércio.","Devi trovarti a un mercato dell'Unità del Commercio."],
+["You can have at most 20 active listings.","Puedes tener como máximo 20 anuncios activos.","Tu peux avoir au plus 20 annonces actives.","Du kannst höchstens 20 aktive Angebote haben.","Você pode ter no máximo 20 anúncios ativos.","Puoi avere al massimo 20 inserzioni attive."],
+["Enter a valid price.","Introduce un precio válido.","Saisis un prix valide.","Gib einen gültigen Preis ein.","Insira um preço válido.","Inserisci un prezzo valido."],
+["Not enough free bag space.","No tienes suficiente espacio libre en las bolsas.","Pas assez de place dans tes sacs.","Nicht genug freier Taschenplatz.","Espaço insuficiente nas bolsas.","Spazio insufficiente nelle borse."],
+["The offer changed — review it again.","La oferta cambió — revísala otra vez.","L'offre a changé — vérifie-la à nouveau.","Das Angebot hat sich geändert — prüfe es erneut.","A oferta mudou — revise-a novamente.","L'offerta è cambiata — ricontrollala."],
+["Both players must lock their offers first.","Ambos jugadores deben bloquear antes sus ofertas.","Les deux joueurs doivent d'abord verrouiller leur offre.","Beide Spieler müssen zuerst ihr Angebot sperren.","Os dois jogadores precisam travar as ofertas primeiro.","Entrambi i giocatori devono prima bloccare le offerte."],
+["Slow down.","Más despacio.","Doucement.","Langsamer.","Mais devagar.","Rallenta."],
+["That name is taken.","Ese nombre ya está en uso.","Ce nom est déjà pris.","Dieser Name ist vergeben.","Esse nome já está em uso.","Quel nome è già in uso."],
+["That name isn't allowed","Ese nombre no está permitido","Ce nom n'est pas autorisé","Dieser Name ist nicht erlaubt","Esse nome não é permitido","Quel nome non è consentito"],
+["Names are 3-12 letters or numbers, starting with a letter.","Los nombres tienen 3-12 letras o números y empiezan por una letra.","Les noms font 3 à 12 lettres ou chiffres et commencent par une lettre.","Namen haben 3-12 Buchstaben oder Ziffern und beginnen mit einem Buchstaben.","Os nomes têm 3-12 letras ou números e começam com uma letra.","I nomi hanno 3-12 lettere o numeri e iniziano con una lettera."],
+["This account already has an online character.","Esta cuenta ya tiene un personaje en línea.","Ce compte a déjà un personnage en ligne.","Dieses Konto hat bereits einen Online-Charakter.","Esta conta já tem um personagem online.","Questo account ha già un personaggio online."],
+["That trade is no longer open.","Ese intercambio ya no está abierto.","Cet échange n'est plus ouvert.","Dieser Handel ist nicht mehr offen.","Essa troca não está mais aberta.","Quello scambio non è più aperto."],
+["You cannot do that with yourself.","No puedes hacer eso contigo mismo.","Tu ne peux pas faire ça avec toi-même.","Das kannst du nicht mit dir selbst tun.","Você não pode fazer isso consigo mesmo.","Non puoi farlo con te stesso."],
+["Up to 8 items per side.","Hasta 8 objetos por lado.","Jusqu'à 8 objets par côté.","Bis zu 8 Gegenstände pro Seite.","Até 8 itens por lado.","Fino a 8 oggetti per parte."],
+["Wrong email or password.","Correo o contraseña incorrectos.","E-mail ou mot de passe incorrect.","Falsche E-Mail oder falsches Passwort.","E-mail ou senha incorretos.","Email o password errati."],
+["An account with that email already exists.","Ya existe una cuenta con ese correo.","Un compte avec cet e-mail existe déjà.","Ein Konto mit dieser E-Mail existiert bereits.","Já existe uma conta com esse e-mail.","Esiste già un account con questa email."],
+["To {n}","Para {n}","À {n}","An {n}","Para {n}","A {n}"],
+["{n} is offline.","{n} no está conectado.","{n} est hors ligne.","{n} ist offline.","{n} está offline.","{n} è offline."],
+["{n} is blocked.","{n} está bloqueado.","{n} est bloqué.","{n} ist blockiert.","{n} está bloqueado.","{n} è bloccato."],
+["{n} is unblocked.","{n} está desbloqueado.","{n} est débloqué.","{n} ist nicht mehr blockiert.","{n} foi desbloqueado.","{n} è sbloccato."],
+["Blocked players","Jugadores bloqueados","Joueurs bloqués","Blockierte Spieler","Jogadores bloqueados","Giocatori bloccati"],
+["Nobody is blocked.","No hay nadie bloqueado.","Personne n'est bloqué.","Niemand ist blockiert.","Ninguém está bloqueado.","Nessuno è bloccato."],
+["Unblock","Desbloquear","Débloquer","Entsperren","Desbloquear","Sblocca"],
+["Nobody has whispered you yet.","Nadie te ha susurrado todavía.","Personne ne t'a encore chuchoté.","Dir hat noch niemand zugeflüstert.","Ninguém sussurrou para você ainda.","Nessuno ti ha ancora sussurrato."],
+["Unknown command. Type /help for the list.","Comando desconocido. Escribe /help para ver la lista.","Commande inconnue. Tape /help pour la liste.","Unbekannter Befehl. Tippe /help für die Liste.","Comando desconhecido. Digite /help para ver a lista.","Comando sconosciuto. Scrivi /help per l'elenco."],
+["this list","esta lista","cette liste","diese Liste","esta lista","questo elenco"],
+["players in this region","jugadores en esta región","joueurs dans cette région","Spieler in dieser Region","jogadores nesta região","giocatori in questa regione"],
+["message","mensaje","message","Nachricht","mensagem","messaggio"],
+["private message (opens a tab)","mensaje privado (abre una pestaña)","message privé (ouvre un onglet)","private Nachricht (öffnet einen Tab)","mensagem privada (abre uma aba)","messaggio privato (apre una scheda)"],
+["reply to the last whisper","responder al último susurro","répondre au dernier chuchotement","auf das letzte Flüstern antworten","responder ao último sussurro","rispondi all'ultimo sussurro"],
+["trade with a nearby player (level 5+, gold at 50+)","comerciar con un jugador cercano (nivel 5+, oro a nivel 50+)","échanger avec un joueur proche (niveau 5+, or au niveau 50+)","mit einem Spieler in der Nähe handeln (Stufe 5+, Gold ab 50)","negociar com um jogador próximo (nível 5+, ouro no 50+)","commercia con un giocatore vicino (livello 5+, oro dal 50)"],
+["invite to your party (Sync, max 4)","invitar a tu grupo (Sync, máx. 4)","inviter dans ton groupe (Sync, max 4)","in deine Gruppe einladen (Sync, max. 4)","convidar para o seu grupo (Sync, máx. 4)","invita nel tuo gruppo (Sync, max 4)"],
+["party chat","chat de grupo","discussion de groupe","Gruppenchat","chat do grupo","chat di gruppo"],
+["leave your party","salir del grupo","quitter ton groupe","deine Gruppe verlassen","sair do grupo","lascia il gruppo"],
+["party leader tools","herramientas del líder","outils du chef de groupe","Werkzeuge der Gruppenleitung","ferramentas do líder","strumenti del capogruppo"],
+["block or unblock a player","bloquear o desbloquear a un jugador","bloquer ou débloquer un joueur","einen Spieler blockieren oder entsperren","bloquear ou desbloquear um jogador","blocca o sblocca un giocatore"],
+["your block list","tu lista de bloqueados","ta liste de blocage","deine Blockliste","sua lista de bloqueio","la tua lista dei bloccati"],
+["Tip: tap a player or a name in chat for Trade / Invite / Whisper.","Consejo: toca a un jugador o un nombre del chat para Comerciar / Invitar / Susurrar.","Astuce : touche un joueur ou un nom dans le chat pour Échanger / Inviter / Chuchoter.","Tipp: Tippe auf einen Spieler oder einen Namen im Chat für Handeln / Einladen / Flüstern.","Dica: toque em um jogador ou nome no chat para Negociar / Convidar / Sussurrar.","Suggerimento: tocca un giocatore o un nome in chat per Commercia / Invita / Sussurra."],
+["Whisper","Susurrar","Chuchoter","Flüstern","Sussurrar","Sussurra"],
+["Invite to party","Invitar al grupo","Inviter dans le groupe","In die Gruppe einladen","Convidar para o grupo","Invita nel gruppo"],
+["Promote to leader","Nombrar líder","Nommer chef","Zur Leitung ernennen","Promover a líder","Nomina capogruppo"],
+["Remove from party","Expulsar del grupo","Retirer du groupe","Aus der Gruppe entfernen","Remover do grupo","Rimuovi dal gruppo"],
+["Your {i} sold! Gold is waiting in any town mailbox.","¡Se vendió tu {i}! El oro te espera en cualquier buzón.","Ton {i} est vendu ! L'or t'attend dans n'importe quelle boîte aux lettres.","Dein {i} wurde verkauft! Das Gold wartet in jedem Briefkasten.","Seu {i} foi vendido! O ouro espera em qualquer caixa de correio.","Il tuo {i} è stato venduto! L'oro ti aspetta in qualsiasi cassetta postale."],
+["New mail — visit any town mailbox.","Correo nuevo — visita cualquier buzón.","Nouveau courrier — passe à une boîte aux lettres.","Neue Post — besuche einen Briefkasten.","Nova correspondência — visite qualquer caixa de correio.","Nuova posta — visita una cassetta postale."],
+["Mail waiting ({n})","Correo pendiente ({n})","Courrier en attente ({n})","Post wartet ({n})","Correspondência ({n})","Posta in attesa ({n})"],
+["Usage: /trade NAME","Uso: /trade NOMBRE","Usage : /trade NOM","Verwendung: /trade NAME","Uso: /trade NOME","Uso: /trade NOME"],
+["You are already in a trade.","Ya estás comerciando.","Tu es déjà dans un échange.","Du handelst bereits.","Você já está em uma troca.","Sei già in uno scambio."],
+["{n} must be nearby in your region (visible on screen).","{n} debe estar cerca en tu región (visible en pantalla).","{n} doit être proche dans ta région (visible à l'écran).","{n} muss in deiner Region in der Nähe sein (auf dem Bildschirm sichtbar).","{n} precisa estar perto na sua região (visível na tela).","{n} deve essere vicino nella tua regione (visibile sullo schermo)."],
+["Trade request sent to {n}.","Solicitud de intercambio enviada a {n}.","Demande d'échange envoyée à {n}.","Handelsanfrage an {n} gesendet.","Pedido de troca enviado para {n}.","Richiesta di scambio inviata a {n}."],
+["Trade request","Solicitud de intercambio","Demande d'échange","Handelsanfrage","Pedido de troca","Richiesta di scambio"],
+["{n} wants to trade with you.","{n} quiere comerciar contigo.","{n} veut échanger avec toi.","{n} möchte mit dir handeln.","{n} quer negociar com você.","{n} vuole commerciare con te."],
+["Decline","Rechazar","Refuser","Ablehnen","Recusar","Rifiuta"],
+["Trade complete!","¡Intercambio completado!","Échange terminé !","Handel abgeschlossen!","Troca concluída!","Scambio completato!"],
+["Trade failed: {e}","El intercambio falló: {e}","Échec de l'échange : {e}","Handel fehlgeschlagen: {e}","A troca falhou: {e}","Scambio fallito: {e}"],
+["Trade declined.","Intercambio rechazado.","Échange refusé.","Handel abgelehnt.","Troca recusada.","Scambio rifiutato."],
+["Trade cancelled.","Intercambio cancelado.","Échange annulé.","Handel abgebrochen.","Troca cancelada.","Scambio annullato."],
+["Trade with {n}","Comerciar con {n}","Échange avec {n}","Handel mit {n}","Troca com {n}","Scambio con {n}"],
+["Waiting for {n} to accept…","Esperando a que {n} acepte…","En attente de l'accord de {n}…","Warte, bis {n} annimmt…","Aguardando {n} aceitar…","In attesa che {n} accetti…"],
+["Confirmed","Confirmado","Confirmé","Bestätigt","Confirmado","Confermato"],
+["Locked","Bloqueado","Verrouillé","Gesperrt","Travado","Bloccato"],
+["You","Tú","Toi","Du","Você","Tu"],
+["Set gold","Fijar oro","Définir l'or","Gold festlegen","Definir ouro","Imposta oro"],
+["Your items","Tus objetos","Tes objets","Deine Gegenstände","Seus itens","I tuoi oggetti"],
+["No equipment or bags in your bag.","No tienes equipo ni bolsas en tu bolsa.","Aucun équipement ni sac dans ton sac.","Keine Ausrüstung oder Taschen in deiner Tasche.","Nenhum equipamento ou bolsa na sua bolsa.","Nessun equipaggiamento o borsa nella tua borsa."],
+["Account Locked","Ligado a la cuenta","Lié au compte","Accountgebunden","Vinculado à conta","Vincolato all'account"],
+["Offer","Ofrecer","Proposer","Anbieten","Oferecer","Offri"],
+["Both players lock, then both confirm. Any change resets confirmation. Only Valued equipment and bags can be traded.","Ambos jugadores bloquean y luego ambos confirman. Cualquier cambio reinicia la confirmación. Solo se pueden comerciar equipo y bolsas Valiosos.","Les deux joueurs verrouillent, puis confirment. Tout changement annule la confirmation. Seuls l'équipement et les sacs Précieux peuvent être échangés.","Beide Spieler sperren, dann bestätigen beide. Jede Änderung setzt die Bestätigung zurück. Nur wertvolle Ausrüstung und Taschen sind handelbar.","Os dois travam e depois os dois confirmam. Qualquer mudança reinicia a confirmação. Só equipamentos e bolsas Valiosos podem ser negociados.","Entrambi bloccano, poi entrambi confermano. Ogni modifica azzera la conferma. Si possono scambiare solo equipaggiamento e borse Pregiati."],
+["Lock offer","Bloquear oferta","Verrouiller l'offre","Angebot sperren","Travar oferta","Blocca offerta"],
+["Confirm trade","Confirmar intercambio","Confirmer l'échange","Handel bestätigen","Confirmar troca","Conferma scambio"],
+["Waiting for {n}…","Esperando a {n}…","En attente de {n}…","Warte auf {n}…","Aguardando {n}…","In attesa di {n}…"],
+["Unity of the Trade","Unidad del Comercio","Unité du Commerce","Einheit des Handels","Unidade do Comércio","Unità del Commercio"],
+["Browse","Explorar","Parcourir","Durchsuchen","Explorar","Sfoglia"],
+["My listings","Mis anuncios","Mes annonces","Meine Angebote","Meus anúncios","Le mie inserzioni"],
+["Global market. 1% sales tax is taken from the seller's proceeds. Purchases, proceeds and expired listings (48h) arrive by mail.","Mercado global. Se cobra un 1% de impuesto sobre lo que gana el vendedor. Compras, ganancias y anuncios caducados (48 h) llegan por correo.","Marché global. Une taxe de 1 % est prélevée sur le gain du vendeur. Achats, gains et annonces expirées (48 h) arrivent par courrier.","Globaler Markt. 1 % Verkaufssteuer wird vom Erlös des Verkäufers abgezogen. Käufe, Erlöse und abgelaufene Angebote (48 Std.) kommen per Post.","Mercado global. 1% de imposto é descontado do valor do vendedor. Compras, ganhos e anúncios expirados (48 h) chegam pelo correio.","Mercato globale. Una tassa dell'1% viene trattenuta dal ricavo del venditore. Acquisti, ricavi e inserzioni scadute (48 h) arrivano per posta."],
+["Search","Buscar","Rechercher","Suchen","Buscar","Cerca"],
+["All types","Todos los tipos","Tous les types","Alle Arten","Todos os tipos","Tutti i tipi"],
+["Weapons","Armas","Armes","Waffen","Armas","Armi"],
+["Jewelry","Joyas","Bijoux","Schmuck","Joias","Gioielli"],
+["Any rarity","Cualquier rareza","Toute rareté","Jede Seltenheit","Qualquer raridade","Qualsiasi rarità"],
+["Any class","Cualquier clase","Toute classe","Jede Klasse","Qualquer classe","Qualsiasi classe"],
+["Min lvl","Nv. mín.","Niv. min","Min. Stufe","Nív. mín.","Liv. min"],
+["Max lvl","Nv. máx.","Niv. max","Max. Stufe","Nív. máx.","Liv. max"],
+["Price: low to high","Precio: de menor a mayor","Prix : croissant","Preis: aufsteigend","Preço: menor para maior","Prezzo: crescente"],
+["Price: high to low","Precio: de mayor a menor","Prix : décroissant","Preis: absteigend","Preço: maior para menor","Prezzo: decrescente"],
+["Newest","Más recientes","Plus récents","Neueste","Mais recentes","Più recenti"],
+["You have no active listings.","No tienes anuncios activos.","Tu n'as aucune annonce active.","Du hast keine aktiven Angebote.","Você não tem anúncios ativos.","Non hai inserzioni attive."],
+["No listings match.","No hay anuncios que coincidan.","Aucune annonce ne correspond.","Keine passenden Angebote.","Nenhum anúncio corresponde.","Nessuna inserzione corrisponde."],
+["Lv {n}","Nv {n}","Niv {n}","St. {n}","Nv {n}","Liv {n}"],
+["Buy {i} for {g}g? It will arrive in your mailbox.","¿Comprar {i} por {g}o? Llegará a tu buzón.","Acheter {i} pour {g} po ? Il arrivera dans ta boîte aux lettres.","{i} für {g}G kaufen? Es kommt in deinen Briefkasten.","Comprar {i} por {g}o? Chegará à sua caixa de correio.","Comprare {i} per {g}o? Arriverà nella tua cassetta postale."],
+["Purchased! Collect it from any town mailbox.","¡Comprado! Recógelo en cualquier buzón.","Acheté ! Récupère-le dans n'importe quelle boîte aux lettres.","Gekauft! Hol es an einem Briefkasten ab.","Comprado! Retire em qualquer caixa de correio.","Acquistato! Ritiralo da una cassetta postale."],
+["Listing cancelled — the item was returned to your mailbox.","Anuncio cancelado — el objeto volvió a tu buzón.","Annonce annulée — l'objet est revenu dans ta boîte aux lettres.","Angebot zurückgezogen — der Gegenstand liegt in deinem Briefkasten.","Anúncio cancelado — o item voltou para sua caixa de correio.","Inserzione annullata — l'oggetto è tornato nella tua cassetta."],
+["List an item","Anunciar un objeto","Mettre un objet en vente","Gegenstand anbieten","Anunciar um item","Metti in vendita un oggetto"],
+["You get {g}g","Recibes {g}o","Tu reçois {g} po","Du erhältst {g}G","Você recebe {g}o","Ricevi {g}o"],
+["List","Anunciar","Mettre en vente","Anbieten","Anunciar","Metti in vendita"],
+["Listed {i} for {g}g.","Anunciaste {i} por {g}o.","{i} mis en vente pour {g} po.","{i} für {g}G angeboten.","{i} anunciado por {g}o.","{i} in vendita per {g}o."],
+["{n} left the party.","{n} salió del grupo.","{n} a quitté le groupe.","{n} hat die Gruppe verlassen.","{n} saiu do grupo.","{n} ha lasciato il gruppo."],
+["You were removed from the party.","Te han expulsado del grupo.","Tu as été retiré du groupe.","Du wurdest aus der Gruppe entfernt.","Você foi removido do grupo.","Sei stato rimosso dal gruppo."],
+["{n} isn't coming. Wait, or leave the dungeon.","{n} no vendrá. Espera o sal de la mazmorra.","{n} ne vient pas. Attends ou quitte le donjon.","{n} kommt nicht. Warte oder verlasse den Dungeon.","{n} não vem. Espere ou saia da masmorra.","{n} non arriva. Aspetta o lascia il dungeon."],
+["{n} joined the party.","{n} se unió al grupo.","{n} a rejoint le groupe.","{n} ist der Gruppe beigetreten.","{n} entrou no grupo.","{n} si è unito al gruppo."],
+["You joined {n}'s party.","Te uniste al grupo de {n}.","Tu as rejoint le groupe de {n}.","Du bist der Gruppe von {n} beigetreten.","Você entrou no grupo de {n}.","Ti sei unito al gruppo di {n}."],
+["You are now the party leader.","Ahora eres el líder del grupo.","Tu es maintenant chef du groupe.","Du leitest jetzt die Gruppe.","Agora você é o líder do grupo.","Ora sei il capogruppo."],
+["Your party has disbanded.","Tu grupo se ha disuelto.","Ton groupe est dissous.","Deine Gruppe wurde aufgelöst.","Seu grupo foi desfeito.","Il tuo gruppo si è sciolto."],
+["Nobody joined — party closed.","No se unió nadie — grupo cerrado.","Personne n'a rejoint — groupe fermé.","Niemand ist beigetreten — Gruppe geschlossen.","Ninguém entrou — grupo encerrado.","Nessuno si è unito — gruppo chiuso."],
+["That party invite has expired.","Esa invitación de grupo ha caducado.","Cette invitation de groupe a expiré.","Diese Gruppeneinladung ist abgelaufen.","Esse convite de grupo expirou.","Quell'invito al gruppo è scaduto."],
+["{n} disconnected.","{n} se desconectó.","{n} s'est déconnecté.","{n} hat die Verbindung verloren.","{n} desconectou.","{n} si è disconnesso."],
+["{n} has entered {d}. The party waits at the entrance until everyone arrives.","{n} ha entrado en {d}. El grupo espera en la entrada hasta que lleguen todos.","{n} est entré dans {d}. Le groupe attend à l'entrée que tout le monde arrive.","{n} hat {d} betreten. Die Gruppe wartet am Eingang, bis alle da sind.","{n} entrou em {d}. O grupo espera na entrada até todos chegarem.","{n} è entrato in {d}. Il gruppo attende all'ingresso finché non arrivano tutti."],
+["Enter dungeon","Entrar en la mazmorra","Entrer dans le donjon","Dungeon betreten","Entrar na masmorra","Entra nel dungeon"],
+["Not now","Ahora no","Pas maintenant","Nicht jetzt","Agora não","Non ora"],
+["The whole party is here. Good luck!","Todo el grupo está aquí. ¡Suerte!","Tout le groupe est là. Bonne chance !","Die ganze Gruppe ist da. Viel Glück!","O grupo inteiro chegou. Boa sorte!","Tutto il gruppo è qui. Buona fortuna!"],
+["Waiting for your party… ({a}/{b})","Esperando a tu grupo… ({a}/{b})","En attente de ton groupe… ({a}/{b})","Warte auf deine Gruppe… ({a}/{b})","Aguardando seu grupo… ({a}/{b})","In attesa del gruppo… ({a}/{b})"],
+["Leave Dungeon","Salir de la mazmorra","Quitter le donjon","Dungeon verlassen","Sair da masmorra","Lascia il dungeon"],
+["Dead","Muerto","Mort","Tot","Morto","Morto"],
+["Usage: /inv NAME","Uso: /inv NOMBRE","Usage : /inv NOM","Verwendung: /inv NAME","Uso: /inv NOME","Uso: /inv NOME"],
+["Only the party leader can invite.","Solo el líder del grupo puede invitar.","Seul le chef du groupe peut inviter.","Nur die Gruppenleitung kann einladen.","Só o líder do grupo pode convidar.","Solo il capogruppo può invitare."],
+["{n} is already in your party.","{n} ya está en tu grupo.","{n} est déjà dans ton groupe.","{n} ist bereits in deiner Gruppe.","{n} já está no seu grupo.","{n} è già nel tuo gruppo."],
+["Your party is full (max 4).","Tu grupo está lleno (máx. 4).","Ton groupe est complet (max 4).","Deine Gruppe ist voll (max. 4).","Seu grupo está cheio (máx. 4).","Il tuo gruppo è pieno (max 4)."],
+["{n} is not online.","{n} no está conectado.","{n} n'est pas en ligne.","{n} ist nicht online.","{n} não está online.","{n} non è online."],
+["Party invite sent to {n}.","Invitación de grupo enviada a {n}.","Invitation de groupe envoyée à {n}.","Gruppeneinladung an {n} gesendet.","Convite de grupo enviado para {n}.","Invito al gruppo inviato a {n}."],
+["Party invite","Invitación de grupo","Invitation de groupe","Gruppeneinladung","Convite de grupo","Invito al gruppo"],
+["{n} (level {l}) invites you to a Sync party.","{n} (nivel {l}) te invita a un grupo Sync.","{n} (niveau {l}) t'invite dans un groupe Sync.","{n} (Stufe {l}) lädt dich in eine Sync-Gruppe ein.","{n} (nível {l}) convida você para um grupo Sync.","{n} (livello {l}) ti invita in un gruppo Sync."],
+["{n} is already in a party.","{n} ya está en un grupo.","{n} est déjà dans un groupe.","{n} ist bereits in einer Gruppe.","{n} já está em um grupo.","{n} è già in un gruppo."],
+["{n} declined your invite.","{n} rechazó tu invitación.","{n} a refusé ton invitation.","{n} hat deine Einladung abgelehnt.","{n} recusou seu convite.","{n} ha rifiutato il tuo invito."],
+["That party is full.","Ese grupo está lleno.","Ce groupe est complet.","Diese Gruppe ist voll.","Esse grupo está cheio.","Quel gruppo è pieno."],
+["You left the party.","Saliste del grupo.","Tu as quitté le groupe.","Du hast die Gruppe verlassen.","Você saiu do grupo.","Hai lasciato il gruppo."],
+["Only the party leader can do that.","Solo el líder del grupo puede hacer eso.","Seul le chef du groupe peut faire ça.","Nur die Gruppenleitung kann das tun.","Só o líder do grupo pode fazer isso.","Solo il capogruppo può farlo."],
+["{n} was removed from the party.","{n} fue expulsado del grupo.","{n} a été retiré du groupe.","{n} wurde aus der Gruppe entfernt.","{n} foi removido do grupo.","{n} è stato rimosso dal gruppo."],
+["{n} is now the party leader.","{n} es ahora el líder del grupo.","{n} est maintenant chef du groupe.","{n} leitet jetzt die Gruppe.","{n} agora é o líder do grupo.","{n} è ora il capogruppo."],
+["You are not in a party. Use /inv NAME to invite someone.","No estás en un grupo. Usa /inv NOMBRE para invitar a alguien.","Tu n'es pas dans un groupe. Utilise /inv NOM pour inviter quelqu'un.","Du bist in keiner Gruppe. Nutze /inv NAME, um jemanden einzuladen.","Você não está em um grupo. Use /inv NOME para convidar alguém.","Non sei in un gruppo. Usa /inv NOME per invitare qualcuno."],
+["Valued","Valioso","Précieux","Wertvoll","Valioso","Pregiato"],
+["General","General","Général","Allgemein","Geral","Generale"],
+["Party","Grupo","Groupe","Gruppe","Grupo","Gruppo"],
+["Collect at any town mailbox.","Recógelo en cualquier buzón.","À récupérer dans n'importe quelle boîte aux lettres.","An jedem Briefkasten abholen.","Retire em qualquer caixa de correio.","Ritira da una cassetta postale."],
+["Common", "Común", "Commun", "Gewöhnlich", "Comum", "Comune"],
+["Uncommon", "Poco común", "Peu commun", "Ungewöhnlich", "Incomum", "Non comune"],
+["Rare", "Raro", "Rare", "Selten", "Raro", "Raro"],
+["Epic", "Épico", "Épique", "Episch", "Épico", "Epico"],
+["Cloth", "Tela", "Tissu", "Stoff", "Tecido", "Stoffa"],
+["Leather", "Cuero", "Cuir", "Leder", "Couro", "Cuoio"],
+["Mail", "Malla", "Mailles", "Kette", "Malha", "Maglia"],
+["Plate", "Placas", "Plaques", "Platte", "Placas", "Piastre"],
+["Greatsword", "Mandoble", "Espadon", "Zweihänder", "Montante", "Spadone"],
+["Battle Axe", "Hacha de batalla", "Hache de bataille", "Streitaxt", "Machado de batalha", "Ascia da battaglia"],
+["Great Mace", "Gran maza", "Grande masse", "Großer Streitkolben", "Grande maça", "Grande mazza"],
+["Warhammer", "Martillo de guerra", "Marteau de guerre", "Kriegshammer", "Martelo de guerra", "Martello da guerra"],
+["Sword", "Espada", "Épée", "Schwert", "Espada", "Spada"],
+["Mace", "Maza", "Masse", "Streitkolben", "Maça", "Mazza"],
+["Hatchet", "Hachuela", "Hachette", "Beil", "Machadinha", "Accetta"],
+["Dagger", "Daga", "Dague", "Dolch", "Adaga", "Pugnale"],
+["Rapier", "Estoque", "Rapière", "Rapier", "Rapieira", "Stocco"],
+["Wand", "Varita", "Baguette", "Zauberstab", "Varinha", "Bacchetta"],
+["Sceptre", "Cetro", "Sceptre", "Zepter", "Cetro", "Scettro"],
+["Staff", "Bastón", "Bâton", "Stab", "Cajado", "Bastone"],
+["Shield", "Escudo", "Bouclier", "Schild", "Escudo", "Scudo"],
+["dps","DPS","DPS","DPS","DPS","DPS"],
+["equipment","equipo","équipement","Ausrüstung","equipamento","equipaggiamento"],
+["arrows","flechas","flèches","Pfeiltasten","setas","frecce"],
+["Online","En línea","En ligne","Online","Online","Online"],
+["You wake in Hearthmoor, a village ringed by the enchanted Whisperwood. Giant ants are spilling from the forest... and a strange ember-mark glows on your palm.","Despiertas en Hearthmoor, una aldea rodeada por el encantado Bosque Susurrante. Hormigas gigantes salen del bosque... y una extraña marca de brasa brilla en tu palma.","Tu t'éveilles à Hearthmoor, un village cerné par le Bois-Murmure enchanté. Des fourmis géantes déferlent de la forêt... et une étrange marque de braise luit sur ta paume.","Du erwachst in Hearthmoor, einem Dorf am Rand des verzauberten Flüsterwalds. Riesenameisen strömen aus dem Wald... und ein seltsames Glutmal leuchtet auf deiner Handfläche.","Você desperta em Hearthmoor, uma vila cercada pelo encantado Bosque Sussurrante. Formigas gigantes saem da floresta... e uma estranha marca de brasa brilha na sua palma.","Ti risvegli a Hearthmoor, un villaggio circondato dall'incantato Bosco Sussurrante. Formiche giganti sciamano dalla foresta... e uno strano marchio di brace brilla sul tuo palmo."]
+]);
 
 // ================= MAIN LOOP, INPUT, SCREENS =================
 const GAME_TITLE='MYTHWEALD';const GAME_SUB='The Hollow Crown';
@@ -3766,6 +4458,7 @@ function update(dt){GAME.time+=dt;P.st.time+=dt;const M=GAME.map;
   if(M.kind==='zone'){for(const g of M.gates){const near=g.dir==='E'?PE.x>M.w-2.2:g.dir==='W'?PE.x<2.2:g.dir==='N'?PE.y<2.2:PE.y>M.h-2.2;if(near&&Math.hypot(g.x-PE.x,g.y-PE.y)<5){enterZone(g.to,OPP[g.dir]);return;}}
    if(Math.floor(GAME.time*2)%2===0)questOnExplore();
    const T=M.town;if(PE.x>T.x&&PE.x<T.x+T.w&&PE.y>T.y&&PE.y<T.y+T.h){if(GAME.lastTown!==M.z){GAME.lastTown=M.z;if(!P.ways.includes(M.z))P.ways.push(M.z);P.bind=M.z;chat(t('You arrive in {t}.',{t:ZONES[M.z].town}),'#9fe');}}else GAME.lastTown=-1;}}
+ PARTY.tick(dt);if(GAME.dun&&GAME.dun.wait){net.tick(dt);uiT+=dt;if(uiT>.1){uiT=0;updateHUD();drawMinimap();}return;}
  updateSpawns(dt);updateMobs(dt);updateMinions(dt);updateProjs(dt);updateGrounds(dt);updateWarnings(dt);
  for(const n of M.nodes)if(n.t>0)n.t-=dt;for(const g of (M.gathers||[]))if(g.t>0)g.t-=dt;
  for(const c of GAME.corpses)c.t-=dt;GAME.corpses=GAME.corpses.filter(c=>c.t>0);
@@ -3807,6 +4500,7 @@ function setupInput(){const C=$('#gc');
   const w=canvasToWorld(e.clientX,e.clientY);MOUSE.wx=w.x;MOUSE.wy=w.y+.3;MOUSE.active=true;if(e.button===2){return;}
   // click on mob = target; click on npc/node = interact if near
   const hm=GAME.mobs.find(m=>Math.hypot(m.x-MOUSE.wx,m.y-.6*m.size-MOUSE.wy)<.8*m.size);if(hm){GAME.target=hm;}
+  if(!hm){const op=otherAt(MOUSE.wx,MOUSE.wy);if(op){nameMenu(op.name,e);return;}}
   const npc=GAME.map&&GAME.map.npcs.find(n=>Math.hypot(n.x-MOUSE.wx,n.y-.7-MOUSE.wy)<1);if(npc){if(Math.hypot(npc.x-PE.x,npc.y-PE.y)<3)talkTo(npc);else toast(t('Too far away'));return;}
   if(GAME.interact&&Math.hypot(GAME.interact.x-MOUSE.wx,GAME.interact.y-.5-MOUSE.wy)<1.2){doInteract();return;}
   MOUSE.down=true;});
@@ -3817,9 +4511,9 @@ function setupInput(){const C=$('#gc');
  J.addEventListener('pointerdown',e=>{e.preventDefault();TOUCH.jid=e.pointerId;J.setPointerCapture(e.pointerId);jmove(e);});J.addEventListener('pointermove',e=>{if(e.pointerId===TOUCH.jid)jmove(e);});
  const jend=e=>{if(e.pointerId!==TOUCH.jid)return;TOUCH.jid=null;TOUCH.jx=0;TOUCH.jy=0;K.style.left='40px';K.style.top='40px';};J.addEventListener('pointerup',jend);J.addEventListener('pointercancel',jend);
  $('#chatin').addEventListener('blur',()=>{setTimeout(()=>{$('#chatin').style.display='none';},150);});
- $('#chatlog').addEventListener('click',()=>openChat());
+ $('#chatlog').addEventListener('click',e=>{const n=e.target.closest&&e.target.closest('.cname');if(n){e.stopPropagation();nameMenu(n.dataset.n,e);return;}openChat();});$('#mailind').addEventListener('click',()=>toast(t('Collect at any town mailbox.')));
  addEventListener('resize',()=>{resize();Object.values(UI.wins).forEach(W=>{if(W.e.classList.contains('on'))placeWin(W);});});}
-function tapWorld(e){const w=canvasToWorld(e.clientX,e.clientY);const hm=GAME.mobs.find(m=>Math.hypot(m.x-w.x,m.y-.6*m.size-w.y-.3)<1*m.size);if(hm){GAME.target=hm;return;}
+function tapWorld(e){const w=canvasToWorld(e.clientX,e.clientY);const hm=GAME.mobs.find(m=>Math.hypot(m.x-w.x,m.y-.6*m.size-w.y-.3)<1*m.size);if(hm){GAME.target=hm;return;}const op=otherAt(w.x,w.y+.3);if(op){nameMenu(op.name,e);return;}
  const npc=GAME.map&&GAME.map.npcs.find(n=>Math.hypot(n.x-w.x,n.y-.7-w.y-.3)<1.2);if(npc){if(Math.hypot(npc.x-PE.x,npc.y-PE.y)<3)talkTo(npc);else toast(t('Too far away'));return;}
  if(GAME.interact&&Math.hypot(GAME.interact.x-w.x,GAME.interact.y-w.y)<1.5)doInteract();}
 function cycleTarget(){const list=mobsNear(PE.x,PE.y,12).sort((a,b)=>Math.hypot(a.x-PE.x,a.y-PE.y)-Math.hypot(b.x-PE.x,b.y-PE.y));if(!list.length)return;const i=list.indexOf(GAME.target);GAME.target=list[(i+1)%list.length];}
@@ -3833,18 +4527,18 @@ function titleFrame(dt){TB.t+=dt;const c=$('#titlebg');if(!TB.x){TB.c=c;TB.x=c.g
  for(let i=0;i<14;i++){const fx=(hash2(i,9,2)*w+Math.sin(TB.t*.7+i)*8)|0,fy=(h*.6+hash2(i,8,2)*h*.35+Math.cos(TB.t+i)*4)|0;x.fillStyle='#ffd24a';x.globalAlpha=.5+.5*Math.sin(TB.t*3+i);x.fillRect(fx,fy,1,1);}x.globalAlpha=1;}
 function showTitle(){showScreen('title');GAME.running=false;const L=$('#logo');L.innerHTML='';const lg=pixText(GAME_TITLE,Math.max(4,Math.min(9,Math.floor(innerWidth/70))),'#ffd24a','#ff8a1e');lg.style.maxWidth='94vw';L.appendChild(lg);
  $('#tsub').textContent=t(GAME_SUB)+' — '+t('a mythological online RPG');const B=$('#tbtns0');B.innerHTML='';const saves=allSaves();
- const b1=el('div',{class:'btn big gold'},saves.length?t('Continue'):t('New Adventure'));b1.onclick=()=>{ac();sfx('click');if(saves.length)startGame(saves[0]);else showCreate();};B.appendChild(el('div',{},''));B.lastChild.appendChild(b1);
+ const b1=el('div',{class:'btn big gold'},saves.length?t('Continue'):t('New Adventure'));b1.onclick=()=>{ac();sfx('click');if(saves.length){if(saves[0].cloud)playCloud();else startGame(saves[0]);}else showCreate();};B.appendChild(el('div',{},''));B.lastChild.appendChild(b1);
  if(saves.length){const b2=el('div',{class:'btn'},t('Characters'));b2.onclick=()=>{ac();showSelect();};B.appendChild(b2);const b3=el('div',{class:'btn'},t('New Character'));b3.onclick=()=>{ac();showCreate();};B.appendChild(b3);}
  const lr=el('div',{class:'row',style:'justify-content:center;margin-top:10px'});LAG_LANGS.forEach(([c,n])=>{const b=el('div',{class:'btn sm'+(LANG===c?' sel':'')},n);b.onclick=()=>{setLang(c);};lr.appendChild(b);});B.appendChild(lr);
- const hb=el('div',{class:'btn sm'},t('Controls'));hb.onclick=showHelp;B.appendChild(hb);
+ const hb=el('div',{class:'btn sm'},t('Controls'));hb.onclick=showHelp;B.appendChild(hb);cloudTitle(B);
  $('#credit').innerHTML=t('A Lost Aura Games production')+' · '+t('Private playtest build')+' · v0.9';startMusic('title');}
 function showSelect(){showScreen('create');const B=$('#createbox');B.innerHTML='<div class="h1">'+t('Characters')+'</div>';const row=el('div',{class:'slotrow'});
  allSaves().forEach(s=>{const c=el('div',{class:'slotc'});const pv=document.createElement('canvas');pv.width=18;pv.height=26;pv.className='px';pv.style.cssText='width:54px;height:78px;float:right';try{pv.getContext('2d').drawImage(playerSprite(s,0),0,0);}catch(e){}
-  c.appendChild(pv);c.insertAdjacentHTML('beforeend','<div class="gold" style="font-size:18px">'+esc(s.name)+'</div><div>'+t('Level {n}',{n:s.lvl})+' '+t(CLASSES[s.cls].n)+'</div><div class="grey">'+t(INTERESTS[s.interest].n)+'</div><div class="grey">'+esc(ZONES[s.zone]?ZONES[s.zone].n:'')+'</div>');
-  c.onclick=()=>startGame(s);const del=el('div',{class:'btn sm red'},t('Delete'));del.onclick=ev=>{ev.stopPropagation();modal(t('Delete {n} forever?',{n:esc(s.name)}),[{t:t('Delete'),c:'red',f:()=>{deleteSave(s.id);showSelect();}},{t:t('Cancel')}]);};c.appendChild(del);row.appendChild(c);});
+  c.appendChild(pv);c.insertAdjacentHTML('beforeend','<div class="gold" style="font-size:18px">'+esc(s.name)+(s.cloud?' <span class="blue" style="font-size:12px">☁ '+t('Online')+'</span>':'')+'</div><div>'+t('Level {n}',{n:s.lvl})+' '+t(CLASSES[s.cls].n)+'</div><div class="grey">'+t(INTERESTS[s.interest].n)+'</div><div class="grey">'+esc(ZONES[s.zone]?ZONES[s.zone].n:'')+'</div>');
+  c.onclick=()=>{if(s.cloud)playCloud();else startGame(s);};if(!s.cloud&&AUTH.user()&&CL.char===null){const mv=el('div',{class:'btn sm blue'},'☁ '+t('Move online'));mv.onclick=ev=>{ev.stopPropagation();migrateLocal(s);};c.appendChild(mv);}const del=el('div',{class:'btn sm red'},t('Delete'));del.onclick=ev=>{ev.stopPropagation();modal(t('Delete {n} forever?',{n:esc(s.name)}),[{t:t('Delete'),c:'red',f:()=>{deleteSave(s.id);showSelect();}},{t:t('Cancel')}]);};c.appendChild(del);row.appendChild(c);});
  B.appendChild(row);const bk=el('div',{class:'btn'},t('Back'));bk.onclick=showTitle;B.appendChild(bk);}
-function showCreate(){showScreen('create');const B=$('#createbox');const st={cls:'knight',interest:'cloth',skin:'#e0b088',hair:'#5a3a1e'};
- const draw=()=>{B.innerHTML='<div class="h1">'+t('Create your hero')+'</div><div class="qtext grey">'+t('You wake in Hearthmoor, a village ringed by the enchanted Whisperwood. Giant ants are spilling from the forest... and a strange ember-mark glows on your palm.')+'</div>';
+function showCreate(cloud){if(cloud&&!AUTH.user()){authModal(()=>showCreate(true));return;}showScreen('create');const B=$('#createbox');const st={cls:'knight',interest:'cloth',skin:'#e0b088',hair:'#5a3a1e'};
+ const draw=()=>{B.innerHTML='<div class="h1">'+t('Create your hero')+(cloud?' <span class="blue" style="font-size:14px">☁ '+t('Online')+'</span>':'')+'</div><div class="qtext grey">'+t('You wake in Hearthmoor, a village ringed by the enchanted Whisperwood. Giant ants are spilling from the forest... and a strange ember-mark glows on your palm.')+'</div>';
   B.insertAdjacentHTML('beforeend','<div class="h2">'+t('Name')+'</div>');const nm=el('input',{class:'txt',maxlength:'12',placeholder:t('NAME'),id:'cname'});nm.value=st.name||'';nm.oninput=()=>{st.name=nm.value;$('#nerr').textContent='';};B.appendChild(nm);B.insertAdjacentHTML('beforeend','<div id="nerr" class="red" style="min-height:18px"></div>');
   B.insertAdjacentHTML('beforeend','<div class="h2">'+t('Class')+'</div>');const cc=el('div',{class:'cards'});CLASS_KEYS.forEach(k=>{const C=CLASSES[k];const card=el('div',{class:'card'+(st.cls===k?' sel':''),'data-cls':k});const pv=document.createElement('canvas');pv.width=18;pv.height=26;pv.className='px';pv.style.cssText='width:54px;height:78px';
    const fake=newCharacter('X',k,'cloth',st);pv.getContext('2d').drawImage(playerSprite(fake,0),0,0);card.appendChild(pv);
@@ -3853,7 +4547,9 @@ function showCreate(){showScreen('create');const B=$('#createbox');const st={cls
    card.appendChild(canvasIcon(itemIcon({icon:I.icon==='herb'?'herb':I.icon==='hide'?'hide':'ore',k:'mat',tier:k==='mining'?12:0}),32));card.insertAdjacentHTML('beforeend','<div class="nm">'+t(I.n)+'</div><div class="ds">'+esc(t(I.d))+'</div>');card.onclick=()=>{st.interest=k;draw();};ic.appendChild(card);});B.appendChild(ic);
   B.insertAdjacentHTML('beforeend','<div class="h2">'+t('Appearance')+'</div>');const ap=el('div',{class:'row'});['#f0c8a0','#e0b088','#c08a5a','#8a5a3a','#6a4a2a'].forEach(c=>{const b=el('div',{class:'btn sm'+(st.skin===c?' sel':''),style:'background:'+c+';width:28px;height:24px'});b.onclick=()=>{st.skin=c;draw();};ap.appendChild(b);});
   ap.appendChild(el('span',{style:'width:12px'}));['#5a3a1e','#2a1a10','#d8c070','#a03a1a','#e8e8e8','#3a3a5a'].forEach(c=>{const b=el('div',{class:'btn sm'+(st.hair===c?' sel':''),style:'background:'+c+';width:28px;height:24px'});b.onclick=()=>{st.hair=c;draw();};ap.appendChild(b);});B.appendChild(ap);
-  const row=el('div',{class:'row',style:'margin-top:16px'});const go=el('div',{class:'btn big gold',id:'cgo'},t('Begin the journey'));go.onclick=()=>{const v=validateName(st.name||'');if(!v.ok){$('#nerr').textContent=v.err;sfx('err');return;}const p=newCharacter(v.name,st.cls,st.interest,st);startGame(p,true);};row.appendChild(go);
+  const row=el('div',{class:'row',style:'margin-top:16px'});const go=el('div',{class:'btn big gold',id:'cgo'},t('Begin the journey'));go.onclick=async()=>{if(cloud){$('#nerr').textContent=t('Please wait…');const c=await cloudNameCheck(st.name);if(!c.ok){$('#nerr').textContent=c.err;sfx('err');return;}const p=newCharacter(c.name,st.cls,st.interest,st);
+   try{await cloudCreate(p);}catch(x){$('#nerr').textContent=errText(x);sfx('err');return;}CL.on=true;CL.uid=AUTH.user().id;CL.seq=CL.char.econ_seq;CL.base=CL.char.gold;CL.mail=0;CL.lastSave=Date.now();startGame(p,true);return;}
+   const v=validateName(st.name||'');if(!v.ok){$('#nerr').textContent=v.err;sfx('err');return;}const p=newCharacter(v.name,st.cls,st.interest,st);startGame(p,true);};row.appendChild(go);
   const bk=el('div',{class:'btn'},t('Back'));bk.onclick=showTitle;row.appendChild(bk);B.appendChild(row);};
  draw();}
 // ---------- start / quit ----------
@@ -3863,8 +4559,9 @@ function startGame(save,isNew){P=fixSave(JSON.parse(JSON.stringify(save)));GAME.
  const z=P.zone||0;enterZone(z,null,P.x?{x:P.x,y:P.y}:null);if(PE.hp<=0)PE.hp=PE.maxHp;
  if(isNew||!P.woke){P.woke=true;PE.hp=Math.round(PE.maxHp*.3);const elder=GAME.map.npcs.find(n=>n.role==='elder');PE.x=elder.x+1.5;PE.y=elder.y+1;unstick();
   setTimeout(()=>{banner(t('You wake...'),t('Hearthmoor, the Whisperwood'),3200);setTimeout(()=>{if(GAME.running&&!GAME.dun&&GAME.map&&GAME.map.z===0&&Math.hypot(PE.x-elder.x,PE.y-elder.y)<6)talkTo(elder);},1600);},300);saveGame(true);}
- updateTracker();net.start();net.updateMeta();chat(t('Welcome to {g}! Press H or the ☰ menu for controls.',{g:GAME_TITLE}),'#ffd24a');if(net.ok)net.track();}
-function quitToTitle(){GAME.running=false;closeAll();net.joinZone(null);P=null;PE=null;showTitle();}
+ CHAT.tabs=[CHAT.tabs[0]];CHAT.tabs[0].log=[];CHAT.active='g';renderChatTabs();
+ updateTracker();net.start();net.updateMeta();chat(t('Welcome to {g}! Press H or the ☰ menu for controls.',{g:GAME_TITLE}),'#ffd24a');if(net.ok)net.track();onGameStart();}
+function quitToTitle(){onGameQuit();GAME.running=false;closeAll();net.joinZone(null);P=null;PE=null;showTitle();}
 // ---------- boot ----------
 function boot(){R.c=$('#gc');R.x=R.c.getContext('2d');resize();setupInput();if(OPT.touch!=null)setTouch(OPT.touch);else setTouch(matchMedia('(pointer:coarse)').matches);
  addEventListener('keydown',e=>{if(e.code==='KeyH'&&GAME.running&&!(document.activeElement&&document.activeElement.tagName==='INPUT'))showHelp();});

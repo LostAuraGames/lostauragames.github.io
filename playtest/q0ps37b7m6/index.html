@@ -572,7 +572,8 @@ i18nRows([
 ['Backstab','Puñalada trapera','Coup dans le dos','Meucheln','Apunhalada','Pugnalata alle spalle'],
 ['Strike for heavy damage (+50% from behind or stealth). +2 combo points.','Golpe de gran daño (+50% por la espalda o en sigilo). +2 puntos de combo.','Frappe lourde (+50 % de dos ou en furtivité). +2 points de combo.','Schwerer Schlag (+50 % von hinten oder aus der Tarnung). +2 Kombopunkte.','Golpe de dano pesado (+50% pelas costas ou furtivo). +2 pontos de combo.','Colpo pesante (+50% alle spalle o in furtività). +2 punti combo.'],
 ['Eviscerate','Eviscerar','Éviscération','Ausweiden','Eviscerar','Sventramento'],
-['Finisher: consumes combo points for damage per point.','Remate: consume los puntos de combo para infligir daño por punto.','Coup de grâce : consomme les points de combo, dégâts par point.','Finisher: verbraucht Kombopunkte für Schaden pro Punkt.','Finalizador: consome pontos de combo para causar dano por ponto.','Finale: consuma i punti combo per infliggere danni per punto.'],
+['Finisher: consumes combo points for damage per point and heals you for 20% of the damage dealt.','Remate: consume los puntos de combo para infligir daño por punto y te cura un 20% del daño infligido.','Coup de grâce : consomme les points de combo, dégâts par point, et te soigne de 20 % des dégâts infligés.','Finisher: verbraucht Kombopunkte für Schaden pro Punkt und heilt dich um 20 % des verursachten Schadens.','Finalizador: consome pontos de combo para causar dano por ponto e cura você em 20% do dano causado.','Finale: consuma i punti combo per infliggere danni per punto e ti cura del 20% dei danni inflitti.'],
+['Elite','Élite','Élite','Elite','Elite','Élite'],
 ['Poison Blade','Hoja envenenada','Lame empoisonnée','Giftklinge','Lâmina envenenada','Lama avvelenata'],
 ['For 20s your hits poison enemies for extra damage over time.','Durante 20 s tus golpes envenenan a los enemigos con daño adicional en el tiempo.','Pendant 20 s, tes coups empoisonnent les ennemis et infligent des dégâts sur la durée.','20 s lang vergiften deine Treffer Gegner und verursachen zusätzlichen Schaden über Zeit.','Por 20 s seus golpes envenenam os inimigos com dano extra ao longo do tempo.','Per 20 s i tuoi colpi avvelenano i nemici con danni aggiuntivi nel tempo.'],
 ['Shadowstep','Paso sombrío','Pas de l\'ombre','Schattenschritt','Passo sombrio','Passo d\'ombra'],
@@ -987,7 +988,7 @@ const AB={
  // ---- thief ----
  meld:{cls:'thief',n:'Shadowmeld',lvl:1,kind:'stealth',cd:3,cost:0,icon:['eye','#9a8cff'],d:'Enter stealth (out of combat). Enemies barely notice you. Your first strike from stealth is an AMBUSH: double damage and a guaranteed critical hit.'},
  backstab:{cls:'thief',n:'Backstab',lvl:1,kind:'melee',coef:2.1,cd:1.5,cost:35,combo:2,behind:1.5,icon:['dagger','#ff4a5a'],d:'Strike for heavy damage (+50% from behind or stealth). +2 combo points.'},
- evis:{cls:'thief',n:'Eviscerate',lvl:5,kind:'finisher',coef:.95,cd:1,cost:30,icon:['blood','#ff2a4a'],d:'Finisher: consumes combo points for damage per point.'},
+ evis:{cls:'thief',n:'Eviscerate',lvl:5,kind:'finisher',coef:.95,cd:1,cost:30,leech:.2,icon:['blood','#ff2a4a'],d:'Finisher: consumes combo points for damage per point and heals you for 20% of the damage dealt.'},
  poison:{cls:'thief',n:'Poison Blade',lvl:10,kind:'buff',cd:25,cost:20,buff:{id:'poison',dur:20},icon:['vial','#3cff5a'],d:'For 20s your hits poison enemies for extra damage over time.'},
  shstep:{cls:'thief',n:'Shadowstep',lvl:32,kind:'blink',target:1,r:8,cd:15,cost:15,icon:['step','#b04cff'],d:'Teleport behind an enemy; your next hit deals +50% damage.'},
  fan:{cls:'thief',n:'Fan of Knives',lvl:24,kind:'nova',r:2.8,coef:1.8,cd:3,cost:40,combo:1,icon:['fan','#e8dcb5'],d:'Hurl knives at every enemy around you. +1 combo point.'},
@@ -2823,6 +2824,12 @@ function genZone(z){const Z=ZONES[z];const r=mulberry(1000+z*7919);const W=MAPW,
   const cnt={};band.forEach(s=>cnt[s.mob]=(cnt[s.mob]||0)+1);
   for(const s of band.slice().sort((a,b)=>a.f-b.f)){if(need<=0)break;if(s.mob===md[0])continue;if(cnt[s.mob]<=6)continue;cnt[s.mob]--;s.mob=md[0];s.n=md[5].includes('T')?1:s.n;need--;}
   const cap=Math.round(Z.lvl[0]+(Z.lvl[1]-Z.lvl[0])*(lo+.06));band.forEach(s=>{if(s.mob===md[0])s.lvl=Math.min(s.lvl,Math.max(Z.lvl[0],cap));});}));
+ // Whisperwood: keep the early roads and quest sites safe for level 6-7 players. Nothing above level 7 within reach of a road
+ // or a quest site; bears are moved off the roads (they keep their own deep-woods spawns away from the paths).
+ if(z===0){const near=(x,y,R)=>{for(let j=-R;j<=R;j++)for(let i=-R;i<=R;i++){const xx=Math.floor(x)+i,yy=Math.floor(y)+j;if(xx<0||yy<0||xx>=W||yy>=H)continue;if(M.ground[I(xx,yy)]===G_PATH)return true;}return false;};
+  const bear=Z.mobs[5][0],wolf=Z.mobs[2][0];
+  M.spawns.forEach(s=>{if(s.road)return;const onPath=near(s.x,s.y,6),atPoi=M.pois.some(p=>Math.hypot(p.x-s.x,p.y-s.y)<14);
+   if(onPath||atPoi){if(s.lvl>7)s.lvl=7;if(s.mob===bear){s.mob=wolf;s.n=1;}}});}
  return M;}
 function edgeObj(Z){const o=Object.keys(Z.obs);return o.find(t=>OBJ_SOLID[t]&&!['bush','thorn','fence'].includes(t))||'rock';}
 // ---- towns ----
@@ -3004,7 +3011,7 @@ function updateSpawns(dt){const M=GAME.map;for(const s of M.spawns){const d=Math
  // quest elites
  if(M.kind==='zone'){for(const qid in P.quests.a){const q=QUESTS[qid];if(!q||q.z!==M.z)continue;q.obj.forEach((o,oi)=>{if(o.t!=='elite')return;const st=P.quests.a[qid];if(st.p[oi]>=1)return;
    if(GAME.mobs.some(m=>m.quest===qid&&m.hp>0))return;st.et=(st.et||0)-dt;if(st.et>0)return;const poi=M.pois[o.poi];if(Math.hypot(poi.x-PE.x,poi.y-PE.y)>40)return;
-   const Z=ZONES[M.z];const pal=o.pal||['#3a1a4a','#22102d','#c8a0a0','#ff3aff'];const m=makeMob(['qe_'+qid,o.name,o.arch,pal,0,'T'],Math.min(Z.lvl[1],q.lvl+2),poi.x+.5,poi.y+.5,{elite:1,quest:qid,name:o.name,qitem:o.item});m.hp=m.maxHp=Math.round(m.maxHp*1.6);GAME.mobs.push(m);st.et=40;});}}}
+   const Z=ZONES[M.z];const pal=o.pal||['#3a1a4a','#22102d','#c8a0a0','#ff3aff'];const m=makeMob(['qe_'+qid,o.name,o.arch,pal,0,'T'],Math.min(Z.lvl[1],q.lvl+(q.z===0?1:2)),poi.x+.5,poi.y+.5,{elite:1,quest:qid,name:o.name,qitem:o.item});m.hp=m.maxHp=Math.round(m.maxHp*1.6);GAME.mobs.push(m);st.et=40;});}}}
 // ---- quest gather objects ----
 function rebuildQuestObjects(){const M=GAME.map;if(!M||M.kind!=='zone')return;M.gathers=[];for(const qid in P.quests.a){const q=QUESTS[qid];if(!q||q.z!==M.z)continue;q.obj.forEach((o,oi)=>{if(o.t!=='gather')return;const poi=M.pois[o.poi];const r=mulberry(hashStr(qid));
   for(let k=0;k<o.n+4;k++){for(let t=0;t<30;t++){const x=poi.x+Math.round((r()-.5)*12),y=poi.y+Math.round((r()-.5)*12);if(solidAt(M,x+.5,y+.5))continue;M.gathers.push({x:x+.5,y:y+.5,item:o.item,qid,t:0});break;}}});}}
@@ -3025,6 +3032,7 @@ function playerHit(m,base,o={}){if(!m||m.hp<=0)return 0;let d=base*PS.pow*PS.dmg
  if(PE.stealth&&o.melee!==false){breakStealth();}
  damageMob(m,d,crit,o.el);PE.lastHit=GAME.time;
  if(PS.lifesteal&&d>0){healPlayer(d*PS.lifesteal/100,true);}
+ if(o.leech&&d>0){healPlayer(d*o.leech,true);}
  if(o.poisonable!==false&&GAME.abuffs.some(b=>b.id==='poison')){m.dots.push({dps:d*.12*(1+(PS.M.poison||0)/100),t:6,c:'#3cff5a'});}
  if(o.el==='fire'&&PS.M.burn){m.dots.push({dps:d*.04*PS.M.burn/15,t:4,c:'#ff8a1e'});}
  if(P.cls==='knight'&&!o.noGain)gainRes(6);
@@ -3109,7 +3117,7 @@ function castAbility(id){const A=AB[id];if(!A||!abRank(id)){if(A)toast(t('Learn 
  if(P.mounted)dismount();
  switch(A.kind){
   case'melee':{const tg=pickTarget(CLASSES[P.cls].range+.2);if(!tg){toast(t('No target in range'));ok=false;break;}faceTo(tg);let base=pw*A.coef*mult;playerHit(tg,base,{behind:A.behind,noGain:true});if(A.stun){tg.stun=A.stun*(1+.1*(R-1));}if(A.combo)PE.combo=Math.min(5,PE.combo+A.combo);GAME.parts.push({slash:1,x:tg.x,y:tg.y-.5,a:0,life:.2,max:.2,c:A.icon[1]});break;}
-  case'finisher':{const tg=pickTarget(CLASSES[P.cls].range+.2);if(!tg||PE.combo<1){toast(t(PE.combo<1?'No combo points':'No target in range'));ok=false;break;}faceTo(tg);playerHit(tg,pw*A.coef*PE.combo*mult*1.1,{behind:1.2});burst(tg.x,tg.y-.5,'#ff2a4a',14);
+  case'finisher':{const tg=pickTarget(CLASSES[P.cls].range+.2);if(!tg||PE.combo<1){toast(t(PE.combo<1?'No combo points':'No target in range'));ok=false;break;}faceTo(tg);playerHit(tg,pw*A.coef*PE.combo*mult*1.1,{behind:1.2,leech:A.leech||0});burst(tg.x,tg.y-.5,'#ff2a4a',14);
    if(PS.M.comboKeep&&Math.random()*100<PS.M.comboKeep)PE.combo=2;else PE.combo=0;break;}
   case'aoe':{const dir=aimDir(pickTarget(3));PE.face=dir;let n=0;for(const m of mobsNear(PE.x,PE.y,A.r)){const dx=m.x-PE.x,dy=m.y-PE.y;const d=Math.hypot(dx,dy)||1;if((dx*dir.x+dy*dir.y)/d>Math.cos(A.arc/2)||d<.7){playerHit(m,pw*A.coef*mult,{noGain:true});n++;}}
    GAME.parts.push({slash:1,big:1,x:PE.x+dir.x*.8,y:PE.y-.5+dir.y*.8,a:Math.atan2(dir.y,dir.x),life:.22,max:.22,c:A.icon[1]});sfx('swing');if(A.gain)gainRes(A.gain);break;}
@@ -3423,7 +3431,7 @@ function render(){const x=R.x,M=GAME.map;if(!M||!PE)return;const Zm=R.Z;const vw
  for(const de of M.dents||[]){const Dd=DUNGEON_BY_ID[de.d];if(Math.hypot(de.x-PE.x,de.y-PE.y)<12)label(Dd.n+' ('+t('Lv')+' '+Dd.lvl+')',de.x+.5,de.y-1.3,'#ff8aff');}
  for(const m of GAME.mobs){if(Math.abs(m.x-PE.x)>vw/TS*.6||Math.abs(m.y-PE.y)>vh/TS*.6)continue;const tg=m===GAME.target,hv=m===GAME.hoverMob;const dmg=m.hp<m.maxHp;
   if(tg||hv||m.elite||m.boss||dmg){const [sx,sy]=w2s(m.x,m.y-1.25*m.size-.15);const bw=Math.round((m.boss?44:26)*k*R.Z/3),bh=Math.round(4*k);x.fillStyle='#000';x.fillRect(sx-bw/2-1,sy-1,bw+2,bh+2);x.fillStyle='#4a0d0d';x.fillRect(sx-bw/2,sy,bw,bh);x.fillStyle=m.boss?'#ff3aff':m.elite?'#ff8a1e':'#e02a2a';x.fillRect(sx-bw/2,sy,bw*clamp(m.hp/m.maxHp,0,1),bh);
-   if(tg||hv||m.elite||m.boss)label((m.boss||m.elite?'★ ':'')+m.name+' '+m.lvl,m.x,m.y-1.25*m.size-.25,lvlColor(m.lvl));}
+   if(tg||hv||m.elite||m.boss)label((m.boss?'★ ':m.elite?'★ '+t('Elite')+' · ':'')+m.name+' '+m.lvl,m.x,m.y-1.25*m.size-.25,lvlColor(m.lvl));}
   if(tg){const [sx,sy]=w2s(m.x,m.y);x.strokeStyle='#ffd24a';x.lineWidth=2*k;x.beginPath();x.ellipse(sx,sy,8*R.Z*m.size,4*R.Z*m.size,0,0,6.283);x.stroke();}
   if(m.stun>0)label('✦',m.x,m.y-1.5*m.size,'#ffd24a');if(m.mark>GAME.time)label('☠',m.x+.5,m.y-1.5*m.size,'#ff4a5a');}
  for(const o of Object.values(net.others)){if(o.zone!==net.zoneKey||!OPT.showOthers)continue;label(o.name+' ('+o.lvl+')',o.x,o.y-1.7,'#7fd8ff');if(o.say&&o.sayT>Date.now())label(o.say,o.x,o.y-2.4,'#fff');}

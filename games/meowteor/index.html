@@ -102,7 +102,7 @@ input.name{font:bold 20px "Courier New",monospace;background:#050806;color:#fff;
 .live.off{background:var(--gold);box-shadow:0 0 6px var(--gold)}
 @keyframes blink{50%{opacity:.3}}
 /* leaderboard champion event (countdown / winner banner) */
-#lbchamp{display:none;position:absolute;left:8px;right:8px;top:70px;height:62px;border:3px solid var(--gold);background:linear-gradient(180deg,#2a0f4ae8,#120626e8);box-shadow:0 0 12px #ffd24a66,3px 3px 0 #000;text-align:center;padding:3px 6px;overflow:hidden}
+#lbchamp{display:none;position:absolute;left:8px;right:8px;top:70px;min-height:56px;border:3px solid var(--gold);background:linear-gradient(180deg,#2a0f4ae8,#120626e8);box-shadow:0 0 12px #ffd24a66,3px 3px 0 #000;text-align:center;padding:3px 6px;overflow:hidden}
 #lbchamp.on{display:block}
 #lbchamp .ch-t{color:var(--gold);font-size:12px;letter-spacing:1px;text-shadow:0 0 6px #ffd24a,2px 2px 0 #000}
 #lbchamp .ch-s{color:#e2c2ff;font-size:10px;line-height:12px;margin-top:1px}
@@ -111,9 +111,10 @@ input.name{font:bold 20px "Courier New",monospace;background:#050806;color:#fff;
 #lbchamp.banner{border-color:#fff2c2;animation:champglow 1.6s infinite}
 @keyframes champglow{50%{box-shadow:0 0 20px #ffd24acc,3px 3px 0 #000}}
 #lblist.champ{top:136px}
-#champchip{position:absolute;left:50%;transform:translateX(-50%);top:300px;white-space:nowrap;font-size:11px;color:#fff2c2;border:2px solid var(--gold);background:#1a0a30e6;padding:4px 8px;box-shadow:3px 3px 0 #000,0 0 10px #ffd24a66;cursor:pointer;z-index:6}
+#champchip{position:absolute;left:50%;transform:translateX(-50%);top:204px;white-space:nowrap;font-size:11px;color:#fff2c2;border:2px solid var(--gold);background:#1a0a30e6;padding:4px 8px;box-shadow:3px 3px 0 #000,0 0 10px #ffd24a66;cursor:pointer;z-index:6}
 #champchip .champcd{color:#fff}
-.tabs .btn.skintab{padding:3px 5px;border-color:var(--gold);animation:champglow 1.6s infinite}
+.tabs.has-skin{left:1px;right:1px}.tabs.has-skin .btn{font-size:11px;padding:5px 4px;margin:2px 1px;letter-spacing:0}html:not([lang=en]) .tabs.has-skin .btn{font-size:9px;padding:5px 3px;margin:2px 1px}
+.tabs .btn.skintab{padding:3px 4px!important;border-color:var(--gold);animation:champglow 1.6s infinite}
 .item.mystery{width:96%;height:auto;min-height:84px;flex-direction:row;align-items:center;border-color:var(--gold);background:linear-gradient(90deg,#1e0a3a,#0a100c);padding:4px 6px;box-shadow:0 0 10px #b04cff88,3px 3px 0 #000}
 #wgrid .item.mystery canvas{width:96px;height:72px;flex-shrink:0}
 .item.mystery .mtxt{text-align:left;margin-left:6px;font-size:9px;line-height:11px}
@@ -814,7 +815,7 @@ function champRanksHtml(){const s=CHAMP.state();
  if(s==='deciding')return`<div class="ch-t">&#9733; ${t("TIME'S UP!")} &#9733;</div><div class="ch-s">${t('Crowning the Leaderboard Champion...')}</div>`;
  if(s==='banner'){const me=CHAMP.st&&CHAMP.st.is_me;return`<div class="ch-t">&#9819; ${t('LEADERBOARD CHAMPION')} &#9819;</div><div class="ch-n">${esc(CHAMP.st.winner_name||'')}${me?' ('+t('YOU')+')':''}</div><div class="ch-s">${t('Winner of the 1 of 1 space cat skin')}</div>`;}
  return'';}
-function champRenderRanks(){const b=$('#lbchamp'),l=$('#lblist');if(!b)return;const h=champRanksHtml();b.innerHTML=h;b.className=h?'on '+CHAMP.state():'';if(l)l.classList.toggle('champ',!!h);}
+function champRenderRanks(){const b=$('#lbchamp'),l=$('#lblist');if(!b)return;const h=champRanksHtml();b.innerHTML=h;b.className=h?'on '+CHAMP.state():'';if(l){l.classList.toggle('champ',!!h);l.style.top=h?(b.offsetTop+b.offsetHeight+4)+'px':'';}}
 // ---------- small countdown chip on the title screen ----------
 function champTitleChip(){const s=$('#s-title');if(!s||CUR!=='title')return;let c=$('#champchip');const st=CHAMP.state();
  if(st!=='pending'&&st!=='banner'){if(c)c.remove();return;}
@@ -1223,7 +1224,7 @@ const WD={tab:'fur',picked:false,timer:null,pc:null,px:null,t:0,raf:0};
 SCREENS.wardrobe=(s,tab)=>{if(tab)WD.tab=tab;else if(!WD.picked&&champTabVisible())WD.tab='skin';if(WD.tab==='skin'&&!champTabVisible())WD.tab='fur';startMusic('menu');s.innerHTML='';s.style.background='#050806';
  const tb=el('div',{class:'topbar'});const back=el('div',{class:'btn sm'},'&lt; '+t('BACK'));back.onclick=()=>{sfx('click');show('title');};tb.appendChild(back);const tt=pixText(t('WARDROBE'),3,BONE,'#ff7ac8');fitPix(tt,128);tb.appendChild(tt);if(WALLET.avail()){const w=el('div',{style:'display:flex;align-items:center;gap:4px'});w.appendChild(el('div',{},starsBadge()));w.appendChild(WALLET.button(true));tb.appendChild(w);}else tb.appendChild(el('div',{},starsBadge()));s.appendChild(tb);
  const [pc,pxx]=mkCanvas(120,50);pc.id='wprev';s.appendChild(pc);WD.pc=pc;WD.px=pxx;
- const tabs=el('div',{class:'tabs'});for(const sl of SLOTS){if(sl.id==='skin'&&!champTabVisible())continue;const b=el('div',{class:'btn'+(WD.tab===sl.id?' on':'')+(sl.id==='skin'?' skintab':''),'data-tab':sl.id},sl.id==='skin'?'':(sl.id==='head'?t('HEAD'):t(sl.name).toUpperCase()));if(sl.id==='skin'){b.appendChild(crownIcon(2,'#ffd24a'));b.title=t('Full-body skins');b.setAttribute('aria-label',t('Full-body skins'));}b.onclick=()=>{sfx('click');WD.tab=sl.id;WD.picked=true;$$('.tabs .btn').forEach(e=>e.classList.toggle('on',e.dataset.tab===sl.id));renderGrid();};tabs.appendChild(b);}s.appendChild(tabs);
+ const tabs=el('div',{class:'tabs'+(champTabVisible()?' has-skin':'')});for(const sl of SLOTS){if(sl.id==='skin'&&!champTabVisible())continue;const b=el('div',{class:'btn'+(WD.tab===sl.id?' on':'')+(sl.id==='skin'?' skintab':''),'data-tab':sl.id},sl.id==='skin'?'':(sl.id==='head'?t('HEAD'):t(sl.name).toUpperCase()));if(sl.id==='skin'){b.appendChild(crownIcon(2,'#ffd24a'));b.title=t('Full-body skins');b.setAttribute('aria-label',t('Full-body skins'));}b.onclick=()=>{sfx('click');WD.tab=sl.id;WD.picked=true;$$('.tabs .btn').forEach(e=>e.classList.toggle('on',e.dataset.tab===sl.id));renderGrid();};tabs.appendChild(b);}s.appendChild(tabs);
  s.appendChild(el('div',{id:'wgrid'}));
  s.appendChild(el('div',{class:'wfoot small',id:'wfoot'},''));
  trailReset();renderGrid();};

@@ -5,7 +5,8 @@
 (function(){
 'use strict';
 var KEY = 'lag.wallet.v1';
-
+var SB_URL = 'https://fugfgorircipfntzopon.supabase.co';
+var SB_KEY = 'sb_publishable_9yZM4c8UaklP2z4Vj8NrpQ_4lRRKC0O';
 function load(){
   try{ return JSON.parse(localStorage.getItem(KEY) || 'null'); }catch(e){ return null; }
 }
@@ -49,7 +50,22 @@ async function connect(){
       var localSave = localStorage.getItem('meowteor.save.v1');
       if(localSave) w.localSnapshot = localSave;
     }catch(e){}
-    save(w);
+    save(w);// save to Supabase (non-destructive)
+  try {
+    await fetch(SB_URL + '/rest/v1/wallet_profiles', {
+      method: 'POST',
+      headers: {
+        'apikey': SB_KEY,
+        'Authorization': 'Bearer ' + SB_KEY,
+        'Content-Type': 'application/json',
+        'Prefer': 'resolution=merge-duplicates'
+      },
+      body: JSON.stringify({
+        address: address,
+        local_snapshot: w.localSnapshot || null
+      })
+    });
+  } catch (e) { console.warn('Supabase save failed', e); }
     return w;
   }catch(e){
     console.warn('Wallet connect failed', e);

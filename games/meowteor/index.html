@@ -591,7 +591,7 @@ class World{
 
 // ================= COSMETICS & TRAILS =================
 // unlock: {price:n} buys with stars; {best:n} reaching that best score; {runs:n} runs played; {total:n} lifetime score.
-const SLOTS=[{id:'skin',name:'Skins'},{id:'fur',name:'Fur'},{id:'suit',name:'Suits'},{id:'head',name:'Helmets & Hats'},{id:'face',name:'Face'},{id:'back',name:'Back'},{id:'trail',name:'Trails'}];
+const SLOTS=[{id:'skin',name:'Skins'},{id:'fur',name:'Fur'},{id:'suit',name:'Suits'},{id:'head',name:'Helmets & Hats'},{id:'face',name:'Face'},{id:'back',name:'Back'},{id:'trail',name:'Trails'},{id:'special',name:'Special'}];
 const FURS={
  orange:{m:'#f08a2c',d:'#b5561a',l:'#ffd29a',pat:'tabby'},
  black:{m:'#2a2433',d:'#15111c',l:'#4a4058',pat:'solid',eye:'#7dff6a'},
@@ -689,6 +689,7 @@ const ITEMS=[
  {id:'trail_coins',slot:'trail',name:'Gold Rush',total:1000},
  {id:'trail_fish',slot:'trail',name:'Fish Bones',price:45},
  {id:'trail_void',slot:'trail',name:'Black Hole',best:100},
+ {id:'special_skinfler',slot:'special',name:'SKUFLER Champion',special:1},
 ];
 const IMAP={};for(const it of ITEMS)IMAP[it.id]=it;
 const COSMETIC_COUNT=ITEMS.filter(i=>i.slot!=='trail'&&!/_none$/.test(i.id)).length;

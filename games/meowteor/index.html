@@ -66,8 +66,8 @@ input.name{font:bold 20px "Courier New",monospace;background:#050806;color:#fff;
 .err{color:var(--red);font-size:12px;min-height:16px;margin-top:6px}
 /* wardrobe */
 #wprev{position:absolute;left:0;top:50px;width:360px;height:150px;image-rendering:pixelated;border-top:3px solid #000;border-bottom:3px solid #000}
-.tabs{position:absolute;left:4px;right:4px;top:206px;display:flex;flex-wrap:wrap;justify-content:center}
-.tabs .btn{font-size:11px;padding:5px 6px;margin:2px}
+.tabs{position:absolute;left:4px;right:4px;top:206px;display:flex;flex-wrap:nowrap;justify-content:flex-start;overflow-x:auto;overflow-y:hidden}
+.tabs .btn{font-size:10px;padding:4px 5px;margin:2px;flex-shrink:0}
 /* i18n: keep long translations on one line / inside their boxes */
 .tabs{flex-wrap:nowrap}.tabs .btn{white-space:nowrap}html:not([lang=en]) .tabs .btn{font-size:10px;padding:5px 4px;margin:2px 1px}
 .topbar .btn{white-space:nowrap}html:not([lang=en]) .topbar .btn.sm{font-size:11px;padding:5px 6px}

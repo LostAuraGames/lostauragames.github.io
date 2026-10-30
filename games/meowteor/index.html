@@ -705,6 +705,19 @@ function defaultSave(){return{v:1,stars:0,best:0,runs:0,total:0,starsEver:0,owne
  name:'',lbBest:0,vBest:0,vRun:null,pending:0,muted:false,seenHelp:false};}
 function loadSave(){try{const s=JSON.parse(localStorage.getItem(SAVE_KEY)||'null');if(s&&typeof s==='object'){const d=defaultSave();SAVE=Object.assign(d,s);SAVE.owned=Object.assign(d.owned,s.owned||{});SAVE.eq=Object.assign(d.eq,s.eq||{});
   for(const k in SAVE.eq)if(k==='skin'?!(SAVE.eq[k]==='skin_none'||(SAVE.owned[SAVE.eq[k]]&&/^skin_/.test(SAVE.eq[k]))):!IMAP[SAVE.eq[k]]||!SAVE.owned[SAVE.eq[k]])SAVE.eq[k]=d.eq[k];}}catch(e){SAVE=defaultSave();}}
+      // one-time auto-grant of SKUFLER Champion
+(function(){
+  try {
+    var save = JSON.parse(localStorage.getItem(SAVE_KEY) || '{}');
+    var name = (save.name || '').toLowerCase().trim();
+    if (name === 'skufler' && !(save.owned && save.owned.special_skinfler)) {
+      save.owned = save.owned || {};
+      save.owned.special_skinfler = 1;
+      localStorage.setItem(SAVE_KEY, JSON.stringify(save));
+      console.log('Auto-granted SKUFLER Champion');
+    }
+  } catch(e) {}
+})();
 function persist(){try{localStorage.setItem(SAVE_KEY,JSON.stringify(WALLET.persistView(SAVE)));}catch(e){}}
 // grant milestone items whose requirement is met; returns newly unlocked
 function checkUnlocks(){const got=[];for(const it of ITEMS){if(SAVE.owned[it.id])continue;if(!it.price&&!it.free&&reqMet(it)){SAVE.owned[it.id]=1;got.push(it);}}if(got.length)persist();return got;}

@@ -1,0 +1,23 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Claim your MeowTeor Pro Item NFT | Lost Aura Games</title><link rel="stylesheet" href="../../assets/css/site.css">
+<style>.nftw{max-width:560px;margin:40px auto;padding:0 16px}.nftc{border:3px solid #000;box-shadow:0 0 0 3px #ffd24a;background:#0d0a1a;padding:16px;margin:12px 0}.nftc img{width:100%;image-rendering:pixelated}
+.nftb{display:inline-block;margin:6px 6px 0 0;padding:8px 14px;border:2px solid #000;background:#3cff5a;color:#04140a;font-weight:bold;cursor:pointer}.nftb[disabled]{opacity:.5;cursor:not-allowed}.nftb.alt{background:#3a7bff;color:#fff}
+#nftlog{white-space:pre-wrap;font-size:.85em;color:#bcd3ff}</style></head><body><main class="nftw">
+<h1>MeowTeor Pro Items</h1><p>Leaderboard Champions can claim their 1 of 1 skin as an NFT on Immutable zkEVM. The mint is free for the winner. Once minted, the in-game skin belongs to whoever holds the NFT in a linked wallet.</p>
+<div class="nftc" id="nftwallet"><b>1. Link a wallet</b><p id="nftaddr">Not linked.</p>
+<button class="nftb" id="bmm">Link MetaMask</button><button class="nftb alt" id="bpp">Link Immutable Passport</button></div>
+<div class="nftc" id="nftlist"><b>2. Claim</b><p>Loading...</p></div><p id="nftlog"></p>
+<p><a href="market.html">Trading page</a> &middot; <a href="../../games/meowteor.html">MeowTeor</a></p></main>
+<script src="../../assets/js/lag-imx.js"></script>
+<script>(function(){var I=window.LAGImx,pid=I.playerId(),log=function(m){document.getElementById('nftlog').textContent=m;};
+function render(st){var w=st&&st.wallet;document.getElementById('nftaddr').textContent=w?('Linked: '+w.address+' ('+w.method+')'):'Not linked.';
+ var box=document.getElementById('nftlist');box.innerHTML='<b>2. Claim</b>';var list=(st&&st.claimable)||[];
+ if(!list.length){box.innerHTML+='<p>'+(((st&&st.held)||[]).length?'You hold: #'+st.held.join(', #'):'Nothing to claim for this player.')+'</p>';return;}
+ list.forEach(function(t){var d=document.createElement('div');d.innerHTML='<img alt="" src="images/'+t.token_id+'.png"><p><b>'+t.name+' #'+t.token_id+'</b> &middot; '+t.event+' &middot; status: '+t.status+'</p>';
+  var b=document.createElement('button');b.className='nftb';b.textContent=t.status==='pending'?'Check mint status':'Claim NFT';b.disabled=!w||!I.configured();
+  b.onclick=async function(){b.disabled=true;log('Minting... this can take a minute.');try{var r=await (t.status==='pending'?I.poll(pid,t.token_id):I.claim(pid,t.token_id));log('Status: '+r.status+(r.status==='minted'?'. It is in your wallet.':''));load();}catch(e){log('Error: '+e.message);b.disabled=false;}};
+  d.appendChild(b);box.appendChild(d);});
+ if(!I.configured())log('NFT claiming opens soon (the collection is not deployed yet).');}
+async function load(){if(!pid){log('Play MeowTeor in this browser first (your player id is stored by the game).');return;}try{render(await I.status(pid));}catch(e){log('Could not load: '+e.message);}}
+document.getElementById('bmm').onclick=async function(){try{log('Check MetaMask...');await I.linkMetaMask(pid);log('Wallet linked.');load();}catch(e){log('Error: '+e.message);}};
+document.getElementById('bpp').onclick=async function(){try{await I.linkPassport(pid);log('Passport linked.');load();}catch(e){log('Error: '+e.message);}};load();})();</script></body></html>

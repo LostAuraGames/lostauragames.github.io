@@ -1,0 +1,30 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MeowTeor Pro Items market | Lost Aura Games</title><link rel="stylesheet" href="../../assets/css/site.css">
+<style>.mk{max-width:720px;margin:40px auto;padding:0 16px}.mkr{display:flex;gap:12px;align-items:center;border:2px solid #000;background:#0d0a1a;padding:10px;margin:8px 0}.mkr img{width:96px;image-rendering:pixelated}
+.nftb{padding:6px 12px;border:2px solid #000;background:#3cff5a;font-weight:bold;cursor:pointer}.nftb[disabled]{opacity:.5}</style></head><body><main class="mk">
+<h1>MeowTeor Pro Items: trading</h1>
+<p>Listings use Immutable's Orderbook. Prices are in IMX. Every sale pays a 1% creator royalty plus Immutable's protocol fee. Whoever holds the NFT gets the skin in the game (synced every few minutes).</p>
+<div id="mkstate">Loading listings...</div><div id="mklist"></div>
+<h2>List your item</h2><p><label>Token # <input id="mktok" type="number" min="1" style="width:5em"></label> <label>Price (IMX) <input id="mkprice" type="number" min="0" step="0.01" style="width:7em"></label>
+<button class="nftb" id="mksell">Create listing</button></p><p id="mklog"></p></main>
+<script src="../../assets/js/lag-imx.js"></script>
+<script type="module">
+// SKELETON: loads @imtbl/sdk orderbook only once the collection is configured. Seller/buyer sign in their wallet.
+const I=window.LAGImx,C=I.config,log=m=>document.getElementById('mklog').textContent=m;
+const st=document.getElementById('mkstate');
+if(!I.configured()){st.textContent='Trading opens after the collection is deployed.';document.getElementById('mksell').disabled=true;}
+else{
+ const sdk=await import('https://cdn.jsdelivr.net/npm/@imtbl/sdk/+esm');
+ const env=C.env==='mainnet'?sdk.config.Environment.PRODUCTION:sdk.config.Environment.SANDBOX;
+ const ob=new sdk.orderbook.Orderbook({baseConfig:{environment:env,publishableKey:C.publishableKey}});
+ async function provider(){await I.switchChain();const {BrowserProvider}=await import('https://cdn.jsdelivr.net/npm/ethers@6/+esm');const p=new BrowserProvider(window.ethereum);return [p,await p.getSigner()];}
+ async function refresh(){const r=await ob.listListings({sellItemContractAddress:C.contract,status:sdk.orderbook.OrderStatusName.ACTIVE,pageSize:50});const box=document.getElementById('mklist');box.innerHTML='';st.textContent=r.result.length?'':'No active listings.';
+  for(const o of r.result){const id=o.sell[0].tokenId,price=Number(BigInt(o.buy[0].amount))/1e18;const d=document.createElement('div');d.className='mkr';d.innerHTML=`<img alt="" src="images/${id}.png"><div><b>#${id}</b><br>${price} IMX</div>`;
+   const b=document.createElement('button');b.className='nftb';b.textContent='Buy';b.onclick=async()=>{try{const [p,s]=await provider();const me=await s.getAddress();
+     const f=await ob.fulfillOrder(o.id,me,[]);for(const a of f.actions){if(a.type===sdk.orderbook.ActionType.TRANSACTION){const tx=await a.buildTransaction();await (await s.sendTransaction(tx)).wait();}}log('Bought #'+id+'. The skin moves to you within a few minutes.');refresh();}catch(e){log('Error: '+e.message);}};d.appendChild(b);box.appendChild(d);}}
+ document.getElementById('mksell').onclick=async()=>{try{const [p,s]=await provider();const me=await s.getAddress();const tok=String(+document.getElementById('mktok').value);const wei=BigInt(Math.round(+document.getElementById('mkprice').value*1e6))*10n**12n;
+   const prep=await ob.prepareListing({makerAddress:me,sell:{type:'ERC1155',contractAddress:C.contract,tokenId:tok,amount:'1'},buy:{type:'NATIVE',amount:wei.toString()}});
+   const sigs=[];for(const a of prep.actions){if(a.type===sdk.orderbook.ActionType.TRANSACTION){await (await s.sendTransaction(await a.buildTransaction())).wait();}if(a.type===sdk.orderbook.ActionType.SIGNABLE){sigs.push(await s.signTypedData(a.message.domain,a.message.types,a.message.value));}}
+   await ob.createListing({orderComponents:prep.orderComponents,orderHash:prep.orderHash,orderSignature:sigs[0],makerFees:[]});log('Listed #'+tok+'.');refresh();}catch(e){log('Error: '+e.message);}};
+ refresh().catch(e=>st.textContent='Could not load listings: '+e.message);}
+</script></body></html>

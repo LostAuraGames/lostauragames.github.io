@@ -986,6 +986,9 @@ const CHAMP={event:null,cur:null,off:0,skins:{},newest:null,cache:{items:{}},bus
     if(!w.art||!w.art.code)continue;const old=this.cache.items[w.item];if(old&&old.v===w.art.v&&this.skins[w.item]){SAVE.owned[w.item]=1;continue;}
     const c={event:w.event,item:w.item,code:w.art.code,v:w.art.v,name:w.name,score:w.score,at:Date.now()};
     if(this.load(c)){this.cache.items[w.item]=c;if(!old)fresh=w.item;SAVE.owned[w.item]=1;}}
+   // NFT rule: once a pro skin is minted, the skin follows whoever holds the NFT. Drop skins the server no longer lists.
+   if(Array.isArray(list)){const keep=new Set(list.map(w=>w.item));this.nft={};for(const w of list)if(w.nft)this.nft[w.item]=w.nft;
+    for(const id of Object.keys(this.cache.items))if(!keep.has(id)){delete this.cache.items[id];delete this.skins[id];delete SAVE.owned[id];if(SAVE.eq.skin===id)SAVE.eq.skin='skin_none';}}
    this.save();if(fresh){SAVE.eq.skin=fresh;setTimeout(()=>champReveal(fresh),300);}persist();}
   catch(e){if(e.message!=='no remote')console.warn('[champion] inventory failed',e);}finally{this.claiming=false;}this.changed();},
  tick(){const s=this.state();
@@ -1033,7 +1036,10 @@ function champRanksHtml(){const s=CHAMP.state();
  return'';}
 function champRenderRanks(){const b=$('#lbchamp'),l=$('#lblist');if(!b)return;const h=champRanksHtml();b.innerHTML=h;b.className=h?'on '+CHAMP.state():'';if(l){l.classList.toggle('champ',!!h);l.style.top=h?(b.offsetTop+b.offsetHeight+4)+'px':'';}}
 // ---------- small countdown chip on the title screen ----------
-function champTitleChip(){const s=$('#s-title');if(!s||CUR!=='title')return;let c=$('#champchip');const st=CHAMP.state();
+// winners whose pro skin is not minted yet get a CLAIM NFT button (claim page on the site; the mint is free for them)
+function nftClaimChip(){const s=$('#s-title');if(!s||CUR!=='title')return;const n=CHAMP.nft||{};const c=Object.keys(n).find(k=>n[k]&&n[k].status!=='minted');let b=$('#nftchip');
+ if(!c){if(b)b.remove();return;}if(!b){b=el('a',{id:'nftchip',class:'btn sm gold',href:'../../nft/meowteor/claim.html?token='+(+n[c].token_id||0),target:'_top',style:'position:absolute;left:12px;bottom:56px;z-index:5'},'&#9670; '+t('CLAIM YOUR NFT'));s.appendChild(b);}}
+function champTitleChip(){nftClaimChip();const s=$('#s-title');if(!s||CUR!=='title')return;let c=$('#champchip');const st=CHAMP.state();
  if(st!=='pending'&&st!=='banner'&&st!=='upcoming'){if(c)c.remove();return;}
  if(!c){c=el('div',{id:'champchip',class:'click'});c.onclick=()=>{sfx('click');show('ranks');};s.appendChild(c);}
  c.innerHTML=st==='pending'?`&#9733; ${t('1 OF 1 SKIN FOR #1')} &middot; <span class="champcd">${champCountdown()}</span>`:st==='upcoming'?`&#9733; ${t('NEXT EVENT IN')} <span class="champcd">${champCountdown()}</span>`:`&#9819; ${t('CHAMPION')}: ${esc(CHAMP.st.winner_name||'')}${CHAMP.cur&&CHAMP.cur.next?` &middot; ${t('NEXT')} <span class="champcd">${champCountdown()}</span>`:''}`;}

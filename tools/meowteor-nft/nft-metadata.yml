@@ -1,0 +1,19 @@
+name: nft-metadata
+# Refreshes the static NFT metadata under /nft/meowteor/items/ from Supabase (get_nft_metadata, public RPC)
+# so the contract's base URI shows Won By / Score / Mint Date right after a claim. Commits only when files change.
+on:
+  schedule: [{cron: '*/15 * * * *'}]
+  workflow_dispatch:
+permissions: {contents: write}
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: node tools/nft-metadata.mjs
+        env: {SB_PUBLISHABLE_KEY: '${{ vars.SB_PUBLISHABLE_KEY }}'}
+      - run: |
+          git config user.name "LostAuraGames"; git config user.email "lostauragames@users.noreply.github.com"
+          git add nft/meowteor && (git diff --cached --quiet || (git commit -m "nft: refresh MeowTeor metadata" && git push))

@@ -1467,7 +1467,7 @@ function liveDeath(){const W=G.world;G.mode='dead';G.shake=8;G.flash=1;const F=f
 function liveEnd(){if(LV.over)return;LV.over=true;if(G.world&&LV.fin==null)LV.fin=G.world.score;liveWatchUi();}
 // called from gameFrame while the spectator view is open
 function liveWatchFrame(dt){const W=G.world;if(!W||W.dead)return;LV.acc+=Math.min(dt,.1);let steps=0;
- while(LV.acc>=PHYS.DT){LV.acc-=PHYS.DT;steps++;}const lag=LV.known-W.frame;if(lag>LIVE_BUFFER*2)steps+=Math.min(30,lag-LIVE_BUFFER);  // catch up after a stall
+ while(LV.acc>=PHYS.DT){LV.acc-=PHYS.DT;steps++;}const lag=LV.known-W.frame;if(!LV.replay&&lag>LIVE_BUFFER*2)steps+=Math.min(30,lag-LIVE_BUFFER);  // catch up after a stall
  liveSim(W.frame+steps,false);if(W.frame>=LV.known)LV.acc=0;
  if(!W.dead&&W.frame>=LV.known&&(LV.ended||(!LV.live&&LV.found)))liveEnd();
  if(FRAME%15===0)liveWatchUi();}

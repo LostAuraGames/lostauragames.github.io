@@ -60,11 +60,19 @@ async function linkPassport(pid){
   var idToken = await passport.getIdToken();
   return fn(Object.assign({action: 'link', id_token: idToken, address: accs[0]}, await who()));
 }
+// OFAC compliance: region check (server sees the IP) and sanctioned-wallet screening. IP data by DB-IP (db-ip.com).
+async function geoFn(body){
+  var r = await fetch(SB_URL + '/functions/v1/meowteor-geo', {method: 'POST', headers: {apikey: SB_KEY, 'Content-Type': 'application/json'}, body: JSON.stringify(body)});
+  var v = null; try { v = await r.json(); } catch(e){}
+  if(!r.ok) throw new Error((v && v.message) || ('HTTP ' + r.status)); return v;
+}
+async function geoCheck(){ return geoFn({action: 'check'}); }
+async function screen(address){ return geoFn({action: 'screen', address: address}); }
 async function status(pid){
   var r = await fetch(SB_URL + '/rest/v1/rpc/get_my_nft_status_v2', {method: 'POST', headers: {apikey: SB_KEY, 'Content-Type': 'application/json'}, body: JSON.stringify(await who())});
   if(!r.ok) throw new Error('HTTP ' + r.status); return r.json();
 }
-window.LAGImx = {config: CFG, chain: chain, configured: configured, switchChain: switchChain, linkMetaMask: linkMetaMask, linkPassport: linkPassport,
+window.LAGImx = {geoCheck: geoCheck, screen: screen, config: CFG, chain: chain, configured: configured, switchChain: switchChain, linkMetaMask: linkMetaMask, linkPassport: linkPassport,
   claim: async function(pid, tokenId){ return fn(Object.assign({action: 'claim', token_id: tokenId}, await who())); },
   claimEdition: async function(pid, tokenId){ return fn(Object.assign({action: 'claim_edition', token_id: tokenId}, await who())); },
   poll: async function(pid, tokenId){ return fn(Object.assign({action: 'status', token_id: tokenId}, await who())); },

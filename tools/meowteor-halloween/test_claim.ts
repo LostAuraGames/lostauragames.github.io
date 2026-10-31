@@ -40,9 +40,12 @@ Deno.env.set('NFT_CONTRACT', C); Deno.env.set('IMX_CHAIN', 'mainnet'); Deno.env.
 const PID = '00000000-0000-4000-8000-00000000aaaa'; const acct = privateKeyToAccount(generatePrivateKey());
 const DB = {nonce: null, link: null, enabled: false, lock: 0, tok: {token_id: 1, status: 'unminted', tx_hash: null, minted_to: null, holder_address: null, minted_at: null}, log: [], ed: {status: null, tx: null, addr: null, no: null}};
 const realFetch = globalThis.fetch;
-globalThis.fetch = async (u, init = {}) => { u = String(u); const b = init.body ? JSON.parse(init.body) : {}; const R = (s, o) => new Response(JSON.stringify(o), {status: s});
+globalThis.fetch = async (u, init = {}) => { if (String(u).includes('publicnode')) { const d = JSON.parse(init.body).params[0].data; return new Response(JSON.stringify({jsonrpc: '2.0', id: 1, result: '0x' + (ORACLE_HIT && d.endsWith(ORACLE_HIT.slice(2).toLowerCase()) ? '1' : '0').padStart(64, '0')})); } u = String(u); const b = init.body ? JSON.parse(init.body) : {}; const R = (s, o) => new Response(JSON.stringify(o), {status: s});
   if (u.startsWith('https://sb.mock/rest/v1/meowteor_nft_tokens')) return R(200, [DB.tok]);
   if (u.startsWith('https://sb.mock/rest/v1/rpc/')) { const fn = u.split('/').pop(); DB.log.push(fn);
+    if (fn === 'meowteor_geo_blocked') return R(200, b.p_ip === '5.5.5.5' ? 'IR' : null);
+    if (fn === 'meowteor_wallet_sanctioned') return R(200, SANC.has(b.p_address.toLowerCase()));
+    if (fn === 'meowteor_compliance_log_add') { HITS.push(b); return R(200, null); }
     if (fn === 'meowteor_me') return b.p_key === KEY ? R(200, PID) : R(400, {message: 'auth: unknown key'});
     if (fn === 'meowteor_has_key') return R(200, BOUND);
     if (fn === 'meowteor_nft_edition_begin') { if (b.p_player_id !== PID) return R(400, {message: 'bad claim: not earned'}); if (!DB.link) return R(400, {message: 'bad claim: link a wallet first'});
@@ -60,9 +63,9 @@ globalThis.fetch = async (u, init = {}) => { u = String(u); const b = init.body 
     if (fn === 'meowteor_nft_set_holder') { const moved = DB.tok.holder_address !== b.p_address; DB.tok.holder_address = b.p_address; return R(200, moved); }
     return R(404, {message: 'no ' + fn}); }
   return realFetch(u, init); };
-const KEY='c'.repeat(64);let BOUND=true;
+const KEY='c'.repeat(64);const SANC=new Set();const HITS=[];let ORACLE_HIT='';let IP='8.8.8.8';let BOUND=true;
 const {handle} = await import('./meowteor-nft-claim.ts'); const S = await import('./meowteor-nft-holder-sync.ts');
-const call = async (o) => { const r = await handle(new Request('https://x', {method: 'POST', body: JSON.stringify({p_key: KEY, ...o})})); return [r.status, await r.json()]; };
+const call = async (o) => { const r = await handle(new Request('https://x', {method: 'POST', headers: {'cf-connecting-ip': IP}, body: JSON.stringify({p_key: KEY, ...o})})); return [r.status, await r.json()]; };
 let [s, v] = await call({action: 'minter'}); ok(v.address === MINTER.address, 'minter action returns public address only');
 [s, v] = await call({action: 'claim', token_id: 1}); ok(s === 400 && /link a wallet/.test(v.message), 'claim before wallet link is refused');
 [s, v] = await call({action: 'nonce'}); const msg = v.message;
@@ -71,7 +74,7 @@ const sig = await acct.signMessage({message: msg}); [s, v] = await call({action:
 [s, v] = await call({action: 'claim', token_id: 1}); ok(s === 400 && /opens soon/.test(v.message) && CH.sent.length === 0, 'claim refused while disabled (no tx sent)');
 [s, v] = await call({action: 'claim', token_id: 1, p_key: 'd'.repeat(64)}); ok(s === 401, 'unknown key refused (cannot act as another player)');
 [s, v] = await call({action: 'claim', token_id: 1, p_key: undefined, p_player_id: PID}); ok(s === 401, 'raw player id refused once that id has a key');
-BOUND = false; [s, v] = await call({action: 'claim', token_id: 1, p_key: undefined, p_player_id: PID}); ok(s === 400 && /opens soon/.test(v.message), 'legacy raw id still works for unbound ids while LEGACY_PID is on'); BOUND = true;
+BOUND = false; [s, v] = await call({action: 'claim', token_id: 1, p_key: undefined, p_player_id: PID}); ok(s === 401, 'raw player id refused even for unbound ids (fallback off)'); BOUND = true;
 DB.enabled = true;
 [s, v] = await call({action: 'claim', token_id: 1}); ok(s === 200 && v.status === 'minted' && CH.sent.length === 1, 'claim sends exactly one safeMint and settles to minted');
 const tx = CH.sent[0]; const d = iface.parseTransaction({data: tx.data});
@@ -91,6 +94,15 @@ CH.logs.push({address: C, topics: lg.topics, data: lg.data, blockNumber: '0x' + 
 const res = await S.syncOnce([{token_id: 1, tx_hash: tx.hash, holder_address: DB.tok.holder_address, minted_to: DB.tok.minted_to}]);
 ok(res[0].moved === true && DB.tok.holder_address === NEW, 'holder sync follows on-chain transfer (logs + balanceOf)');
 const r403 = await S.handle(new Request('https://x', {method: 'POST', headers: {'x-sync-token': 'nope'}})); ok(r403.status === 403, 'holder sync refuses bad token');
+// ---- OFAC compliance ----
+IP = '5.5.5.5'; [s, v] = await call({action: 'nonce'}); ok(s === 451 && /not available in your region/.test(v.message) && HITS.some(h => h.p_kind === 'geo' && h.p_country === 'IR'), 'blocked-country IP refused (451) and logged');
+IP = '8.8.8.8';
+{ const bad = privateKeyToAccount(generatePrivateKey()); SANC.add(bad.address.toLowerCase());
+  [s, v] = await call({action: 'nonce'}); const sg = await bad.signMessage({message: v.message});
+  [s, v] = await call({action: 'link', address: bad.address, signature: sg, nonce: 'abc123'}); ok(s === 403 && v.sanctioned && HITS.some(h => h.p_kind === 'wallet'), 'OFAC-listed wallet cannot link (logged)');
+  const bad2 = privateKeyToAccount(generatePrivateKey()); ORACLE_HIT = bad2.address;
+  [s, v] = await call({action: 'nonce'}); const sg2 = await bad2.signMessage({message: v.message});
+  [s, v] = await call({action: 'link', address: bad2.address, signature: sg2, nonce: 'abc123'}); ok(s === 403, 'Chainalysis-oracle-listed wallet cannot link'); ORACLE_HIT = ''; }
 // ---- open edition token 12 ----
 const n0 = CH.sent.length;
 [s, v] = await call({action: 'claim_edition', token_id: 12}); ok(s === 200 && v.status === 'minted' && v.edition_no === 1 && CH.sent.length === n0 + 1, 'edition claim mints one token 12, edition #1');

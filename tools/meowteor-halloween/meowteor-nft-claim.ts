@@ -9,6 +9,7 @@
 // Mints directly on Immutable zkEVM with ImmutableERC1155.safeMint(to, id, 1, 0x) from a server minter wallet (needs MINTER_ROLE).
 // Secrets: MINTER_PRIVATE_KEY (optional; otherwise Vault secret meowteor_minter_key via service-role RPC), NFT_CONTRACT, IMX_CHAIN.
 import { ethers } from 'npm:ethers@6';
+import { REGION_MSG, WALLET_MSG, geoBlocked, screenWallet, logHit } from './compliance.ts';
 import { verifyMessage } from 'npm:viem@2';
 import { createRemoteJWKSet, jwtVerify } from 'npm:jose@5';
 const SB_URL = Deno.env.get('SUPABASE_URL'), SB_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
@@ -16,7 +17,7 @@ const IMX_CHAIN = Deno.env.get('IMX_CHAIN') || 'mainnet';
 const RPC_URL = Deno.env.get('IMX_RPC') || (IMX_CHAIN === 'mainnet' ? 'https://rpc.immutable.com' : 'https://rpc.testnet.immutable.com');
 const CHAIN_ID = IMX_CHAIN === 'mainnet' ? 13371 : 13473;
 const CONTRACT = (Deno.env.get('NFT_CONTRACT') || '0x7dde94d0299189ff7b6b092e788d382edb54b94c').toLowerCase();
-const LEGACY_PID = (Deno.env.get('ALLOW_LEGACY_PID') ?? '1') !== '0';         // turn off at go-live (go_live.sql + env)
+const LEGACY_PID = (Deno.env.get('ALLOW_LEGACY_PID') ?? '0') !== '0';         // turn off at go-live (go_live.sql + env)
 const MIN_PRIO = 10_000_000_000n;                                   // zkEVM minimum priority fee: 10 gwei
 const ABI = ['function safeMint(address to, uint256 id, uint256 value, bytes data)', 'function totalSupply(uint256 id) view returns (uint256)',
   'function balanceOf(address, uint256) view returns (uint256)', 'function hasRole(bytes32, address) view returns (bool)'];
@@ -52,6 +53,10 @@ const linkMessage = (pid, nonce) => `Link this wallet to MeowTeor (Lost Aura Gam
 export async function handle(req) {
   if (req.method === 'OPTIONS') return new Response('ok', {headers: CORS});
   if (req.method !== 'POST') return J(405, {message: 'POST only'});
+  // OFAC geoblock (claims, wallet linking, everything NFT): checked before anything else
+  try { const c = await geoBlocked(req, rpc); if (c) { await logHit(rpc, 'geo', 'nft-claim', req, c, null, null); return J(451, {message: REGION_MSG, blocked: true}); } }
+  catch (e) { return J(503, {message: 'NFT features are temporarily unavailable.'}); }
+  const sanctioned = async (addr, action) => { const s = await screenWallet(addr, rpc); if (s.sanctioned) await logHit(rpc, 'wallet', action, req, null, addr, {source: s.source}); return s.sanctioned; };
   let b; try { b = JSON.parse(await req.text()); } catch (e) { return J(400, {message: 'bad json'}); }
   // identity: the server-issued key -> player id. Legacy (raw player id) only while LEGACY_PID is on AND that id has no key yet.
   let pid = '';
@@ -66,10 +71,12 @@ export async function handle(req) {
       if (b.id_token) {                                              // Passport
         const {payload} = await jwtVerify(String(b.id_token), PASSPORT_JWKS, {audience: PASSPORT_CLIENT_ID, issuer: 'https://auth.immutable.com/'});
         const addr = String((payload.passport && payload.passport.zkevm_eth_address) || b.address || '');
+        if (ADDR.test(addr) && await sanctioned(addr, 'link')) return J(403, {message: WALLET_MSG, sanctioned: true});
         if (!ADDR.test(addr)) return J(400, {message: 'bad link: no Passport wallet'});
         await rpc('meowteor_wallet_link', {p_player_id: pid, p_address: addr, p_method: 'passport', p_nonce: null}); return J(200, {ok: true, address: addr.toLowerCase()});
       }
       const addr = String(b.address || ''), sig = String(b.signature || ''), nonce = String(b.nonce || '');
+      if (ADDR.test(addr) && await sanctioned(addr, 'link')) return J(403, {message: WALLET_MSG, sanctioned: true});
       if (!ADDR.test(addr) || !/^0x[0-9a-f]+$/i.test(sig)) return J(400, {message: 'bad link'});
       const ok = await verifyMessage({address: addr, message: linkMessage(pid, nonce), signature: sig});
       if (!ok) return J(400, {message: 'bad link: signature does not match'});
@@ -80,6 +87,7 @@ export async function handle(req) {
       const tokenId = b.token_id | 0;
       const row = await rpc('meowteor_nft_edition_begin', {p_player_id: pid, p_token_id: tokenId});
       const fin = (st, tx, err) => rpc('meowteor_nft_edition_finish', {p_token_id: tokenId, p_player_id: pid, p_status: st, p_tx: tx, p_error: err});
+      if (!row.tx_hash && await sanctioned(row.owner_address, 'claim_edition')) { await fin('failed', null, 'sanctioned wallet'); return J(403, {message: WALLET_MSG, sanctioned: true}); }
       await getSigner();
       if (row.tx_hash) {                                             // earlier attempt: settle it before anything else
         let rc = await provider.getTransactionReceipt(row.tx_hash);
@@ -112,7 +120,10 @@ export async function handle(req) {
       }
       const row = (await rpc('meowteor_nft_claim_begin', {p_player_id: pid, p_token_id: tokenId}))?.[0];   // winner + enabled + wallet + lease
       if (!row) return J(400, {message: 'bad claim'});
-      const t = await tokenRow(tokenId); await getSigner();
+      const t = await tokenRow(tokenId);
+      if (!t.tx_hash && await sanctioned(row.owner_address, 'claim')) {
+        await rpc('meowteor_nft_claim_finish', {p_token_id: tokenId, p_status: 'failed', p_tx: null, p_error: 'sanctioned wallet'});
+        return J(403, {message: WALLET_MSG, sanctioned: true}); } await getSigner();
       if (t.tx_hash) { const st = await settle(t); if (st !== 'failed' && st !== 'none') return J(200, {ok: true, token_id: tokenId, status: st, tx: t.tx_hash, owner: row.owner_address}); }
       const c = contract(true);
       if ((await c.totalSupply(tokenId)) > 0n) {                     // already on chain (e.g. lost response): never mint twice

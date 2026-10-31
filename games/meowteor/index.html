@@ -1044,8 +1044,14 @@ function champRanksHtml(){const s=CHAMP.state();
 function champRenderRanks(){const b=$('#lbchamp'),l=$('#lblist');if(!b)return;const h=champRanksHtml();b.innerHTML=h;b.className=h?'on '+CHAMP.state():'';if(l){l.classList.toggle('champ',!!h);l.style.top=h?(b.offsetTop+b.offsetHeight+4)+'px':'';}}
 // ---------- small countdown chip on the title screen ----------
 // winners whose pro skin is not minted yet get a CLAIM NFT button (claim page on the site; the mint is free for them)
+// OFAC region check for NFT features (server-side IP lookup; gameplay is unaffected). Asked once, only when there is something to claim.
+const GEO={st:null,msg:'',busy:false,check(){if(this.st||this.busy||!LB.remote)return;this.busy=true;
+ fetch(SUPABASE_URL.replace(/\/+$/,'')+'/functions/v1/meowteor-geo',{method:'POST',cache:'no-store',headers:{'apikey':SUPABASE_ANON_KEY,'Content-Type':'application/json'},body:'{"action":"check"}'})
+  .then(r=>r.json()).then(v=>{this.st=v&&v.blocked?'blocked':'ok';this.msg=(v&&v.message)||'';nftClaimChip();}).catch(()=>{this.st='ok';}).finally(()=>{this.busy=false;});}};
 function nftClaimChip(){const s=$('#s-title');if(!s||CUR!=='title')return;const n=CHAMP.nft||{};const c=Object.keys(n).find(k=>n[k]&&n[k].status!=='minted');let b=$('#nftchip');
- if(!c){if(b)b.remove();return;}if(!b){b=el('a',{id:'nftchip',class:'btn sm gold',href:'../../nft/meowteor/claim.html?token='+(+n[c].token_id||0),target:'_top',style:'position:absolute;left:12px;bottom:56px;z-index:5'},'&#9670; '+t('CLAIM YOUR NFT'));s.appendChild(b);}}
+ if(!c){if(b)b.remove();return;}
+ if(GEO.st===null)GEO.check();
+ if(GEO.st==='blocked'){if(b&&b.tagName==='A')b.remove();b=$('#nftchip');if(!b){b=el('div',{id:'nftchip',class:'btn sm',style:'position:absolute;left:12px;bottom:56px;z-index:5;opacity:.8;cursor:default'},esc(GEO.msg||'NFT features are not available in your region.'));s.appendChild(b);}return;}if(!b){b=el('a',{id:'nftchip',class:'btn sm gold',href:'../../nft/meowteor/claim.html?token='+(+n[c].token_id||0),target:'_top',style:'position:absolute;left:12px;bottom:56px;z-index:5'},'&#9670; '+t('CLAIM YOUR NFT'));s.appendChild(b);}}
 function champTitleChip(){nftClaimChip();const s=$('#s-title');if(!s||CUR!=='title')return;let c=$('#champchip');const st=CHAMP.state();
  if(st!=='pending'&&st!=='banner'&&st!=='upcoming'){if(c)c.remove();return;}
  if(!c){c=el('div',{id:'champchip',class:'click'});c.onclick=()=>{sfx('click');show('ranks');};s.appendChild(c);}

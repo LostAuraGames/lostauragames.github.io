@@ -6,18 +6,23 @@
 <p>Listings use Immutable's Orderbook. Prices are in IMX. Every sale pays a 1% creator royalty plus Immutable's protocol fee. Whoever holds the NFT gets the skin in the game (synced every few minutes).</p>
 <div id="mkstate">Loading listings...</div><div id="mklist"></div>
 <h2>List your item</h2><p><label>Token # <input id="mktok" type="number" min="1" style="width:5em"></label> <label>Price (IMX) <input id="mkprice" type="number" min="0" step="0.01" style="width:7em"></label>
-<button class="nftb" id="mksell">Create listing</button></p><p id="mklog"></p></main>
+<button class="nftb" id="mksell">Create listing</button></p><p id="mklog"></p><p style="font-size:.75em;color:#8a8470"><a href="https://db-ip.com">IP Geolocation by DB-IP</a> (IP data by DB-IP, CC BY 4.0)</p></main>
 <script src="../../assets/js/lag-imx.js"></script>
 <script type="module">
 // SKELETON: loads @imtbl/sdk orderbook only once the collection is configured. Seller/buyer sign in their wallet.
 const I=window.LAGImx,C=I.config,log=m=>document.getElementById('mklog').textContent=m;
 const st=document.getElementById('mkstate');
-if(!I.configured()){st.textContent='Trading opens after the collection is deployed.';document.getElementById('mksell').disabled=true;}
+// OFAC: no trading from embargoed regions or with sanctioned wallets. The orderbook itself is Immutable's, so this is a front-end guard.
+let G=null;try{G=await I.geoCheck();}catch(e){}
+if(G&&G.blocked){st.textContent=G.message;document.getElementById('mksell').disabled=true;}
+else if(!I.configured()){st.textContent='Trading opens after the collection is deployed.';document.getElementById('mksell').disabled=true;}
 else{
  const sdk=await import('https://cdn.jsdelivr.net/npm/@imtbl/sdk/+esm');
  const env=C.env==='mainnet'?sdk.config.Environment.PRODUCTION:sdk.config.Environment.SANDBOX;
  const ob=new sdk.orderbook.Orderbook({baseConfig:{environment:env,publishableKey:C.publishableKey}});
- async function provider(){await I.switchChain();const {BrowserProvider}=await import('https://cdn.jsdelivr.net/npm/ethers@6/+esm');const p=new BrowserProvider(window.ethereum);return [p,await p.getSigner()];}
+ async function provider(){await I.switchChain();const {BrowserProvider}=await import('https://cdn.jsdelivr.net/npm/ethers@6/+esm');const p=new BrowserProvider(window.ethereum);const s=await p.getSigner();
+  let v;try{v=await I.screen(await s.getAddress());}catch(e){throw new Error('Could not verify this wallet right now. Try again later.');}
+  if(v&&v.blocked)throw new Error(v.message);return [p,s];}
  async function refresh(){const r=await ob.listListings({sellItemContractAddress:C.contract,status:sdk.orderbook.OrderStatusName.ACTIVE,pageSize:50});const box=document.getElementById('mklist');box.innerHTML='';st.textContent=r.result.length?'':'No active listings.';
   for(const o of r.result){const id=o.sell[0].tokenId,price=Number(BigInt(o.buy[0].amount))/1e18;const d=document.createElement('div');d.className='mkr';d.innerHTML=`<img alt="" src="images/${id}.png"><div><b>#${id}</b><br>${price} IMX</div>`;
    const b=document.createElement('button');b.className='nftb';b.textContent='Buy';b.onclick=async()=>{try{const [p,s]=await provider();const me=await s.getAddress();

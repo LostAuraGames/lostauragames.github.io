@@ -705,19 +705,8 @@ function defaultSave(){return{v:1,stars:0,best:0,runs:0,total:0,starsEver:0,owne
  name:'',lbBest:0,vBest:0,vRun:null,pending:0,muted:false,seenHelp:false};}
 function loadSave(){try{const s=JSON.parse(localStorage.getItem(SAVE_KEY)||'null');if(s&&typeof s==='object'){const d=defaultSave();SAVE=Object.assign(d,s);SAVE.owned=Object.assign(d.owned,s.owned||{});SAVE.eq=Object.assign(d.eq,s.eq||{});
   for(const k in SAVE.eq)if(k==='skin'?!(SAVE.eq[k]==='skin_none'||(SAVE.owned[SAVE.eq[k]]&&/^skin_/.test(SAVE.eq[k]))):!IMAP[SAVE.eq[k]]||!SAVE.owned[SAVE.eq[k]])SAVE.eq[k]=d.eq[k];}}catch(e){SAVE=defaultSave();}}
-      // one-time auto-grant of SKUFLER Champion
-(function(){
-  try {
-    var save = JSON.parse(localStorage.getItem(SAVE_KEY) || '{}');
-    var name = (save.name || '').toLowerCase().trim();
-    if (name === 'skufler' && !(save.owned && save.owned.special_skinfler)) {
-      save.owned = save.owned || {};
-      save.owned.special_skinfler = 1;
-      localStorage.setItem(SAVE_KEY, JSON.stringify(save));
-      console.log('Auto-granted SKUFLER Champion');
-    }
-  } catch(e) {}
-})();
+// (the old client-side 'skufler' name grant was removed: names are now permanent server-side, and SKUFLER's
+// special_skinfler stays in his save and is re-granted by get_my_champion_skins)
 function persist(){try{localStorage.setItem(SAVE_KEY,JSON.stringify(WALLET.persistView(SAVE)));}catch(e){}}
 // grant milestone items whose requirement is met; returns newly unlocked
 function checkUnlocks(){const got=[];for(const it of ITEMS){if(SAVE.owned[it.id])continue;if(!it.price&&!it.free&&reqMet(it)){SAVE.owned[it.id]=1;got.push(it);}}if(got.length)persist();return got;}
@@ -782,7 +771,7 @@ function SupabaseAdapter(url,key){const base=url.replace(/\/+$/,'')+'/rest/v1/rp
     let v=null;try{v=txt?JSON.parse(txt):null;}catch(e){}
     if(r.status===400||r.status===403||r.status===409)return{ok:false,rejected:true,banned:r.status===403,outdated:r.status===409,msg:(v&&v.message)||'rejected'};if(!r.ok)throw new Error('LB verify HTTP '+r.status);
     return{ok:true,rank:v&&v.rank,verdict:v&&v.verdict};}
-   let res;try{res=await rpc('submit_score',body);}catch(e){const m=String(e.message||e);if(/HTTP 400/.test(m)&&/run ticket|verified run|not plausible|slow down|banned/.test(m))return{ok:false,rejected:true,msg:m};throw e;}
+   let res;try{res=await rpc('submit_score',body);}catch(e){const m=String(e.message||e);if(/HTTP 400/.test(m)&&/run ticket|verified run|not plausible|slow down|banned|name taken/.test(m))return{ok:false,rejected:true,msg:m};throw e;}
    const row=Array.isArray(res)?res[0]:res;return{ok:true,rank:row&&row.rank};},
   async startRun(){const res=await rpc('start_run',{p_player_id:lbPlayerId()},5000);const row=Array.isArray(res)?res[0]:res;return row&&row.run_id?{id:row.run_id,seed:(+row.seed)>>>0}:null;},
   async fetchTop(limit=100){const rows=await rpc('get_top_scores',{p_limit:limit,p_player_id:lbPlayerId()});return(rows||[]).map(r=>({rank:+r.rank,name:r.name,score:+r.score,me:!!r.is_me})).filter(r=>!lbBlocked(r.name));},
@@ -804,57 +793,88 @@ const LB={remote:null,local:LocalAdapter,status:'local',lastError:null,
  async fetchMyRank(pid=lbPlayerId()){return this._try(a=>a.fetchMyRank(pid),a=>a.fetchMyRank(pid));},
  async fetchBanned(){if(!this.remote)return[];try{return await this.remote.fetchBanned();}catch(e){return null;}}};
 // Verified best: the best score made in a run that has a server run ticket (only those can be uploaded to the global board).
-function lbNoteRun(W){if(W&&W.runId&&W.dead&&W.score>(SAVE.vBest||0)){const d=[];let p=0;for(const f of W.log){d.push(f-p);p=f;}
- SAVE.vBest=W.score;SAVE.vRun={id:W.runId,frames:W.frame,flaps:d};persist();}}
+function lbNoteRun(W){if(!(W&&W.runId&&W.dead))return;const ev=CHAMP.activeEvent();const pb=W.score>(SAVE.vBest||0);const evb=!!ev&&W.score>0&&!(SAVE.evRun&&SAVE.evRun.ev===ev&&SAVE.evRun.score>=W.score);
+ if(!pb&&!evb)return;const d=[];let p=0;for(const f of W.log){d.push(f-p);p=f;}const run={id:W.runId,frames:W.frame,flaps:d};
+ if(pb){SAVE.vBest=W.score;SAVE.vRun=run;}
+ // champion events count every verified run played during the event, not only all-time bests
+ if(evb)SAVE.evRun=pb?{ev,score:W.score,run:null,sent:false,viaPb:true}:{ev,score:W.score,run,sent:false};persist();}
+function lbNameTaken(r){return !!(r&&r.rejected&&/name taken/i.test(String(r.msg||'')));}
+function lbOnNameTaken(){SAVE.nameTaken=true;persist();const m=t('That name belongs to another player. Pick a new name.');toast(esc(m),'#ff5a6a');
+ setTimeout(()=>askName(()=>{SAVE.nameTaken=false;persist();lbMaybeSubmit().then(()=>forceRename());},true,m),400);}
 // Game-side policy: only submit when the player beats the best they have already submitted.
-async function lbMaybeSubmit(){if(!SAVE.name||lbBlocked(SAVE.name))return null;const remote=!!LB.remote;const score=remote?(SAVE.vBest||0):SAVE.best;if(score<=0||score<=SAVE.lbBest)return null;if(remote&&!(SAVE.vRun&&typeof SAVE.vRun==='object'))return null;
- const r=await LB.submitScore(SAVE.name,score,remote?SAVE.vRun:null);if(r&&r.ok){SAVE.lbBest=Math.max(SAVE.lbBest,score);SAVE.pending=0;}else if(r&&r.rejected){SAVE.vBest=SAVE.lbBest;SAVE.vRun=null;SAVE.pending=0;console.warn('[leaderboard] score rejected:',r.msg);}else SAVE.pending=score;persist();return r;}
+async function lbMaybeSubmitEvent(){const e=SAVE.evRun;if(!LB.remote||!SAVE.name||!e||e.sent||!e.run||e.viaPb)return null;
+ const r=await LB.submitScore(SAVE.name,e.score,e.run);if(r&&r.ok){e.sent=true;}else if(lbNameTaken(r)){persist();lbOnNameTaken();return r;}else if(r&&r.rejected){e.sent=true;console.warn('[leaderboard] event run rejected:',r.msg);}persist();return r;}
+async function lbMaybeSubmit(){if(!SAVE.name||lbBlocked(SAVE.name))return null;const remote=!!LB.remote;const score=remote?(SAVE.vBest||0):SAVE.best;if(score<=0||score<=SAVE.lbBest)return lbMaybeSubmitEvent();if(remote&&!(SAVE.vRun&&typeof SAVE.vRun==='object'))return null;
+ const r=await LB.submitScore(SAVE.name,score,remote?SAVE.vRun:null);if(r&&r.ok){SAVE.lbBest=Math.max(SAVE.lbBest,score);SAVE.pending=0;if(SAVE.evRun&&SAVE.evRun.viaPb)SAVE.evRun.sent=true;}else if(lbNameTaken(r)){SAVE.pending=score;persist();lbOnNameTaken();return r;}else if(r&&r.rejected){SAVE.vBest=SAVE.lbBest;SAVE.vRun=null;SAVE.pending=0;console.warn('[leaderboard] score rejected:',r.msg);}else SAVE.pending=score;persist();return r;}
 
 // =====================================================================================
-// LEADERBOARD CHAMPION EVENT (1-of-1 full-body skin for whoever is #1 at the deadline).
-// Server-authoritative (supabase_champion.sql): get_champion_status gives server time, deadline and, once frozen,
-// the winner's name. The skin's look is NOT in this file or anywhere in the public game: claim_champion_skin
-// returns the drawing code only to the winning player id; the winner's game caches it in localStorage
-// (meowteor.champion.v1) so the skin stays in their wardrobe. Everyone else only ever sees a mystery box.
-// ?champ=<event-id> switches to another event (used by the automated tests with throwaway test events).
+// LEADERBOARD CHAMPION EVENTS (recurring: 48 h event, then 24 h winner banner + countdown to the next start).
+// Server-authoritative (get_champion_current): server time, the active event, the last winner and the next start.
+// Each event has its own 1-of-1 pro skin (item id per event). The skin's look is NOT in this file: the server returns
+// the drawing code only to the winning player id (get_my_champion_skins, legacy claim_champion_skin); the game caches
+// every won skin in localStorage (meowteor.champion.v2, migrated from v1). Everyone else only sees a mystery box.
+// ?champ=<event-id> switches to one fixed event via the legacy RPC (used by the automated tests).
 // =====================================================================================
-const CHAMP_EVENT_DEFAULT='meowteor-2026-10-29';
-const CHAMP_DEADLINE_FALLBACK=Date.parse('2026-10-29T21:00:00Z'),CHAMP_BANNER_FALLBACK=Date.parse('2026-10-30T21:00:00Z');
-const CHAMP_KEY='meowteor.champion.v1',CHAMP_ITEM='skin_champion';
-const CHAMP={event:CHAMP_EVENT_DEFAULT,st:null,off:0,skin:null,cache:null,busy:false,poll:null,timer:null,lastState:null,claiming:false,
+const CHAMP_LEGACY_EVENT='meowteor-2026-10-29',CHAMP_EVENT_DEFAULT=CHAMP_LEGACY_EVENT;
+const CHAMP_KEY1='meowteor.champion.v1',CHAMP_KEY='meowteor.champion.v2',CHAMP_ITEM='skin_champion';
+const CHAMP={event:null,cur:null,off:0,skins:{},newest:null,cache:{items:{}},busy:false,poll:null,timer:null,lastState:null,claiming:false,legacy:false,invAt:0,
+ // compatibility view used by the banner code: the event the banner is about
+ get st(){const c=this.cur;if(!c)return null;if(c.active)return Object.assign({decided:false},c.active);if(c.last)return c.last;return{event:null};},
+ get skin(){return this.skins[SAVE.eq.skin]||this.skins[this.newest]||null;},
  init(){const m=/[?&]champ=([a-z0-9-]{3,48})\b/.exec(location.search);if(m)this.event=m[1];
-  try{const c=JSON.parse(localStorage.getItem(CHAMP_KEY)||'null');if(c&&c.code&&c.item===CHAMP_ITEM){this.cache=c;this.load(c);}}catch(e){}
-  if(this.skin){SAVE.owned[CHAMP_ITEM]=1;}
-  else{if(SAVE.eq.skin&&SAVE.eq.skin!=='skin_none')SAVE.eq.skin='skin_none';}
+  try{const c2=JSON.parse(localStorage.getItem(CHAMP_KEY)||'null');if(c2&&c2.items)this.cache=c2;}catch(e){}
+  // migrate the v1 single-skin cache (v1 is left in place as a backup)
+  try{const c1=JSON.parse(localStorage.getItem(CHAMP_KEY1)||'null');if(c1&&c1.code&&c1.item&&!this.cache.items[c1.item]){this.cache.items[c1.item]=c1;this.save();}}catch(e){}
+  for(const k in this.cache.items)this.load(this.cache.items[k]);
+  for(const k in this.skins)SAVE.owned[k]=1;
+  if(SAVE.eq.skin&&SAVE.eq.skin!=='skin_none'&&!this.skins[SAVE.eq.skin])SAVE.eq.skin='skin_none';
   if(!SAVE.eq.skin)SAVE.eq.skin='skin_none';
-  this.refresh();clearInterval(this.timer);this.timer=setInterval(()=>this.tick(),1000);},
+  this.refresh();this.inventory();clearInterval(this.timer);this.timer=setInterval(()=>this.tick(),1000);},
+ save(){try{localStorage.setItem(CHAMP_KEY,JSON.stringify(this.cache));}catch(e){}},
  // run the server-provided drawing code (only the winner ever receives it)
  load(c){try{const api={mkCanvas,pEll,pRect,px,outline,OUTL};const sk=(new Function('A',c.code))(api);
-   if(sk&&typeof sk.sprite==='function'){this.skin=sk;CAT_CACHE.clear();return true;}}catch(e){console.warn('[champion] skin failed to load',e);}this.skin=null;return false;},
+   if(sk&&typeof sk.sprite==='function'){this.skins[c.item]=sk;this.newest=c.item;CAT_CACHE.clear();return true;}}catch(e){console.warn('[champion] skin failed to load',c&&c.item,e);}return false;},
  now(){return Date.now()+this.off;},
- deadline(){return this.st&&this.st.deadline?Date.parse(this.st.deadline):(this.event===CHAMP_EVENT_DEFAULT?CHAMP_DEADLINE_FALLBACK:NaN);},
- bannerUntil(){return this.st&&this.st.banner_until?Date.parse(this.st.banner_until):(this.event===CHAMP_EVENT_DEFAULT?CHAMP_BANNER_FALLBACK:NaN);},
- // 'pending' (countdown) | 'deciding' (time is up, waiting for the server) | 'banner' (winner shown, 24 h) | 'over' | 'none'
- state(){if(this.st&&this.st.event===null)return'none';const d=this.deadline();if(!isFinite(d))return'none';const n=this.now();
-  if(this.st&&this.st.decided){return(this.st.has_winner&&n<this.bannerUntil())?'banner':'over';}
-  if(n<d)return'pending';return n<this.bannerUntil()?'deciding':'over';},
- remaining(){return Math.max(0,this.deadline()-this.now());},
- owned(){return !!(this.skin&&SAVE.owned[CHAMP_ITEM]);},
- mysteryVisible(){const s=this.state();return s==='pending'||s==='deciding';},
+ // 'upcoming' (countdown to the next start) | 'pending' (event live) | 'deciding' | 'banner' (winner + next countdown) | 'over' | 'none'
+ state(){const c=this.cur;if(!c)return'none';const n=this.now();
+  if(c.active)return n<Date.parse(c.active.deadline)?'pending':'deciding';
+  if(c.last&&c.last.has_winner&&n<Date.parse(c.last.banner_until))return'banner';
+  if(c.next&&n<Date.parse(c.next.starts_at))return'upcoming';return c.last?'over':'none';},
+ target(){const c=this.cur,s=this.state();if(s==='pending')return Date.parse(c.active.deadline);if(c&&c.next)return Date.parse(c.next.starts_at);return NaN;},
+ remaining(){const t=this.target();return isFinite(t)?Math.max(0,t-this.now()):0;},
+ activeEvent(){const c=this.cur;return this.state()==='pending'&&c.active?c.active.event:null;},
+ owned(){for(const k in this.skins)if(SAVE.owned[k])return true;return false;},
+ ownedItems(){return Object.keys(this.skins).filter(k=>SAVE.owned[k]);},
+ mysteryVisible(){const s=this.state();return s==='pending'||s==='deciding'||s==='upcoming'||(s==='banner'&&!!(this.cur&&this.cur.next));},
  async rpc(fn,body){if(!LB.remote||!lbConfigured())throw new Error('no remote');
   const r=await fetch(SUPABASE_URL.replace(/\/+$/,'')+'/rest/v1/rpc/'+fn,{method:'POST',headers:{'apikey':SUPABASE_ANON_KEY,'Content-Type':'application/json','Accept':'application/json',...(/^eyJ/.test(SUPABASE_ANON_KEY)?{Authorization:'Bearer '+SUPABASE_ANON_KEY}:{})},body:JSON.stringify(body),cache:'no-store'});
-  const txt=await r.text();if(!r.ok)throw new Error('champion '+fn+' HTTP '+r.status);return txt?JSON.parse(txt):null;},
- async refresh(){if(this.busy)return;this.busy=true;try{const t0=Date.now();const st=await this.rpc('get_champion_status',{p_event:this.event,p_player_id:lbPlayerId()});const t1=Date.now();
-   if(st&&st.server_now){this.off=Date.parse(st.server_now)+(t1-t0)/2-t1;}this.st=st;
-   if(st&&st.decided&&st.is_me&&!this.owned())this.claim();}
+  const txt=await r.text();if(!r.ok){const e=new Error('champion '+fn+' HTTP '+r.status);e.status=r.status;throw e;}return txt?JSON.parse(txt):null;},
+ fromLegacy(st){const c={server_now:st&&st.server_now,active:null,last:null,next:null};if(!st||!st.event)return c;
+  if(st.decided)c.last=st;else c.active={event:st.event,item:st.item,deadline:st.deadline,banner_until:st.banner_until};return c;},
+ // new RPC first; before the migration is deployed (404) fall back to the legacy single event
+ async fetchCur(){const pid=lbPlayerId();
+  if(this.event||this.legacy)return this.fromLegacy(await this.rpc('get_champion_status',{p_event:this.event||CHAMP_LEGACY_EVENT,p_player_id:pid}));
+  try{return await this.rpc('get_champion_current',{p_player_id:pid});}
+  catch(e){if(e.status===404){this.legacy=true;return this.fromLegacy(await this.rpc('get_champion_status',{p_event:CHAMP_LEGACY_EVENT,p_player_id:pid}));}throw e;}},
+ async refresh(){if(this.busy)return;this.busy=true;try{const t0=Date.now();const c=await this.fetchCur();const t1=Date.now();
+   if(c&&c.server_now){this.off=Date.parse(c.server_now)+(t1-t0)/2-t1;}this.cur=c;
+   const l=c&&c.last;if(l&&l.is_me&&!(this.skins[l.item]&&SAVE.owned[l.item]))this.inventory(true);}
   catch(e){}finally{this.busy=false;}this.changed();},
- async claim(){if(this.claiming)return;this.claiming=true;try{const r=await this.rpc('claim_champion_skin',{p_player_id:lbPlayerId(),p_event:this.event});
-   if(r&&r.ok&&r.art&&r.art.code){const c={event:r.event,item:r.item||CHAMP_ITEM,code:r.art.code,v:r.art.v,name:r.name,score:r.score,at:Date.now()};
-    if(this.load(c)){try{localStorage.setItem(CHAMP_KEY,JSON.stringify(c));}catch(e){}this.cache=c;SAVE.owned[CHAMP_ITEM]=1;SAVE.eq.skin=CHAMP_ITEM;persist();setTimeout(()=>champReveal(),300);}}}
-  catch(e){console.warn('[champion] claim failed',e);}finally{this.claiming=false;}this.changed();},
+ // fetch every skin this player id has won (+ extra granted items such as special_skinfler)
+ async inventory(force){if(this.claiming||(!force&&Date.now()-this.invAt<600000))return;this.claiming=true;this.invAt=Date.now();let fresh=null;
+  try{let list;
+   try{list=await this.rpc('get_my_champion_skins',{p_player_id:lbPlayerId()});}
+   catch(e){if(e.status!==404)throw e;const r=await this.rpc('claim_champion_skin',{p_player_id:lbPlayerId(),p_event:this.event||CHAMP_LEGACY_EVENT});
+    list=r&&r.ok&&r.art?[{event:r.event,item:r.item||CHAMP_ITEM,name:r.name,score:r.score,art:r.art,grants:[]}]:[];}
+   for(const w of list||[]){for(const g of w.grants||[])if(IMAP[g])SAVE.owned[g]=1;
+    if(!w.art||!w.art.code)continue;const old=this.cache.items[w.item];if(old&&old.v===w.art.v&&this.skins[w.item]){SAVE.owned[w.item]=1;continue;}
+    const c={event:w.event,item:w.item,code:w.art.code,v:w.art.v,name:w.name,score:w.score,at:Date.now()};
+    if(this.load(c)){this.cache.items[w.item]=c;if(!old)fresh=w.item;SAVE.owned[w.item]=1;}}
+   this.save();if(fresh){SAVE.eq.skin=fresh;setTimeout(()=>champReveal(fresh),300);}persist();}
+  catch(e){if(e.message!=='no remote')console.warn('[champion] inventory failed',e);}finally{this.claiming=false;}this.changed();},
  tick(){const s=this.state();
   if(s==='deciding'){if(!this.poll||Date.now()-this.poll>4000){this.poll=Date.now();this.refresh();}}
-  else if(s==='pending'&&this.remaining()<1500&&(!this.poll||Date.now()-this.poll>1500)){this.poll=Date.now();setTimeout(()=>this.refresh(),1600);}
+  else if((s==='pending'||s==='upcoming'||s==='banner')&&this.remaining()<1500&&(!this.poll||Date.now()-this.poll>1500)){this.poll=Date.now();setTimeout(()=>this.refresh(),1600);}
   else if(!this.lastFull||Date.now()-this.lastFull>60000){this.lastFull=Date.now();this.refresh();}
   if(s!==this.lastState){this.changed();return;}
   const txt=champCountdown();for(const e of $$('.champcd'))e.textContent=txt;},
@@ -864,9 +884,10 @@ const CHAMP={event:CHAMP_EVENT_DEFAULT,st:null,off:0,skin:null,cache:null,busy:f
    if(CUR==='title'&&was!==s)champTitleChip();}catch(e){console.warn(e);}
   const txt=champCountdown();for(const e of $$('.champcd'))e.textContent=txt;}};
 function champTabVisible(){return CHAMP.mysteryVisible()||CHAMP.owned();}
-function skinOn(eq){return !!(CHAMP.skin&&(eq||SAVE.eq).skin===CHAMP_ITEM&&SAVE.owned[CHAMP_ITEM]);}
-function champSkinName(){const n=CHAMP.skin&&CHAMP.skin.name;return n?(n[LANG]||n.en):t('CHAMPION SKIN');}
-function champSkinDesc(){const n=CHAMP.skin&&CHAMP.skin.desc;return n?(n[LANG]||n.en):'';}
+function skinOf(eq){return CHAMP.skins[(eq||SAVE.eq).skin]||null;}
+function skinOn(eq){const id=(eq||SAVE.eq).skin;return !!(CHAMP.skins[id]&&SAVE.owned[id]);}
+function champSkinName(id){const sk=id?CHAMP.skins[id]:CHAMP.skin;const n=sk&&sk.name;return n?(n[LANG]||n.en):t('CHAMPION SKIN');}
+function champSkinDesc(id){const sk=id?CHAMP.skins[id]:CHAMP.skin;const n=sk&&sk.desc;return n?(n[LANG]||n.en):'';}
 const p2=n=>String(n).padStart(2,'0');
 function champCountdown(){const ms=CHAMP.remaining();const s=Math.floor(ms/1000);const d=Math.floor(s/86400),h=Math.floor(s%86400/3600),m=Math.floor(s%3600/60),sec=s%60;
  const hms=p2(h)+':'+p2(m)+':'+p2(sec);return d>0?t('{d}d {hms}',{d,hms}):hms;}
@@ -889,36 +910,37 @@ function crownIcon(px_=2,col='#ffd24a'){const c=document.createElement('canvas')
  const R=['x...x...x','xx.xxx.xx','xxxxxxxxx','xxxxxxxxx','.........','xxxxxxxxx','xxxxxxxxx'];for(let j=0;j<7;j++)for(let i=0;i<9;i++)if(R[j][i]==='x')x.fillRect(i*px_,j*px_,px_,px_);c.style.verticalAlign='middle';return c;}
 // ---------- leaderboard banner / countdown ----------
 function champRanksHtml(){const s=CHAMP.state();
- if(s==='pending')return`<div class="ch-t">&#9733; ${t('CHAMPION EVENT')} &#9733;</div><div class="ch-s">${t('#1 when the timer ends wins the 1 of 1 space cat skin')}</div><div class="ch-cd"><span class="dim">${t('ENDS IN')}</span> <span class="champcd">${champCountdown()}</span></div>`;
+ if(s==='pending')return`<div class="ch-t">&#9733; ${t('CHAMPION EVENT')} &#9733;</div><div class="ch-s">${t('#1 when the timer ends wins the 1 of 1 space cat skin')}</div>${CHAMP.cur&&CHAMP.cur.active&&CHAMP.cur.active.leader_name?`<div class="ch-s">${t('LEADER')}: ${esc(CHAMP.cur.active.leader_name)} (${+CHAMP.cur.active.leader_score||0})</div>`:''}<div class="ch-cd"><span class="dim">${t('ENDS IN')}</span> <span class="champcd">${champCountdown()}</span></div>`;
  if(s==='deciding')return`<div class="ch-t">&#9733; ${t("TIME'S UP!")} &#9733;</div><div class="ch-s">${t('Crowning the Leaderboard Champion...')}</div>`;
- if(s==='banner'){const me=CHAMP.st&&CHAMP.st.is_me;return`<div class="ch-t">&#9819; ${t('LEADERBOARD CHAMPION')} &#9819;</div><div class="ch-n">${esc(CHAMP.st.winner_name||'')}${me?' ('+t('YOU')+')':''}</div><div class="ch-s">${t('Winner of the 1 of 1 space cat skin')}</div>`;}
+ if(s==='banner'){const me=CHAMP.st&&CHAMP.st.is_me;return`<div class="ch-t">&#9819; ${t('LEADERBOARD CHAMPION')} &#9819;</div><div class="ch-n">${esc(CHAMP.st.winner_name||'')}${me?' ('+t('YOU')+')':''}</div><div class="ch-s">${CHAMP.cur&&CHAMP.cur.next?`${t('NEXT EVENT IN')} <span class="champcd">${champCountdown()}</span>`:t('Winner of the 1 of 1 space cat skin')}</div>`;}
+ if(s==='upcoming')return`<div class="ch-t">&#9733; ${t('NEXT CHAMPION EVENT')} &#9733;</div><div class="ch-s">${t('48 hours. Best run wins a 1 of 1 pro skin')}</div><div class="ch-cd"><span class="dim">${t('STARTS IN')}</span> <span class="champcd">${champCountdown()}</span></div>`;
  return'';}
 function champRenderRanks(){const b=$('#lbchamp'),l=$('#lblist');if(!b)return;const h=champRanksHtml();b.innerHTML=h;b.className=h?'on '+CHAMP.state():'';if(l){l.classList.toggle('champ',!!h);l.style.top=h?(b.offsetTop+b.offsetHeight+4)+'px':'';}}
 // ---------- small countdown chip on the title screen ----------
 function champTitleChip(){const s=$('#s-title');if(!s||CUR!=='title')return;let c=$('#champchip');const st=CHAMP.state();
- if(st!=='pending'&&st!=='banner'){if(c)c.remove();return;}
+ if(st!=='pending'&&st!=='banner'&&st!=='upcoming'){if(c)c.remove();return;}
  if(!c){c=el('div',{id:'champchip',class:'click'});c.onclick=()=>{sfx('click');show('ranks');};s.appendChild(c);}
- c.innerHTML=st==='pending'?`&#9733; ${t('1 OF 1 SKIN FOR #1')} &middot; <span class="champcd">${champCountdown()}</span>`:`&#9819; ${t('CHAMPION')}: ${esc(CHAMP.st.winner_name||'')}`;}
+ c.innerHTML=st==='pending'?`&#9733; ${t('1 OF 1 SKIN FOR #1')} &middot; <span class="champcd">${champCountdown()}</span>`:st==='upcoming'?`&#9733; ${t('NEXT EVENT IN')} <span class="champcd">${champCountdown()}</span>`:`&#9819; ${t('CHAMPION')}: ${esc(CHAMP.st.winner_name||'')}${CHAMP.cur&&CHAMP.cur.next?` &middot; ${t('NEXT')} <span class="champcd">${champCountdown()}</span>`:''}`;}
 // ---------- wardrobe: mystery box card / the owned skin ----------
 function champMysteryCard(){const d=el('div',{class:'item mystery','data-id':'mystery'});const [c,x]=mkCanvas(48,36);c.id='mystcv';d.appendChild(c);mysteryBox(x,48,36,0);
  const s=CHAMP.state();
- d.appendChild(el('div',{class:'mtxt'},`<div class="gold mt1">${t('MYSTERY SKIN')} &middot; ${t('1 OF 1')}</div><div class="mt2">${t('Exclusive full-body skin. Reward for #1 on the leaderboard when the timer ends. Not for sale.')}</div><div class="mt3">${s==='pending'?`&#9201; <span class="champcd">${champCountdown()}</span>`:t('Crowning the Leaderboard Champion...')}</div>`));
+ d.appendChild(el('div',{class:'mtxt'},`<div class="gold mt1">${t('MYSTERY SKIN')} &middot; ${t('1 OF 1')}</div><div class="mt2">${t('Exclusive full-body skin. Reward for #1 on the leaderboard when the timer ends. Not for sale.')}</div><div class="mt3">${s==='pending'?`&#9201; <span class="champcd">${champCountdown()}</span>`:s==='deciding'?t('Crowning the Leaderboard Champion...'):`${t('STARTS IN')} <span class="champcd">${champCountdown()}</span>`}</div>`));
  d.onclick=()=>{sfx('click');modal(`<div class="gold" style="font-size:16px">${t('MYSTERY SKIN')} &middot; ${t('1 OF 1')}</div><div style="font-size:12px;margin:8px 0;line-height:1.5">${t('Whoever is #1 on the global leaderboard when the timer ends wins this exclusive full-body skin. Only one player will ever have it. It cannot be bought.')}</div><div class="gold" style="font-size:18px" >&#9201; <span class="champcd">${champCountdown()}</span></div>`,[{t:t('LEADERBOARD'),c:'gold',f:()=>show('ranks')},{t:t('OK'),c:'green'}]);};
  return d;}
-function champItemIcon(){const [c,x]=mkCanvas(32,24);x.fillStyle='#0d1410';x.fillRect(0,0,32,24);if(CHAMP.skin){try{const s=CHAMP.skin.sprite(0,0);x.drawImage(s,(CHAMP.skin.ax||31)-17,(CHAMP.skin.ay||29)-15,32,24,0,0,32,24);}catch(e){}}return c;}
-function champReveal(){if(!CHAMP.skin)return;const w=el('div',{});w.appendChild(el('div',{class:'gold',style:'font-size:17px'},'&#9819; '+t('LEADERBOARD CHAMPION')+' &#9819;'));
+function champItemIcon(id){const sk=CHAMP.skins[id]||CHAMP.skin;const [c,x]=mkCanvas(32,24);x.fillStyle='#0d1410';x.fillRect(0,0,32,24);if(sk){try{const s=sk.sprite(0,0);x.drawImage(s,(sk.ax||31)-17,(sk.ay||29)-15,32,24,0,0,32,24);}catch(e){}}return c;}
+function champReveal(id){id=id||CHAMP.newest;const SK=CHAMP.skins[id];if(!SK)return;const w=el('div',{});w.appendChild(el('div',{class:'gold',style:'font-size:17px'},'&#9819; '+t('LEADERBOARD CHAMPION')+' &#9819;'));
  w.appendChild(el('div',{style:'font-size:12px;margin:6px 0'},t('You were #1 when the timer ended. The 1 of 1 space cat skin is yours!')));
  const [c,x]=mkCanvas(96,60);c.style.width='192px';c.style.height='120px';c.style.margin='4px auto';c.style.display='block';w.appendChild(c);
- w.appendChild(el('div',{class:'gold',style:'font-size:14px'},esc(champSkinName())));
+ w.appendChild(el('div',{class:'gold',style:'font-size:14px'},esc(champSkinName(id))));
  let t0=performance.now();const anim=()=>{if(!c.isConnected)return;const tm=(performance.now()-t0)/1000;x.clearRect(0,0,96,60);x.fillStyle='#0a0618';x.fillRect(0,0,96,60);
-  const fr=Math.floor(tm*8)%4;try{const s=CHAMP.skin.sprite(fr,tm);x.drawImage(s,48-(CHAMP.skin.ax||31),32-(CHAMP.skin.ay||29)+Math.round(Math.sin(tm*3)*2));}catch(e){}requestAnimationFrame(anim);};requestAnimationFrame(anim);
- sfx('best');modal(w,[{t:t('EQUIP'),c:'green',f:()=>{SAVE.eq.skin=CHAMP_ITEM;persist();sfx('equip');}},{t:t('WARDROBE'),c:'pink',f:()=>{SAVE.eq.skin=CHAMP_ITEM;persist();WD.tab='skin';show('wardrobe');}}]);}
+  const fr=Math.floor(tm*8)%4;try{const s=SK.sprite(fr,tm);x.drawImage(s,48-(SK.ax||31),32-(SK.ay||29)+Math.round(Math.sin(tm*3)*2));}catch(e){}requestAnimationFrame(anim);};requestAnimationFrame(anim);
+ sfx('best');modal(w,[{t:t('EQUIP'),c:'green',f:()=>{SAVE.eq.skin=id;persist();sfx('equip');}},{t:t('WARDROBE'),c:'pink',f:()=>{SAVE.eq.skin=id;persist();WD.tab='skin';show('wardrobe');}}]);}
 
 // ================= PROCEDURAL PIXEL ART =================
 // ---- the space cat (side view, facing right). Design grid ~34x22, drawn with offset (3,9) into a 40x36 sprite.
 const CAT_W=40,CAT_H=36,CAT_OX=3,CAT_OY=9,CAT_AX=21,CAT_AY=21;
 const CAT_CACHE=new Map();
-function catSprite(eq,frame){if(eq.skin===CHAMP_ITEM&&skinOn(eq)){try{const s=CHAMP.skin.sprite(frame,performance.now()/1000);s.ax=CHAMP.skin.ax;s.ay=CHAMP.skin.ay;return s;}catch(e){}}
+function catSprite(eq,frame){if(skinOn(eq)){const SK=skinOf(eq);try{const s=SK.sprite(frame,performance.now()/1000);s.ax=SK.ax;s.ay=SK.ay;return s;}catch(e){}}
  const key=eq.fur+'|'+eq.suit+'|'+eq.head+'|'+eq.face+'|'+eq.back+'|'+frame;let c=CAT_CACHE.get(key);if(c)return c;
  if(CAT_CACHE.size>400)CAT_CACHE.clear();const [cv,x]=mkCanvas(CAT_W,CAT_H);x.save();x.translate(CAT_OX,CAT_OY);drawCatPixels(x,eq,frame);x.restore();outline(x,CAT_W,CAT_H,OUTL);
  // post-outline overlays (glows / translucent parts)
@@ -1017,7 +1039,7 @@ function drawCatOverlays(x,eq,fr){const head=eq.head;
 // ---- item icons for the wardrobe
 function itemIcon(it){const [c,x]=mkCanvas(32,24);x.fillStyle='#0d1410';x.fillRect(0,0,32,24);
  if(it.slot==='trail'){drawTrailIcon(x,it.id);return c;}
- if(it.id===CHAMP_ITEM)return champItemIcon();const eq=Object.assign({},SAVE.eq,{skin:'skin_none'});eq[it.slot]=it.id;if(it.slot!=='fur'&&it.slot!=='suit'){/* show on a neutral cat */eq.fur='fur_gray';if(it.slot!=='head')eq.head='head_none';if(it.slot!=='face')eq.face='face_none';if(it.slot!=='back')eq.back='back_none';eq.suit='suit_none';}
+ if(CHAMP.skins[it.id])return champItemIcon(it.id);const eq=Object.assign({},SAVE.eq,{skin:'skin_none'});eq[it.slot]=it.id;if(it.slot!=='fur'&&it.slot!=='suit'){/* show on a neutral cat */eq.fur='fur_gray';if(it.slot!=='head')eq.head='head_none';if(it.slot!=='face')eq.face='face_none';if(it.slot!=='back')eq.back='back_none';eq.suit='suit_none';}
  if(it.slot==='fur'){eq.head='head_none';eq.face='face_none';eq.back='back_none';eq.suit='suit_none';}
  if(it.slot==='suit'){eq.head='head_none';eq.face='face_none';eq.back='back_none';}
  const s=catSprite(eq,0);
@@ -1031,7 +1053,7 @@ function trailReset(){TRAIL.parts.length=0;TRAIL.hist.length=0;}
 function trailPush(y,rot){TRAIL.hist.unshift({y,rot});if(TRAIL.hist.length>90)TRAIL.hist.pop();}
 function emitTrail(id,cx,cy,t,speed,eq){const P=TRAIL.parts,r=Math.random;const ex=cx-11,ey=cy+1;
  const add=o=>{o.age=0;o.vx=(o.vx||0)-speed;P.push(o);};
- if(skinOn(eq)){try{CHAMP.skin.emit(add,ex,ey,t,r);}catch(e){}return;}
+ if(skinOn(eq)){try{skinOf(eq).emit(add,ex,ey,t,r);}catch(e){}return;}
  switch(id){
   case'trail_stardust':if(r()<.7)add({k:'dust',x:ex,y:ey+r()*6-3,vy:r()*10-5,life:.9,c:pick(['#fff6c2','#ffd24a','#bcd3ff','#ffffff'])});break;
   case'trail_fire':for(let i=0;i<2;i++)add({k:'fire',x:ex+r()*2,y:ey+r()*5-2.5,vy:-15-r()*20,life:.45+r()*.25,s:2+r()*2});break;
@@ -1055,7 +1077,7 @@ const FISHB=['x.....x.','xx.x.x.xx','xxxxxxxxx','xx.x.x.xx','x.....x.'];
 function drawRibbon(x,cx,cy,speed,cols,band,wave,alphaF,thick){const H=TRAIL.hist;const step=speed/60;for(let i=1;i<H.length&&i<60;i++){const xx=Math.round(cx-10-i*step);if(xx<-4)break;const a=alphaF?alphaF(i):1;if(a<=0)break;x.globalAlpha=a;
   const yy=H[i].y+(wave?Math.round(Math.sin((i+(H.length?FRAME:0))*.25)*wave):0);
   const n=cols.length;const bh=band;for(let k=0;k<n;k++){x.fillStyle=cols[k];x.fillRect(xx,Math.round(yy-n*bh/2+k*bh),Math.ceil(step)+1,thick?thick(i,k):bh);}}x.globalAlpha=1;}
-function drawTrail(x,id,cx,cy,speed,eq){const H=TRAIL.hist;const SK=skinOn(eq)?CHAMP.skin:null;
+function drawTrail(x,id,cx,cy,speed,eq){const H=TRAIL.hist;const SK=skinOn(eq)?skinOf(eq):null;
  if(SK){try{SK.drawUnder(x,cx,cy,speed,H,FRAME);}catch(e){}id='trail_none';}
  if(id==='trail_rainbow')drawRibbon(x,cx,cy,speed,RAINBOW,1,1,i=>i<40?1:1-(i-40)/20);
  if(id==='trail_comet'){const step=speed/60;for(let i=1;i<H.length&&i<45;i++){const xx=cx-10-i*step,w=Math.max(.5,5-i*.11);x.globalAlpha=Math.max(0,1-i/45);x.fillStyle=i<6?'#ffffff':(i<18?'#bfe4ff':'#3a7bff');x.fillRect(Math.round(xx),Math.round(H[i].y-w),Math.ceil(step)+1,Math.round(w*2));}x.globalAlpha=1;}
@@ -1181,7 +1203,7 @@ function handleEvents(){const W=G.world;for(const e of W.events){if(e.e==='score
  else if(e.e==='star'){sfx('star');G.pops.push({x:e.x,y:e.y-8,txt:e.gold?'+5':'+'+1,c:e.gold?'#3ad8ff':'#ffd24a',t:0,life:.8});for(let i=0;i<10;i++)G.burst.push({x:e.x,y:e.y,vx:rnd(-60,60),vy:rnd(-90,10),t:0,life:.5,c:e.gold?'#3ad8ff':'#ffd24a'});}}
  W.events.length=0;}
 function onDeath(){const W=G.world;G.mode='dead';G.shake=8;G.flash=1;sfx('hit');if(W.deathBy==='pillar')sfx('fall');stopMusic();
- const F=furOf(SAVE.eq);const BP=skinOn()&&CHAMP.skin.pal?CHAMP.skin.pal:[F.m,F.l,F.d,'#ffffff'];for(let i=0;i<22;i++)G.burst.push({x:PHYS.CATX,y:W.cat.y,vx:rnd(-90,90),vy:rnd(-160,20),t:0,life:.8,c:pick(BP)});
+ const F=furOf(SAVE.eq);const BP=skinOn()&&skinOf().pal?skinOf().pal:[F.m,F.l,F.d,'#ffffff'];for(let i=0;i<22;i++)G.burst.push({x:PHYS.CATX,y:W.cat.y,vx:rnd(-90,90),vy:rnd(-160,20),t:0,life:.8,c:pick(BP)});
  if(navigator.vibrate)try{navigator.vibrate(60);}catch(e){}
  G.result=finishRun(W);setTimeout(()=>{if(G.mode==='dead')show('over',G.result);},650);}
 // award stars / update stats exactly once per run
@@ -1398,11 +1420,13 @@ function overRankHtml(){const o=OVER_RANK;if(!o)return'';if(o.k==='sending')retu
 function setOverRank(o){OVER_RANK=o;const g=$('#gorank');if(g)g.innerHTML=overRankHtml();}
 async function submitFromOver(){setOverRank({k:'sending'});try{const r=await lbMaybeSubmit();if(r&&r.ok)BC.refresh();
  if(r&&r.rank)setOverRank({k:'rank',rank:r.rank});else if(r&&r.offline)setOverRank({k:'offline'});else setOverRank(null);}catch(e){setOverRank(null);}}
-function askName(after,isChange){const wrap=el('div',{});wrap.appendChild(el('div',{class:'gold',style:'font-size:18px'},isChange?t('CHANGE NAME'):t('YOU SCORED!')));
+function askName(after,isChange,msg){const wrap=el('div',{});wrap.appendChild(el('div',{class:'gold',style:'font-size:18px'},isChange?t('CHANGE NAME'):t('YOU SCORED!')));
  wrap.appendChild(el('div',{style:'font-size:13px;margin:6px 0 10px'},isChange?t('Pick a new leaderboard name.'):t('Enter a name for the leaderboard.')));
  const inp=el('input',{class:'name',maxlength:'12',placeholder:t('SPACE CAT'),autocomplete:'off',autocapitalize:'characters',spellcheck:'false',id:'nameinp'});inp.value=SAVE.name||'';wrap.appendChild(inp);
- wrap.appendChild(el('div',{class:'small',style:'margin-top:4px'},t('3-12 letters, numbers, space, _ - .')));const err=el('div',{class:'err',id:'nameerr'},'');wrap.appendChild(err);
- const ok=()=>{const v=validateName(inp.value);if(!v.ok){err.textContent=v.err;sfx('err');return;}SAVE.name=v.name;persist();closeModal();sfx('buy');after&&after();};
+ wrap.appendChild(el('div',{class:'small',style:'margin-top:4px'},t('3-12 letters, numbers, space, _ - .')));const err=el('div',{class:'err',id:'nameerr'},msg?esc(msg):'');wrap.appendChild(err);let checking=false;
+ const ok=async()=>{if(checking)return;const v=validateName(inp.value);if(!v.ok){err.textContent=v.err;sfx('err');return;}
+  if(v.name!==SAVE.name||SAVE.nameTaken){checking=true;err.textContent=t('Checking name...');const free=await lbNameFree(v.name);checking=false;if(!free){err.textContent=t('That name is taken. Names are permanent: pick another one.');sfx('err');return;}}
+  err.textContent='';SAVE.name=v.name;SAVE.nameTaken=false;persist();closeModal();sfx('buy');after&&after();};
  inp.addEventListener('keydown',e=>{e.stopPropagation();if(e.key==='Enter')ok();});
  modal(wrap,[{t:t('SAVE'),c:'green',keep:true,f:ok},{t:isChange?t('CANCEL'):t('LATER'),c:''}]);setTimeout(()=>{try{inp.focus();}catch(e){}},60);}
 // ---------- WARDROBE ----------
@@ -1415,7 +1439,7 @@ SCREENS.wardrobe=(s,tab)=>{if(tab)WD.tab=tab;else if(!WD.picked&&champTabVisible
  s.appendChild(el('div',{class:'wfoot small',id:'wfoot'},''));
  trailReset();renderGrid();};
 LEAVE.wardrobe=()=>{$('#s-wardrobe').style.background='';trailReset();};
-function champSkinItems(){const a=ITEMS.filter(i=>i.slot==='skin');if(CHAMP.owned())a.push({id:CHAMP_ITEM,slot:'skin',name:champSkinName(),raw:1,free:1});return a;}
+function champSkinItems(){const a=ITEMS.filter(i=>i.slot==='skin');for(const id of CHAMP.ownedItems())a.push({id,slot:'skin',name:champSkinName(id),raw:1,free:1});return a;}
 function renderGrid(){const g=$('#wgrid');if(!g)return;g.innerHTML='';const items=WD.tab==='skin'?champSkinItems():ITEMS.filter(i=>i.slot===WD.tab);
  if(WD.tab==='skin'&&CHAMP.mysteryVisible())g.appendChild(champMysteryCard());const owned=items.filter(i=>SAVE.owned[i.id]).length;
  $('#wfoot').innerHTML=WD.tab==='skin'?`${t('Full-body skins replace fur, outfit and trail.')}`:`${t(SLOTS.find(s=>s.id===WD.tab).name).toUpperCase()}: ${t('{a}/{b} OWNED',{a:owned,b:items.length})} &middot; ${t('ALL: {a}/{b}',{a:ITEMS.filter(i=>SAVE.owned[i.id]&&!/_none$/.test(i.id)).length,b:ITEMS.filter(i=>!/_none$/.test(i.id)).length})}`;
@@ -1423,7 +1447,7 @@ function renderGrid(){const g=$('#wgrid');if(!g)return;g.innerHTML='';const item
   const d=el('div',{class:'item'+(on?' on':'')+(own?'':' lock')+(!own&&!it.price?' req':'')+(afford?' afford':''),'data-id':it.id});d.appendChild(itemIcon(it));d.appendChild(el('div',{class:'nm'},esc((it.raw?it.name:t(it.name)).toUpperCase())));
   d.appendChild(el('div',{class:'pr '+(own?'green':(it.price?'gold':'pinkc'))},on?t('EQUIPPED'):own?t('OWNED'):(it.price?reqText(it):'&#128274; '+reqText(it))));
   d.onclick=()=>clickItem(it);g.appendChild(d);}}
-function clickItem(it){if(SAVE.owned[it.id]){SAVE.eq[it.slot]=it.id;persist();sfx('equip');renderGrid();if(it.id===CHAMP_ITEM&&champSkinDesc())toast(esc(champSkinDesc()),'#ffd24a');return;}
+function clickItem(it){if(SAVE.owned[it.id]){SAVE.eq[it.slot]=it.id;persist();sfx('equip');renderGrid();if(CHAMP.skins[it.id]&&champSkinDesc(it.id))toast(esc(champSkinDesc(it.id)),'#ffd24a');return;}
  if(it.price){if(SAVE.stars<it.price){sfx('err');toast(t('Need {star} {n} more for {item}',{star:STAR_ICON,n:it.price-SAVE.stars,item:esc(t(it.name))}),'#ff4a5a');return;}
   modal(`<div class="gold" style="font-size:16px">${t('BUY {item}?',{item:esc(t(it.name).toUpperCase())})}</div><div style="margin:8px 0">${t('Cost:')} <span class="gold">${STAR_ICON} ${it.price}</span><br><span class="small">${t('You have {star} {n}',{star:STAR_ICON,n:fmt(SAVE.stars)})}</span></div>`,
    [{t:t('BUY & WEAR'),c:'green',f:()=>{if(SAVE.owned[it.id])return;WALLET.spend(it.price,'item:'+it.id,()=>{SAVE.owned[it.id]=1;SAVE.eq[it.slot]=it.id;persist();sfx('buy');toast(t('NEW: {item}',{item:esc(t(it.name))}),'#3cff5a');refreshStars();renderGrid();},()=>toast(t('Need {star} {n} more for {item}',{star:STAR_ICON,n:Math.max(0,it.price-SAVE.stars),item:esc(t(it.name))}),'#ff4a5a'));}},{t:t('CANCEL')}]);return;}
@@ -1448,7 +1472,9 @@ SCREENS.ranks=(s)=>{startMusic('menu');s.innerHTML='';s.style.background='#05080
  clearInterval(RK.ltimer);RK.ltimer=setInterval(async()=>{if(CUR!=='ranks'||document.hidden||!LB.remote)return;await LIVE.fetch();if(CUR==='ranks'&&LIVE.rows.map(x=>x.sid).join()!==RK.liveKey)renderView();},LIVE_LIST_MS);};
 LEAVE.ranks=()=>{clearInterval(RK.timer);RK.timer=null;clearInterval(RK.ltimer);RK.ltimer=null;$('#s-ranks').style.background='';};
 // renaming re-sends the current best under the new name (server keeps the higher score; equal score updates the name)
-async function forceRename(){if(!SAVE.name)return;const sc=LB.remote?SAVE.lbBest:SAVE.best;if(sc<=0)return;try{const r=await LB.submitScore(SAVE.name,sc);if(r&&r.ok){SAVE.lbBest=Math.max(SAVE.lbBest,sc);persist();}}catch(e){}}
+async function forceRename(){if(!SAVE.name)return;const sc=LB.remote?SAVE.lbBest:SAVE.best;if(sc<=0)return;try{const r=await LB.submitScore(SAVE.name,sc);if(r&&r.ok){SAVE.lbBest=Math.max(SAVE.lbBest,sc);persist();}else if(lbNameTaken(r))lbOnNameTaken();}catch(e){}}
+// server check: names are permanent and unique (case-insensitive, look-alikes blocked). Offline/unknown -> allow (the server still enforces it).
+async function lbNameFree(name){if(!LB.remote)return true;try{const r=await CHAMP.rpc('check_name_available',{p_name:name,p_player_id:lbPlayerId()});return !(r&&r.ok===false&&r.reason==='taken');}catch(e){return true;}}
 async function refreshRanks(){if(RK.busy)return;RK.busy=true;try{await lbMaybeSubmit();const pid=LB.playerId();const [rows,me,ban]=await Promise.all([LB.fetchTop(100),LB.fetchMyRank(pid),LB.fetchBanned(),LIVE.fetch(),BC.refresh()]);if(CUR!=='ranks')return;if(ban)RK.banned=ban;RK.rows=rows;RK.me=me;renderRanks(rows,me);}catch(e){console.warn(e);}finally{RK.busy=false;}}
 function rowHtml(r,me){return`<div class="lbrow${me?' me':''}${r.rank<=3?' r'+r.rank:''}"><span class="rk">${r.rank<=3?['','&#9733;1','&#9733;2','&#9733;3'][r.rank]:'#'+r.rank}</span><span class="nm">${esc(r.name)}${me?' ('+t('YOU')+')':''}</span>${livePlayBtn(r)}<span class="sc">${fmt(r.score)}</span></div>`;}
 function banRowHtml(r){return`<div class="lbrow banrow"><span class="rk">&#10006;</span><span class="nm">${esc(r.name)}<i>${r.at?new Date(r.at).toLocaleDateString([], {month:'short',day:'numeric'}):''}</i></span><span class="sc">${fmt(r.score)}</span></div>`;}

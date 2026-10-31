@@ -78,32 +78,45 @@ document.addEventListener('visibilitychange',function(){if(!document.hidden)refr
 window.addEventListener('online',refresh);
 setStatus('loading','Connecting\u2026');render();refresh();start();
 
-// ---- Leaderboard Champion event (server-authoritative; see the game's supabase_champion.sql) ----
-// Countdown to the deadline using the SERVER clock (offset from get_champion_status), then the winner's name
-// above the board for 24 h. Never shows anything about the skin's look (only the winner's game receives it).
-var CH_EVENT=(/[?&]champ=([a-z0-9-]{3,48})\b/.exec(location.search)||[])[1]||'meowteor-2026-10-29';
-var elChamp=document.getElementById('lb-champ'),ch={st:null,off:0,busy:false,poll:0,last:0,state:null};
+// ---- Leaderboard Champion events (server-authoritative, recurring) ----
+// get_champion_current gives the server clock plus the active event (48 h), the last winner (24 h banner) and the next
+// event's start. States: upcoming (countdown to the next start) | pending (event live, countdown to the end) |
+// deciding | banner (winner + countdown to the next event) | none. Falls back to the legacy single-event RPC.
+// Never shows anything about a skin's look (only the winner's game receives it).
+var CH_LEGACY='meowteor-2026-10-29',CH_EVENT=(/[?&]champ=([a-z0-9-]{3,48})\b/.exec(location.search)||[])[1]||null;
+var elChamp=document.getElementById('lb-champ'),ch={cur:null,off:0,busy:false,poll:0,last:0,state:null,legacy:false};
 function chNow(){return Date.now()+ch.off;}
-function chState(){var st=ch.st;if(!st||!st.event)return'none';var n=chNow(),d=Date.parse(st.deadline),b=Date.parse(st.banner_until);
-  if(st.decided)return(st.has_winner&&n<b)?'banner':'over';if(n<d)return'pending';return n<b?'deciding':'over';}
+// normalise the legacy response into the new shape
+function chFromLegacy(st){var c={server_now:st&&st.server_now,active:null,last:null,next:null};if(!st||!st.event)return c;
+  if(st.decided)c.last=st;else c.active={event:st.event,deadline:st.deadline,banner_until:st.banner_until};return c;}
+function chState(){var c=ch.cur;if(!c)return'none';var n=chNow();
+  if(c.active){return n<Date.parse(c.active.deadline)?'pending':'deciding';}
+  if(c.last&&c.last.has_winner&&n<Date.parse(c.last.banner_until))return'banner';
+  if(c.next&&n<Date.parse(c.next.starts_at))return'upcoming';return'none';}
+function chTarget(){var c=ch.cur,s=chState();if(s==='pending')return Date.parse(c.active.deadline);if(c&&c.next)return Date.parse(c.next.starts_at);return NaN;}
 function p2(n){return(n<10?'0':'')+n;}
-function chCountdown(){var ms=Math.max(0,Date.parse(ch.st.deadline)-chNow()),s=Math.floor(ms/1000),d=Math.floor(s/86400),h=Math.floor(s%86400/3600),m=Math.floor(s%3600/60),x=s%60;
+function chCountdown(){var ms=Math.max(0,(chTarget()||0)-chNow());if(!isFinite(ms))ms=0;var s=Math.floor(ms/1000),d=Math.floor(s/86400),h=Math.floor(s%86400/3600),m=Math.floor(s%3600/60),x=s%60;
   var hms=p2(h)+':'+p2(m)+':'+p2(x);return d>0?T('{d}d {hms}',{d:d,hms:hms}):hms;}
-function chDate(){try{return new Date(ch.st.deadline).toLocaleString(window.LAGI18N?window.LAGI18N.lang:undefined,{weekday:'short',month:'short',day:'numeric',hour:'numeric',minute:'2-digit',timeZoneName:'short'});}catch(e){return new Date(ch.st.deadline).toString();}}
-function chRender(){if(!elChamp)return;var s=chState();ch.state=s;var h='';
-  if(s==='pending')h='<p class="lb-champ-t">&#9733; '+esc(T('Champion event'))+' &#9733;</p><p class="lb-champ-s">'+esc(T('#1 on the leaderboard when the timer ends wins the 1 of 1 space cat skin: an exclusive full-body skin nobody else can ever get.'))+'</p>'+
-    '<p class="lb-champ-cd"><span>'+esc(T('Time left until the winner gets the skin'))+'</span><b class="lb-champ-time">'+esc(chCountdown())+'</b></p><p class="lb-champ-s muted">'+esc(T('Ends {date}',{date:chDate()}))+'</p>';
+function chDate(ms){try{return new Date(ms).toLocaleString(window.LAGI18N?window.LAGI18N.lang:undefined,{weekday:'short',month:'short',day:'numeric',hour:'numeric',minute:'2-digit',timeZoneName:'short'});}catch(e){return new Date(ms).toString();}}
+function chNextHtml(){var c=ch.cur;if(!c||!c.next)return'';return'<p class="lb-champ-cd"><span>'+esc(T('Next Champion event starts in'))+'</span><b class="lb-champ-time">'+esc(chCountdown())+'</b></p><p class="lb-champ-s muted">'+esc(T('Starts {date}',{date:chDate(Date.parse(c.next.starts_at))}))+'</p>';}
+function chRender(){if(!elChamp)return;var s=chState();ch.state=s;var h='',c=ch.cur;
+  if(s==='pending'){var ld=c.active.leader_name?'<p class="lb-champ-s">'+esc(T('Event leader: {name} ({score})',{name:c.active.leader_name,score:c.active.leader_score}))+'</p>':'';
+    h='<p class="lb-champ-t">&#9733; '+esc(T('Champion event'))+' &#9733;</p><p class="lb-champ-s">'+esc(T('Best run during the event when the timer ends wins a 1 of 1 pro space cat skin: an exclusive full-body skin nobody else can ever get.'))+'</p>'+ld+
+    '<p class="lb-champ-cd"><span>'+esc(T('Time left until the winner gets the skin'))+'</span><b class="lb-champ-time">'+esc(chCountdown())+'</b></p><p class="lb-champ-s muted">'+esc(T('Ends {date}',{date:chDate(Date.parse(c.active.deadline))}))+'</p>';}
   else if(s==='deciding')h='<p class="lb-champ-t">&#9733; '+esc(T('Champion event'))+' &#9733;</p><p class="lb-champ-s">'+esc(T("Time's up! Crowning the Leaderboard Champion\u2026"))+'</p>';
-  else if(s==='banner')h='<p class="lb-champ-t">&#9819; '+esc(T('Leaderboard Champion'))+' &#9819;</p><p class="lb-champ-n">'+esc(ch.st.winner_name||'')+(ch.st.is_me?' <em>'+esc(T('(you)'))+'</em>':'')+'</p><p class="lb-champ-s">'+esc(T('Winner of the 1 of 1 space cat skin'))+'</p>';
+  else if(s==='banner')h='<p class="lb-champ-t">&#9819; '+esc(T('Leaderboard Champion'))+' &#9819;</p><p class="lb-champ-n">'+esc(c.last.winner_name||'')+(c.last.is_me?' <em>'+esc(T('(you)'))+'</em>':'')+'</p><p class="lb-champ-s">'+esc(T('Winner of the 1 of 1 space cat skin'))+'</p>'+chNextHtml();
+  else if(s==='upcoming')h='<p class="lb-champ-t">&#9733; '+esc(T('Next Champion event'))+' &#9733;</p><p class="lb-champ-s">'+esc(T('48 hours. The best run wins a 1 of 1 pro space cat skin.'))+'</p>'+chNextHtml();
   elChamp.hidden=!h;elChamp.className='lb-champ'+(h?' '+s:'');if(elChamp.getAttribute('data-h')!==h){elChamp.innerHTML=h;elChamp.setAttribute('data-h',h);}}
+function chFetch(){if(CH_EVENT||ch.legacy)return rpc('get_champion_status',{p_event:CH_EVENT||CH_LEGACY,p_player_id:playerId()}).then(chFromLegacy);
+  return rpc('get_champion_current',{p_player_id:playerId()}).catch(function(e){ch.legacy=true;return rpc('get_champion_status',{p_event:CH_LEGACY,p_player_id:playerId()}).then(chFromLegacy);});}
 function chRefresh(){if(ch.busy)return;ch.busy=true;ch.last=Date.now();var t0=Date.now();
-  rpc('get_champion_status',{p_event:CH_EVENT,p_player_id:playerId()}).then(function(st){var t1=Date.now();if(st&&st.server_now)ch.off=Date.parse(st.server_now)+(t1-t0)/2-t1;ch.st=st;chRender();})
+  chFetch().then(function(c){var t1=Date.now();if(c&&c.server_now)ch.off=Date.parse(c.server_now)+(t1-t0)/2-t1;ch.cur=c;chRender();})
    .catch(function(e){if(window.console&&console.warn)console.warn('[MEOWTEOR champion] '+(e&&e.message||e));}).then(function(){ch.busy=false;});}
-function chTick(){if(!ch.st)return;var s=chState();
+function chTick(){if(!ch.cur)return;var s=chState(),tg=chTarget();
   if(s==='deciding'&&Date.now()-ch.poll>4000){ch.poll=Date.now();chRefresh();}
-  else if(s==='pending'&&Date.parse(ch.st.deadline)-chNow()<1500&&Date.now()-ch.poll>1500){ch.poll=Date.now();setTimeout(chRefresh,1600);}
+  else if(isFinite(tg)&&tg-chNow()<1500&&Date.now()-ch.poll>1500){ch.poll=Date.now();setTimeout(chRefresh,1600);}
   else if(Date.now()-ch.last>60000&&!document.hidden)chRefresh();
-  if(s!==ch.state)chRender();else if(s==='pending'){var b=elChamp&&elChamp.querySelector('.lb-champ-time');if(b)b.textContent=chCountdown();}}
+  if(s!==ch.state)chRender();else{var b=elChamp&&elChamp.querySelector('.lb-champ-time');if(b)b.textContent=chCountdown();}}
 if(elChamp){document.addEventListener('lag:lang',function(){elChamp.removeAttribute('data-h');chRender();});chRefresh();setInterval(chTick,1000);}
 /* ---- banned players (public list: name + best score before the ban + date; never ids) ---- */
 var elBan=document.getElementById('lb-ban-list'),ban=null,banErr=false;
@@ -114,5 +127,5 @@ function banRender(){if(!elBan)return;if(!ban){elBan.innerHTML='<li class="lb-em
     return '<li class="lb-row lb-ban-row"><span class="lb-name"><span class="lb-x" aria-hidden="true">&#10006;</span> '+esc(b.name)+(d?'<small>'+esc(T('Banned {date}',{date:d}))+'</small>':'')+'</span><span class="lb-score">'+fmt(b.score)+'</span></li>';}).join('');}
 function banRefresh(){if(!elBan)return;rpc('get_banned_players',{p_limit:50}).then(function(rows){ban=(rows||[]).map(function(r){return{name:String(r.name||''),score:+r.best_score||0,at:r.banned_at};});banErr=false;banRender();},function(e){banErr=true;banRender();});}
 if(elBan){banRefresh();setInterval(function(){if(!document.hidden)banRefresh();},60000);document.addEventListener('lag:lang',banRender);}
-window.LAGLeaderboardMeowteor={refresh:refresh,playerId:playerId,champion:function(){return{state:chState(),st:ch.st,offset:ch.off};}};
+window.LAGLeaderboardMeowteor={refresh:refresh,playerId:playerId,champion:function(){return{state:chState(),cur:ch.cur,offset:ch.off};}};
 })();

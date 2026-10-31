@@ -1,0 +1,26 @@
+{
+ "name": "BLACK WIDOW (Halloween 2026)",
+ "image": "https://lostauragames.com/nft/meowteor/images/12.png",
+ "attributes": [
+  {
+   "value": "Halloween 2026 Event",
+   "trait_type": "Event"
+  },
+  {
+   "value": "Open Edition (one per player)",
+   "trait_type": "Edition"
+  },
+  {
+   "value": "25 spiders slain",
+   "trait_type": "Requirement"
+  },
+  {
+   "value": 0,
+   "trait_type": "Total Minted",
+   "display_type": "number"
+  }
+ ],
+ "description": "MeowTeor Halloween 2026 event skin. Earned by slaying 25 black widow spiders in MeowTeor during the Halloween 2026 event (Oct 31 to Nov 14, 2026). One per player. Equip it in MeowTeor while this NFT is in your linked wallet. Your edition number and mint date are shown on lostauragames.com/nft/meowteor/claim.html.",
+ "external_url": "https://lostauragames.com/games/meowteor.html",
+ "animation_url": "https://lostauragames.com/nft/meowteor/images/12.gif"
+}

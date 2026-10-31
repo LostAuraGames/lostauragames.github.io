@@ -30,13 +30,25 @@ async function fn(body){
   if(!r.ok) throw new Error((v && v.message) || ('HTTP ' + r.status)); return v;
 }
 function playerId(){ try { return localStorage.getItem('meowteor.playerId') || ''; } catch(e){ return ''; } }
+// Server-issued player key (same one the game uses). The server derives the player id from it; the raw id is only
+// used once to obtain the key for this browser.
+async function playerKey(){
+  var k = ''; try { k = localStorage.getItem('meowteor.key.v1') || ''; } catch(e){}
+  var pid = playerId(); if(!pid) return '';
+  var r = await fetch(SB_URL + '/rest/v1/rpc/meowteor_session', {method: 'POST', headers: {apikey: SB_KEY, 'Content-Type': 'application/json'}, body: JSON.stringify({p_player_id: pid, p_key: /^[0-9a-f]{64}$/.test(k) ? k : null})});
+  var v = null; try { v = await r.json(); } catch(e){}
+  if(!r.ok) throw new Error((v && v.message) || ('HTTP ' + r.status));
+  if(v && v.key){ k = v.key; try { localStorage.setItem('meowteor.key.v1', k); } catch(e){} }
+  return k;
+}
+async function who(){ var k = await playerKey(); if(!k) throw new Error('Play MeowTeor in this browser first'); return {p_key: k}; }
 async function linkMetaMask(pid){
   var eth = window.ethereum; if(!eth) throw new Error('MetaMask not found');
   var accs = await eth.request({method: 'eth_requestAccounts'}); var addr = accs && accs[0]; if(!addr) throw new Error('no account');
   await switchChain();
-  var n = await fn({action: 'nonce', p_player_id: pid});
+  var id = await who(); var n = await fn(Object.assign({action: 'nonce'}, id));
   var sig = await eth.request({method: 'personal_sign', params: [n.message, addr]});
-  return fn({action: 'link', p_player_id: pid, address: addr, signature: sig, nonce: n.nonce});
+  return fn(Object.assign({action: 'link', address: addr, signature: sig, nonce: n.nonce}, id));
 }
 // Passport: loads the Immutable SDK only when a real client id is configured.
 async function linkPassport(pid){
@@ -46,14 +58,15 @@ async function linkPassport(pid){
     clientId: CFG.passportClientId, redirectUri: CFG.redirectUri, logoutRedirectUri: CFG.logoutRedirectUri, audience: 'platform_api', scope: 'openid offline_access email transact'});
   var provider = await passport.connectEvm(); var accs = await provider.request({method: 'eth_requestAccounts'});
   var idToken = await passport.getIdToken();
-  return fn({action: 'link', p_player_id: pid, id_token: idToken, address: accs[0]});
+  return fn(Object.assign({action: 'link', id_token: idToken, address: accs[0]}, await who()));
 }
 async function status(pid){
-  var r = await fetch(SB_URL + '/rest/v1/rpc/get_my_nft_status', {method: 'POST', headers: {apikey: SB_KEY, 'Content-Type': 'application/json'}, body: JSON.stringify({p_player_id: pid})});
+  var r = await fetch(SB_URL + '/rest/v1/rpc/get_my_nft_status_v2', {method: 'POST', headers: {apikey: SB_KEY, 'Content-Type': 'application/json'}, body: JSON.stringify(await who())});
   if(!r.ok) throw new Error('HTTP ' + r.status); return r.json();
 }
 window.LAGImx = {config: CFG, chain: chain, configured: configured, switchChain: switchChain, linkMetaMask: linkMetaMask, linkPassport: linkPassport,
-  claim: function(pid, tokenId){ return fn({action: 'claim', p_player_id: pid, token_id: tokenId}); },
-  poll: function(pid, tokenId){ return fn({action: 'status', p_player_id: pid, token_id: tokenId}); },
+  claim: async function(pid, tokenId){ return fn(Object.assign({action: 'claim', token_id: tokenId}, await who())); },
+  claimEdition: async function(pid, tokenId){ return fn(Object.assign({action: 'claim_edition', token_id: tokenId}, await who())); },
+  poll: async function(pid, tokenId){ return fn(Object.assign({action: 'status', token_id: tokenId}, await who())); },
   status: status, playerId: playerId, _fn: fn};
 })();

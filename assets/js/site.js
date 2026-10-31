@@ -34,7 +34,7 @@ function card(g){var play=url(g.play),info=url(g.info);var main=info||play;
    (g.subtitle?'<p class="sub">'+esc(g.subtitle)+'</p>':'')+
    '<p>'+esc(g.blurb||'')+'</p>'+
    (g.genre?'<p class="genre">'+esc(g.genre)+'</p>':'')+
-   '<div class="actions">'+(play?'<a class="btn gold" href="'+esc(play)+'">&#9654; Play</a>':'')+(info?'<a class="btn" href="'+esc(info)+'">Details</a>':'')+'</div></div></article>';
+   '<div class="actions">'+(g.closed?'<span class="btn disabled" aria-disabled="true" title="Closed testing: testers only">Closed Testing</span>':play?'<a class="btn gold" href="'+esc(play)+'">&#9654; Play</a>':'')+(info?'<a class="btn" href="'+esc(info)+'">Details</a>':'')+'</div></div></article>';
   return h;}
 var grid=document.getElementById('games-grid');
 if(grid){grid.innerHTML=games.map(card).join('')+'<article class="game-card soon" aria-label="More games coming soon"><div class="thumb"><div class="thumb-empty"><canvas class="pixel-emblem" data-size="3" aria-hidden="true"></canvas></div></div><div class="body"><span class="badge dim">Coming soon</span><h3>Next game</h3><p>The next game is still being made. Check back soon.</p></div></article>';

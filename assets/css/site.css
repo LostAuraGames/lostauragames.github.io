@@ -232,3 +232,4 @@ mark.ph{background:var(--gold);color:#000;padding:0 4px;font-weight:bold}
 .aac-site{display:flex;align-items:center;justify-content:center;gap:7px;margin:14px 0 0;font-size:13px;letter-spacing:1px;color:var(--bone2)}
 .aac-site .aac-bolt{width:12px;height:16px;flex:none;filter:drop-shadow(0 0 4px rgba(255,48,69,.6))}
 .aac-site b{color:#ff6b7a;text-shadow:0 0 8px rgba(255,48,69,.4)}
+.btn.disabled{opacity:.5;filter:grayscale(1);cursor:not-allowed;pointer-events:none}

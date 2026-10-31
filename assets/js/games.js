@@ -56,12 +56,13 @@ window.LAG_GAMES = [
     subtitle: "The Hollow Crown",
     blurb: "A top-down mythological MMO: 4 classes, a huge world, dungeons from level 20, max level 200, trading, the Unity of the Trade market, parties of up to 4 and chat.",
     genre: "Online RPG / MMO",
-    status: "Open Beta",
-    badge: "beta",                               // optional extra badge style ("beta" = orange Open Beta badge)
+    status: "Closed Testing",
+    badge: "beta",                               // optional extra badge style ("beta" = orange badge)
+    closed: true,                                // closed testing: Play button greyed out, testers use games/mythweald/
     play: "games/mythweald/",
     info: "games/mythweald.html",
     image: "assets/img/games/mythweald/cover.png",
-    tags: ["Online multiplayer", "Browser", "Open Beta", "Keyboard / Mouse / Touch"],
+    tags: ["Online multiplayer", "Browser", "Closed Testing", "Keyboard / Mouse / Touch"],
     featured: false                              // MEOWTEOR stays the featured game
   }
   // , { id: "my-next-game", title: "My Next Game", ... }

@@ -1702,9 +1702,9 @@ setInterval(ownViewers,2000);
 // ---------- DAILY CHALLENGE ----------
 const DAILY_IMAP={};for(const c of DAILY_CHALLENGES)DAILY_IMAP[c.id]=c;
 const DAILY_ITEMS=ITEMS.filter(i=>i.daily);
-// 7 days, each 24 h from 12:00 PM America/New_York (EDT 16:00 UTC on Oct 31, EST 17:00 UTC from Nov 1). The server
+// 7 days, each 24 h from 4:00 AM America/New_York (EDT 08:00 UTC on Oct 31, EST 09:00 UTC from Nov 1). The server
 // schedule (meowteor_daily_schedule) is authoritative; this is the offline / first-paint fallback.
-function dailyStartAt(i){return Date.UTC(2026,9,31+i,i===0?16:17);}
+function dailyStartAt(i){return Date.UTC(2026,9,31+i,i===0?8:9);}
 function dailyLocal(now){const st=[];for(let i=0;i<=7;i++)st.push(dailyStartAt(i));if(now<st[0])return{locked:true,opens:st[0]};
  for(let i=0;i<7;i++)if(now<st[i+1])return{locked:false,day:i,ends:st[i+1],ch:[0,1,2].map(j=>DAILY_CHALLENGES[i*3+j].id),done:[]};return{locked:true,over:true};}
 const DAILY={st:null,skew:0,busy:false,LKEY:'meowteor.daily.v1',
@@ -1730,7 +1730,7 @@ SCREENS.daily=(s)=>{startMusic('menu');s.innerHTML='';s.style.background='rgba(5
 LEAVE.daily=()=>{clearInterval(DAILY.tick);};
 function dailyRender(){const b=$('#dybody');if(!b)return;const S=DAILY.state();b.innerHTML='';
  if(S.locked){b.appendChild(el('div',{class:'panel dylock center'},S.over?`<div class="gold" style="font-size:16px">${esc(t('The Daily Challenge week is over'))}</div><div class="small">${esc(t('Thanks for playing!'))}</div>`:
-   `<div style="font-size:34px">&#128274;</div><div class="gold" style="font-size:16px">${esc(t('DAILY CHALLENGE OPENS IN'))}</div><div class="dycd" id="dycd">${cdText(S.opens-DAILY.now())}</div><div class="small">${esc(t('Saturday 12:00 PM ET. A new set of 3 challenges every day at 12:00 PM ET, for 7 days.'))}</div>`));}
+   `<div style="font-size:34px">&#128274;</div><div class="gold" style="font-size:16px">${esc(t('DAILY CHALLENGE OPENS IN'))}</div><div class="dycd" id="dycd">${cdText(S.opens-DAILY.now())}</div><div class="small">${esc(t('Saturday 4:00 AM ET. A new set of 3 challenges every day at 4:00 AM ET, for 7 days.'))}</div>`));}
  else{b.appendChild(el('div',{class:'small center',style:'margin:2px 0 6px'},`${esc(t('DAY {n} OF 7',{n:S.day+1}))} &middot; ${esc(t('New challenges in'))} <span class="gold" id="dycd">${cdText(S.ends-DAILY.now())}</span>`));
   S.ch.forEach((id,slot)=>{const c=DAILY_IMAP[id];if(!c)return;const dn=S.done.includes(slot);const card=el('div',{class:'panel dycard'+(dn?' dn':'')});
    card.innerHTML=`<div class="dyn">${dn?'&#10004; ':''}${esc(t(c.name))}</div><div class="dyg">${esc(t('Pass {n} obstacles',{n:c.n}))}</div><div class="small">${hzLabel(c)}</div>`;

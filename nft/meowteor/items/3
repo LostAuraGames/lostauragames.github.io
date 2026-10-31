@@ -1,0 +1,35 @@
+{
+ "name": "FROST MONARCH #3",
+ "image": "https://lostauragames.com/nft/meowteor/images/3.png",
+ "attributes": [
+  {
+   "value": "1 of 1",
+   "trait_type": "Edition"
+  },
+  {
+   "value": "Unique",
+   "trait_type": "Rarity"
+  },
+  {
+   "value": 0,
+   "trait_type": "Total Minted",
+   "display_type": "number"
+  },
+  {
+   "value": "meowteor-ev-20261104",
+   "trait_type": "Event"
+  },
+  {
+   "value": "-",
+   "trait_type": "Won By"
+  },
+  {
+   "value": 0,
+   "trait_type": "Score",
+   "display_type": "number"
+  }
+ ],
+ "description": "MeowTeor Pro Item. A 1 of 1 full-body space cat skin awarded to the Leaderboard Champion. Equip it in MeowTeor while this NFT is in your linked wallet.",
+ "external_url": "https://lostauragames.com/games/meowteor.html",
+ "animation_url": "https://lostauragames.com/nft/meowteor/images/3.gif"
+}

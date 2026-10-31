@@ -1,35 +1,35 @@
 {
  "name": "ASTRAL SOVEREIGN #1",
- "description": "MeowTeor Pro Item. A 1 of 1 full-body space cat skin awarded to the Leaderboard Champion. Equip it in MeowTeor while this NFT is in your linked wallet.",
  "image": "https://lostauragames.com/nft/meowteor/images/1.png",
- "animation_url": "https://lostauragames.com/nft/meowteor/images/1.gif",
- "external_url": "https://lostauragames.com/games/meowteor.html",
  "attributes": [
   {
-   "trait_type": "Edition",
-   "value": "1 of 1"
+   "value": "1 of 1",
+   "trait_type": "Edition"
   },
   {
-   "trait_type": "Rarity",
-   "value": "Unique"
+   "value": "Unique",
+   "trait_type": "Rarity"
   },
   {
-   "trait_type": "Total Minted",
    "value": 0,
+   "trait_type": "Total Minted",
    "display_type": "number"
   },
   {
-   "trait_type": "Event",
-   "value": "meowteor-2026-10-29"
+   "value": "meowteor-2026-10-29",
+   "trait_type": "Event"
   },
   {
-   "trait_type": "Won By",
-   "value": "SKUFLER"
+   "value": "SKUFLER",
+   "trait_type": "Won By"
   },
   {
-   "trait_type": "Score",
    "value": 145,
+   "trait_type": "Score",
    "display_type": "number"
   }
- ]
+ ],
+ "description": "MeowTeor Pro Item. A 1 of 1 full-body space cat skin awarded to the Leaderboard Champion. Equip it in MeowTeor while this NFT is in your linked wallet.",
+ "external_url": "https://lostauragames.com/games/meowteor.html",
+ "animation_url": "https://lostauragames.com/nft/meowteor/images/1.gif"
 }

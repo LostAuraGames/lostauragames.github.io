@@ -931,6 +931,7 @@ async function lbMaybeSubmit(){if(!SAVE.name||lbBlocked(SAVE.name))return null;c
 // every won skin in localStorage (meowteor.champion.v2, migrated from v1). Everyone else only sees a mystery box.
 // ?champ=<event-id> switches to one fixed event via the legacy RPC (used by the automated tests).
 // =====================================================================================
+const PRO_ITEM_RE=/^(skin_champion|skin_pro_|skin_halloween_|special_)/;
 const CHAMP_LEGACY_EVENT='meowteor-2026-10-29',CHAMP_EVENT_DEFAULT=CHAMP_LEGACY_EVENT;
 const CHAMP_KEY1='meowteor.champion.v1',CHAMP_KEY='meowteor.champion.v2',CHAMP_ITEM='skin_champion';
 const CHAMP={event:null,cur:null,off:0,skins:{},newest:null,cache:{items:{}},busy:false,poll:null,timer:null,lastState:null,claiming:false,legacy:false,invAt:0,
@@ -979,7 +980,9 @@ const CHAMP={event:null,cur:null,off:0,skins:{},newest:null,cache:{items:{}},bus
  // fetch every skin this player id has won (+ extra granted items such as special_skinfler)
  async inventory(force){if(this.claiming||(!force&&Date.now()-this.invAt<600000))return;this.claiming=true;this.invAt=Date.now();let fresh=null;
   try{let list;
-   try{list=await this.rpc('get_my_champion_skins',{p_player_id:lbPlayerId()});}
+   // ownership is read with the server-issued player key (the server derives the player id from it)
+   const key=AUTH.key||await AUTH.ensure();
+   try{list=key?await this.rpc('get_my_champion_skins_v2',{p_key:key}):await this.rpc('get_my_champion_skins',{p_player_id:lbPlayerId()});}
    catch(e){if(e.status!==404)throw e;const r=await this.rpc('claim_champion_skin',{p_player_id:lbPlayerId(),p_event:this.event||CHAMP_LEGACY_EVENT});
     list=r&&r.ok&&r.art?[{event:r.event,item:r.item||CHAMP_ITEM,name:r.name,score:r.score,art:r.art,grants:[]}]:[];}
    for(const w of list||[]){for(const g of w.grants||[])if(IMAP[g])SAVE.owned[g]=1;
@@ -988,7 +991,11 @@ const CHAMP={event:null,cur:null,off:0,skins:{},newest:null,cache:{items:{}},bus
     if(this.load(c)){this.cache.items[w.item]=c;if(!old)fresh=w.item;SAVE.owned[w.item]=1;}}
    // NFT rule: once a pro skin is minted, the skin follows whoever holds the NFT. Drop skins the server no longer lists.
    if(Array.isArray(list)){const keep=new Set(list.map(w=>w.item));this.nft={};for(const w of list)if(w.nft)this.nft[w.item]=w.nft;
-    for(const id of Object.keys(this.cache.items))if(!keep.has(id)){delete this.cache.items[id];delete this.skins[id];delete SAVE.owned[id];if(SAVE.eq.skin===id)SAVE.eq.skin='skin_none';}}
+    for(const id of Object.keys(this.cache.items))if(!keep.has(id)){delete this.cache.items[id];delete this.skins[id];delete SAVE.owned[id];if(SAVE.eq.skin===id)SAVE.eq.skin='skin_none';}
+    // reconcile: pro / champion / special / event NFT items exist only if the server confirms this player owns them
+    // (stale saves, e.g. the old client-side 'skufler' name grant of special_skinfler). Only on a successful answer.
+    const ok=new Set();for(const w of list){ok.add(w.item);for(const g of w.grants||[])ok.add(g);}
+    for(const id of Object.keys(SAVE.owned))if(PRO_ITEM_RE.test(id)&&!ok.has(id)){delete SAVE.owned[id];for(const k in SAVE.eq)if(SAVE.eq[k]===id)SAVE.eq[k]=defaultSave().eq[k]||(k==='skin'?'skin_none':SAVE.eq[k]);}}
    this.save();if(fresh){SAVE.eq.skin=fresh;setTimeout(()=>champReveal(fresh),300);}persist();}
   catch(e){if(e.message!=='no remote')console.warn('[champion] inventory failed',e);}finally{this.claiming=false;}this.changed();},
  tick(){const s=this.state();
@@ -1050,8 +1057,104 @@ function champMysteryCard(){const d=el('div',{class:'item mystery','data-id':'my
  d.onclick=()=>{sfx('click');modal(`<div class="gold" style="font-size:16px">${t('MYSTERY SKIN')} &middot; ${t('1 OF 1')}</div><div style="font-size:12px;margin:8px 0;line-height:1.5">${t('Whoever is #1 on the global leaderboard when the timer ends wins this exclusive full-body skin. Only one player will ever have it. It cannot be bought.')}</div><div class="gold" style="font-size:18px" >&#9201; <span class="champcd">${champCountdown()}</span></div>`,[{t:t('LEADERBOARD'),c:'gold',f:()=>show('ranks')},{t:t('OK'),c:'green'}]);};
  return d;}
 function champItemIcon(id){const sk=CHAMP.skins[id]||CHAMP.skin;const [c,x]=mkCanvas(32,24);x.fillStyle='#0d1410';x.fillRect(0,0,32,24);if(sk){try{const s=sk.sprite(0,0);x.drawImage(s,(sk.ax||31)-17,(sk.ay||29)-15,32,24,0,0,32,24);}catch(e){}}return c;}
-function champReveal(id){id=id||CHAMP.newest;const SK=CHAMP.skins[id];if(!SK)return;const w=el('div',{});w.appendChild(el('div',{class:'gold',style:'font-size:17px'},'&#9819; '+t('LEADERBOARD CHAMPION')+' &#9819;'));
- w.appendChild(el('div',{style:'font-size:12px;margin:6px 0'},t('You were #1 when the timer ended. The 1 of 1 space cat skin is yours!')));
+// =====================================================================================
+// PLAYER KEY (server-derived identity). The server issues one secret key per player id (first come, first bound)
+// and stores only its hash. Ownership, claims and Halloween kills send this key; the server looks the player id up
+// from it, so knowing (or editing) a player id in localStorage is not enough to act as that player.
+// =====================================================================================
+const AUTH_KEY='meowteor.key.v1';
+const AUTH={key:null,busy:null,failed:false,
+ load(){try{const k=localStorage.getItem(AUTH_KEY);if(/^[0-9a-f]{64}$/.test(k||''))this.key=k;}catch(e){}return this.key;},
+ async ensure(){if(this.busy)return this.busy;if(!LB.remote)return this.load();
+  return this.busy=(async()=>{this.load();try{const r=await fetch(SUPABASE_URL.replace(/\/+$/,'')+'/rest/v1/rpc/meowteor_session',{method:'POST',cache:'no-store',
+     headers:{'apikey':SUPABASE_ANON_KEY,'Content-Type':'application/json',...(/^eyJ/.test(SUPABASE_ANON_KEY)?{Authorization:'Bearer '+SUPABASE_ANON_KEY}:{})},body:JSON.stringify({p_player_id:lbPlayerId(),p_key:this.key})});
+    const v=await r.json().catch(()=>null);
+    if(r.ok&&v&&v.key){this.key=v.key;try{localStorage.setItem(AUTH_KEY,v.key);}catch(e){}}
+    else if(!r.ok){this.failed=/key mismatch/.test(String(v&&v.message||''));if(this.failed)this.key=null;}}
+   catch(e){}finally{this.busy=null;}return this.key;})();}};
+
+// =====================================================================================
+// HALLOWEEN 2026 EVENT (endless normal mode only, only while the server says the event is live).
+// Decorations (webs on pillars, jack-o'-lanterns on the ground and on the home screen) never interact with the cat.
+// Spiders: the SERVER decides where they appear (HMAC of the run ticket, meowteor_spider_plan). A kill only counts
+// after the run is replayed on the server (meowteor-spider): the gap must really have been passed in that run and
+// the tap must be inside the spider's time window. The client never sends or stores a kill count.
+// ?hw=preview shows everything locally for screenshots (spiders every few gaps, nothing is sent or counted).
+// =====================================================================================
+const HW_ITEM='skin_halloween_widow';
+const HW={live:false,preview:/[?&]hw=preview\b/.test(location.search),kills:0,threshold:25,earned:false,endsAt:null,spiders:[],fx:[],at:0,
+ init(){if(this.preview){this.live=true;this.kills=7;}this.refresh();setInterval(()=>this.refresh(),60000);},
+ async refresh(){if(this.preview||!LB.remote)return;try{const key=AUTH.key||await AUTH.ensure();
+   const v=await CHAMP.rpc('get_halloween_status',{p_key:key||null});if(!v)return;const was=this.live;
+   this.live=!!v.live;this.endsAt=v.ends_at;this.threshold=v.threshold|0||25;if(key){this.kills=v.kills|0;this.earned=!!v.earned;}
+   if(was!==this.live&&CUR==='title')show('title');}catch(e){}},
+ // only the endless normal mode (no daily challenge, not watching someone else)
+ on(){return this.live&&!G.daily&&!(typeof LV!=='undefined'&&LV.on);},
+ newRun(W){this.spiders=[];this.fx=[];if(W){W.hw={plan:null,req:false,kills:[]};}},
+ plan(W){if(!W||!W.hw||W.hw.req||!this.on())return;W.hw.req=true;
+  if(this.preview){W.hw.plan=new Set([2,5,8,11,14,17,20,23,26,29]);return;}
+  const rid=W.runId;if(!rid)return void(W.hw.req=false);
+  (async()=>{try{const key=AUTH.key||await AUTH.ensure();if(!key)return;const v=await CHAMP.rpc('meowteor_spider_plan',{p_key:key,p_run_id:rid});
+    if(v&&v.live&&Array.isArray(v.gaps)&&G.world===W)W.hw.plan=new Set(v.gaps);}catch(e){}})();},
+ onScore(W){if(!this.on()||!W.hw)return;if(!W.hw.req)this.plan(W);if(!W.hw.plan||!W.hw.plan.has(W.score))return;
+  const r=mulberry((W.score*7919)^W.seed);this.spiders.push({gap:W.score,x:PHYS.W-14,y:0,ty:70+Math.round(r()*90),t:0,alive:true,ph:r()*6});sfx('zone');},
+ update(dt,sp){for(let i=this.spiders.length-1;i>=0;i--){const s=this.spiders[i];s.t+=dt;s.x-=sp*dt;s.y=Math.min(s.ty,s.ty*Math.min(1,s.t/.7));if(s.x<-20)this.spiders.splice(i,1);}
+  for(let i=this.fx.length-1;i>=0;i--){const p=this.fx[i];p.t+=dt;p.x+=p.vx*dt-sp*dt;p.y+=p.vy*dt;p.vy+=260*dt;if(p.t>p.life)this.fx.splice(i,1);}},
+ // tap/click: kill a spider under the pointer (world coordinates); returns true when a spider was hit (no flap then)
+ hit(e){if(!this.spiders.length||!this.on()||G.mode!=='play'||G.paused)return false;const W=G.world;const r=GC.getBoundingClientRect();
+  const wx=(e.clientX-r.left)/r.width*PHYS.W,wy=(e.clientY-r.top)/r.height*PHYS.H;
+  for(const s of this.spiders){if(Math.abs(wx-s.x)<20&&Math.abs(wy-(s.y+10))<20){this.kill(W,s);return true;}}return false;},
+ kill(W,s){this.spiders.splice(this.spiders.indexOf(s),1);W.hw.kills.push([s.gap,W.frame]);sfx('star');G.shake=Math.max(G.shake,2);
+  const C=['#16121c','#16121c','#e0102e','#ff5a6e','#ffffff','#b8b0c8'];for(let i=0;i<26;i++){const a=i/26*6.283;const v=40+(i%5)*22;this.fx.push({x:s.x,y:s.y+10,vx:Math.cos(a)*v,vy:Math.sin(a)*v-40,t:0,life:.55+(i%4)*.12,c:C[i%C.length],sz:i%3?1:2});}
+  this.fx.push({ring:1,x:s.x,y:s.y+10,vx:0,vy:0,t:0,life:.35,c:'#ffffff'});
+  G.pops.push({x:s.x,y:s.y-6,txt:t('SLAIN'),c:'#ff5a6e',t:0,life:.9});},
+ // after the run: the server replays it and credits only real kills
+ async onRunEnd(W){if(!W||!W.hw||!W.hw.kills.length)return;const kills=W.hw.kills.slice(0,50);
+  if(this.preview){this.kills+=kills.length;toast(esc(t('Spiders slain: {n}/{m}',{n:this.kills,m:this.threshold}))+' (preview)','#ff8a1a');return;}
+  const d=[];let p=0;for(const f of W.log){d.push(f-p);p=f;}
+  const job={run:W.runId,score:W.score,frames:W.frame,flaps:d,kills};SAVE.hwPending=(SAVE.hwPending||[]).filter(j=>j.run!==job.run).concat([job]).slice(-5);persist();this.flush();},
+ async flush(){const jobs=SAVE.hwPending||[];if(!jobs.length||!LB.remote||this.flushing)return;this.flushing=true;
+  try{const key=AUTH.key||await AUTH.ensure();if(!key)return;
+   for(const j of jobs.slice()){let r,v=null;try{r=await fetch(SUPABASE_URL.replace(/\/+$/,'')+'/functions/v1/meowteor-spider',{method:'POST',cache:'no-store',
+      headers:{'apikey':SUPABASE_ANON_KEY,'Content-Type':'application/json',...(/^eyJ/.test(SUPABASE_ANON_KEY)?{Authorization:'Bearer '+SUPABASE_ANON_KEY}:{})},
+      body:JSON.stringify({p_key:key,p_run_id:j.run,p_score:j.score,frames:j.frames,flaps:j.flaps,kills:j.kills,build:ENGINE_BUILD})});v=await r.json().catch(()=>null);}catch(e){break;}
+    if(r.status>=500)break;                                      // server trouble: keep the job and retry later
+    SAVE.hwPending=(SAVE.hwPending||[]).filter(x=>x.run!==j.run);persist();
+    if(r.ok&&v&&v.ok){const was=this.earned;this.kills=v.kills|0;this.threshold=v.threshold|0||25;this.earned=!!v.earned;
+     toast(esc(t('Spiders slain: {n}/{m}',{n:Math.min(this.kills,this.threshold),m:this.threshold})),'#ff8a1a');
+     if(this.earned&&!was)CHAMP.inventory(true);}}}
+  finally{this.flushing=false;}},
+ // ---------- art ----------
+ web(x,X,Y,r,flipY){x.globalAlpha=.75;x.fillStyle='#d8d0e8';for(let k=0;k<5;k++){const a=k/4*1.5708;for(let i=0;i<=r;i++)x.fillRect(Math.round(X+Math.cos(a)*i),Math.round(Y+(flipY?-1:1)*Math.sin(a)*i),1,1);}
+  x.fillStyle='#a8a0c0';for(const rr of [Math.round(r*.45),Math.round(r*.8)])for(let k=0;k<=8;k++){const a=k/8*1.5708;x.fillRect(Math.round(X+Math.cos(a)*rr),Math.round(Y+(flipY?-1:1)*Math.sin(a)*rr),1,1);}x.globalAlpha=1;},
+ drawPillar(x,o,gy){if(!this.on())return;const X=Math.round(o.x),top=Math.round(gy-o.gap/2),bot=Math.round(gy+o.gap/2);
+  if(o.k%2===0)this.web(x,X+1,top-12,12,true);else this.web(x,X+1,bot+12,11,false);
+  if(o.k%3===1){x.globalAlpha=.75;x.fillStyle='#d8d0e8';x.fillRect(X+20,top-1,1,7+(o.k%4));x.globalAlpha=1;x.fillStyle='#16121c';x.fillRect(X+19,top+6+(o.k%4),3,2);}},
+ lantern(x,X,Y,t,big){const s=big?1.5:1;const w=Math.round(12*s),h=Math.round(9*s);
+  pEll(x,X,Y-h/2,w/2|0,h/2|0,'#c85a0a');pEll(x,X,Y-h/2,(w/2|0)-2,(h/2|0),'#ff8a1a');x.fillStyle='#ffb04a';x.fillRect(X-1,Y-h+1,2,h-2);
+  x.fillStyle='#3a8a2a';x.fillRect(X,Y-h-2,2,3);const f=Math.sin(t*9+X)>-.3;x.fillStyle=f?'#ffe27a':'#ffd24a';
+  const e=Math.round(2*s);x.fillRect(X-e-2,Y-h+Math.round(3*s),e,e);x.fillRect(X+2,Y-h+Math.round(3*s),e,e);x.fillRect(X-3,Y-Math.round(3*s),7,Math.max(1,Math.round(s)));x.fillStyle='#c85a0a';x.fillRect(X-1,Y-Math.round(3*s),1,1);x.fillRect(X+2,Y-Math.round(3*s),1,1);
+  x.globalAlpha=.18+.08*Math.sin(t*7+X);x.fillStyle='#ffb04a';pEll(x,X,Y-h/2,(w/2|0)+3,(h/2|0)+3,'#ffb04a');x.globalAlpha=1;},
+ drawGround(x,scroll){if(!this.on())return;const off=scroll%120;for(let i=-1;i<3;i++){const X=Math.round(i*120+40-off);if(X>-12&&X<PHYS.W+12)this.lantern(x,X,PHYS.GROUND+1,G.t,false);}},
+ drawHome(x){if(!this.live)return;this.lantern(x,14,PHYS.GROUND+1,G.t,true);this.lantern(x,152,PHYS.GROUND+1,G.t,false);this.lantern(x,168,PHYS.GROUND+1,G.t+1,true);},
+ drawSpiders(x){for(const s of this.spiders){const X=Math.round(s.x),Y=Math.round(s.y+Math.sin(G.t*3+s.ph)*(s.t>.7?2:0));
+   // web on the ceiling + silk thread
+   this.web(x,X-10,0,12,false);
+   x.globalAlpha=.85;x.fillStyle='#e8e0f0';x.fillRect(X,0,1,Y);x.globalAlpha=1;
+   // black widow drawn at 2x (about 34x26 world px incl. legs): easy to notice and to tap
+   x.save();x.translate(X,Y);x.scale(2,2);const lg=Math.floor(G.t*6+s.ph)%2;x.fillStyle='#08060c';
+   for(let k=0;k<4;k++){const dy=3+k*2,up=(k<2?2:0);x.fillRect(-8,dy-up+(k+lg)%2,4,1);x.fillRect(-9,dy+1-up+(k+lg)%2,1,2);x.fillRect(5,dy-up+(k+lg+1)%2,4,1);x.fillRect(9,dy+1-up+(k+lg+1)%2,1,2);}
+   pEll(x,0,8,5,5,'#000000');pEll(x,0,8,4,4,'#16121c');x.fillStyle='#3a2f4e';x.fillRect(-2,5,2,1);
+   x.fillStyle='#e0102e';x.fillRect(-1,7,3,1);x.fillRect(0,8,1,1);x.fillRect(-1,9,3,1);
+   pEll(x,0,1,3,2,'#000000');pEll(x,0,1,2,1,'#16121c');x.fillStyle='#ff2a3a';x.fillRect(-2,1,1,1);x.fillRect(2,1,1,1);x.restore();}
+  for(const p of this.fx){const a=1-p.t/p.life;x.globalAlpha=a;if(p.ring){const r=3+p.t/p.life*14;x.fillStyle=p.c;for(let k=0;k<24;k++){const t2=k/24*6.283;x.fillRect(Math.round(p.x+Math.cos(t2)*r),Math.round(p.y+Math.sin(t2)*r),1,1);}}
+   else{x.fillStyle=p.c;x.fillRect(Math.round(p.x),Math.round(p.y),p.sz+1,p.sz+1);}}x.globalAlpha=1;},
+ chip(){if(!this.live)return null;const n=Math.min(this.kills,this.threshold);
+  return el('div',{class:'t small hwchip',style:'margin-top:8px;display:inline-block;padding:4px 10px;border:2px solid #ff8a1a;background:#1a0d06;color:#ffd9a8;letter-spacing:1px'},
+   '&#127875; '+esc(t('HALLOWEEN EVENT'))+' &middot; '+esc(this.earned||this.kills>=this.threshold?t('BLACK WIDOW SKIN EARNED'):t('Spiders slain: {n}/{m}',{n,m:this.threshold})));}};
+
+function champReveal(id){id=id||CHAMP.newest;const SK=CHAMP.skins[id];if(!SK)return;const w=el('div',{});const hw=id===HW_ITEM;w.appendChild(el('div',{class:'gold',style:'font-size:17px'+(hw?';color:#ff8a1a':'')},hw?'&#127875; '+t('HALLOWEEN 2026')+' &#127875;':'&#9819; '+t('LEADERBOARD CHAMPION')+' &#9819;'));
+ w.appendChild(el('div',{style:'font-size:12px;margin:6px 0'},hw?t('You slew 25 spiders. The Black Widow skin is yours! You can mint it as an NFT on the claim page.'):t('You were #1 when the timer ended. The 1 of 1 space cat skin is yours!')));
  const [c,x]=mkCanvas(96,60);c.style.width='192px';c.style.height='120px';c.style.margin='4px auto';c.style.display='block';w.appendChild(c);
  w.appendChild(el('div',{class:'gold',style:'font-size:14px'},esc(champSkinName(id))));
  let t0=performance.now();const anim=()=>{if(!c.isConnected)return;const tm=(performance.now()-t0)/1000;x.clearRect(0,0,96,60);x.fillStyle='#0a0618';x.fillRect(0,0,96,60);
@@ -1311,8 +1414,8 @@ const G={mode:'title',world:null,acc:0,flapQ:0,t:0,scroll:0,shake:0,flash:0,dead
 let FRAME=0,GCX=null,GC=null;
 function gameInit(){GC=$('#gc');GCX=GC.getContext('2d');GCX.imageSmoothingEnabled=false;buildZoneTex();buildBackgrounds();}
 function newRun(){G.daily=null;const tk=LB.takeTicket();G.seed=tk?tk.seed:(Math.random()*2**31)>>>0;G.world=new World(G.seed);if(tk)G.world.runId=tk.id;
- else if(LB.remote){const W0=G.world;LB.prefetchTicket().then(t=>{if(t&&G.world===W0&&W0.frame===0&&G.mode==='ready'){LB.takeTicket();G.world=new World(t.seed);G.seed=t.seed;G.world.runId=t.id;}LB.prefetchTicket();});}
- LB.prefetchTicket();G.mode='ready';G.acc=0;G.flapQ=0;G.pops=[];G.burst=[];G.shake=0;G.flash=0;G.deadT=0;G.lastZone=0;G.zoneBlend=1;G.paused=false;trailReset();}
+ else if(LB.remote){const W0=G.world;LB.prefetchTicket().then(t=>{if(t&&G.world===W0&&W0.frame===0&&G.mode==='ready'){LB.takeTicket();G.world=new World(t.seed);G.seed=t.seed;G.world.runId=t.id;HW.newRun(G.world);}LB.prefetchTicket();});}
+ LB.prefetchTicket();HW.newRun(G.world);G.mode='ready';G.acc=0;G.flapQ=0;G.pops=[];G.burst=[];G.shake=0;G.flash=0;G.deadT=0;G.lastZone=0;G.zoneBlend=1;G.paused=false;trailReset();}
 function flap(){if(MODAL_OPEN)return;if(G.mode==='ready'){G.mode='play';const W=G.world;if(W){W.cat.y=150;W.cat.vy=0;}G.flapQ++;return;}/* runs start from the canonical state so the server replay matches */if(G.mode==='play'){if(G.paused){resumeGame();return;}G.flapQ++;}}
 function pauseGame(){if(G.mode!=='play'||G.paused)return;G.paused=true;stopMusic();}
 function resumeGame(){G.paused=false;G.acc=0;startMusic('play');}
@@ -1327,15 +1430,16 @@ function gameFrame(dt){FRAME++;G.t+=dt;const W=G.world;
  if(W&&!(G.mode==='play'&&G.paused)){if(G.mode!=='dead'){trailPush(W.cat.y,W.cat.rot);emitTrail(REQ().trail,PHYS.CATX,W.cat.y,FRAME,sp,REQ());}updateTrail(dt);}
  for(let i=G.pops.length-1;i>=0;i--){const p=G.pops[i];p.t+=dt;if(p.t>p.life)G.pops.splice(i,1);}
  for(let i=G.burst.length-1;i>=0;i--){const p=G.burst[i];p.t+=dt;p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=300*dt;if(p.t>p.life)G.burst.splice(i,1);}
+ if(W&&!(G.mode==='play'&&G.paused))HW.update(dt,sp);if(G.mode==='play'&&W&&W.hw&&!W.hw.req&&W.frame>0)HW.plan(W);
  G.shake=Math.max(0,G.shake-dt*30);G.flash=Math.max(0,G.flash-dt*3);G.zoneBlend=Math.min(1,G.zoneBlend+dt*.6);
  render();}
-function handleEvents(){const W=G.world;for(const e of W.events){if(e.e==='score'){sfx('score');G.pops.push({x:PHYS.CATX+6,y:W.cat.y-14,txt:'+1',c:'#ffffff',t:0,life:.6});const z=zoneOf(W.score);if(z!==G.lastZone){G.lastZone=z;G.zoneBlend=0;G.zoneShown=G.t;sfx('zone');}}
+function handleEvents(){const W=G.world;for(const e of W.events){if(e.e==='score'){HW.onScore(W);sfx('score');G.pops.push({x:PHYS.CATX+6,y:W.cat.y-14,txt:'+1',c:'#ffffff',t:0,life:.6});const z=zoneOf(W.score);if(z!==G.lastZone){G.lastZone=z;G.zoneBlend=0;G.zoneShown=G.t;sfx('zone');}}
  else if(e.e==='star'){sfx('star');G.pops.push({x:e.x,y:e.y-8,txt:e.gold?'+5':'+'+1,c:e.gold?'#3ad8ff':'#ffd24a',t:0,life:.8});for(let i=0;i<10;i++)G.burst.push({x:e.x,y:e.y,vx:rnd(-60,60),vy:rnd(-90,10),t:0,life:.5,c:e.gold?'#3ad8ff':'#ffd24a'});}}
  W.events.length=0;}
 function onDeath(){const W=G.world;G.mode='dead';G.shake=8;G.flash=1;sfx('hit');if(W.deathBy==='pillar')sfx('fall');stopMusic();
  const F=furOf(SAVE.eq);const BP=skinOn()&&skinOf().pal?skinOf().pal:[F.m,F.l,F.d,'#ffffff'];for(let i=0;i<22;i++)G.burst.push({x:PHYS.CATX,y:W.cat.y,vx:rnd(-90,90),vy:rnd(-160,20),t:0,life:.8,c:pick(BP)});
  if(navigator.vibrate)try{navigator.vibrate(60);}catch(e){}
- G.result=finishRun(W);setTimeout(()=>{if(G.mode==='dead')show('over',G.result);},650);}
+ G.result=finishRun(W);HW.onRunEnd(W);setTimeout(()=>{if(G.mode==='dead')show('over',G.result);},650);}
 // award stars / update stats exactly once per run
 function finishRun(W){if(W.awarded)return W.awardResult;W.awarded=true;const score=W.score;const prev=SAVE.best;const isBest=score>prev;
  const earned=score+W.picked;SAVE.stars+=earned;WALLET.earned(earned);SAVE.starsEver+=earned;SAVE.runs++;SAVE.total+=score;if(isBest)SAVE.best=score;persist();
@@ -1343,11 +1447,12 @@ function finishRun(W){if(W.awarded)return W.awardResult;W.awarded=true;const sco
 function render(){const x=GCX,W=G.world;x.setTransform(2,0,0,2,0,0);x.imageSmoothingEnabled=false;
  const sh=G.shake>0?[Math.round(rnd(-G.shake,G.shake)/2),Math.round(rnd(-G.shake,G.shake)/2)]:[0,0];x.translate(sh[0],sh[1]);
  NO_PLANET=G.mode==='title';const zone=W?zoneOf(W.score):0;drawBackground(x,G.t,G.scroll,zone,G.zoneBlend);
- if(W&&G.mode!=='title'){for(const o of W.obs){if(o.x>PHYS.W+4||o.x+o.w<-4)continue;const gy=W.gapY(o);drawPillar(x,o,gy,o.zone===undefined?0:zoneOf(o.k),G.t);if(o.star&&!o.star.got)drawStarPickup(x,Math.round(o.x+o.w/2),Math.round(gy),G.t,o.star.gold);}if(W.hz)drawHazards(x,W,G.t);}
- drawGround(x,G.scroll,zone);
+ if(W&&G.mode!=='title'){for(const o of W.obs){if(o.x>PHYS.W+4||o.x+o.w<-4)continue;const gy=W.gapY(o);drawPillar(x,o,gy,o.zone===undefined?0:zoneOf(o.k),G.t);HW.drawPillar(x,o,gy);if(o.star&&!o.star.got)drawStarPickup(x,Math.round(o.x+o.w/2),Math.round(gy),G.t,o.star.gold);}if(W.hz)drawHazards(x,W,G.t);}
+ drawGround(x,G.scroll,zone);if(G.mode==='title')HW.drawHome(x);else if(G.mode==='play'||G.mode==='ready'||G.mode==='dead')HW.drawGround(x,G.scroll);
  if(W){const c=W.cat;drawTrail(x,REQ().trail,PHYS.CATX,c.y,W?(G.mode==='dead'?0:W.speed()):40,REQ());
   let fr=Math.floor(G.t*8)%4;if((G.mode==='play'||G.mode==='watch')&&c.vy<-120)fr=0;if(Math.floor(G.t*10)%37===0)fr=7;
   const s=catSprite(REQ(),fr);x.save();x.translate(Math.round(PHYS.CATX*2)/2,Math.round(c.y*2)/2);x.rotate(c.rot);x.drawImage(s,-(s.ax||CAT_AX),-(s.ay||CAT_AY));x.restore();}
+ if(G.mode==='play'||G.mode==='dead')HW.drawSpiders(x);
  for(const p of G.burst){x.globalAlpha=1-p.t/p.life;x.fillStyle=p.c;x.fillRect(Math.round(p.x),Math.round(p.y),2,2);}x.globalAlpha=1;
  x.setTransform(1,0,0,1,0,0);
  // crisp HUD in screen pixels
@@ -1364,7 +1469,7 @@ FONT['*']=[4,4,31,14,10,17,0];const STAR_TXT='* ';
 // ================= INPUT =================
 function inputInit(){const st=$('#stage');
  const isUI=e=>e.target.closest&&e.target.closest('.btn,.item,input,#modal,#lblist,#wgrid,.click');
- st.addEventListener('pointerdown',e=>{if(isUI(e))return;if(CUR==='play'){e.preventDefault();flap();}},{passive:false});
+ st.addEventListener('pointerdown',e=>{if(isUI(e))return;if(CUR==='play'){e.preventDefault();if(HW.hit(e))return;flap();}},{passive:false});
  addEventListener('keydown',e=>{const k=e.key;if(e.target&&e.target.tagName==='INPUT')return;
   if(k===' '||k==='ArrowUp'||k==='w'||k==='W'){e.preventDefault();if(e.repeat)return;if(CUR==='play')flap();else if(CUR==='over'&&OVER_READY&&!MODAL_OPEN)startGame();else if(CUR==='title'&&!MODAL_OPEN)startGame();}
   else if(k==='Escape'||k==='p'||k==='P'){if(CUR==='play'){if(G.paused)resumeGame();else pauseGame();}}
@@ -1496,7 +1601,7 @@ function aacBadge(extra){return el('div',{class:'aac'+(extra?' '+extra:'')},AAC_
 SCREENS.title=(s)=>{attract();$('#pauseb').classList.remove('on');startMusic('title');s.innerHTML='';
  s.appendChild(el('div',{class:'topbar',style:'right:54px'},`<div>${starsBadge()}</div><div class="t small" style="color:#e8dcb5">${t('BEST')} <span class="gold">${SAVE.best}</span></div>`));
  const logo=el('div',{class:'col',style:'position:absolute;left:0;right:0;top:92px'});const lt=pixText(GAME_NAME,6,'#ffd24a','#ff7ac8');lt.style.width='300px';logo.appendChild(lt);
- logo.appendChild(el('div',{class:'t',style:'font-size:13px;letter-spacing:3px;color:#bcd3ff;margin-top:4px'},t('A SPACE CAT TAP-FLYER')));s.appendChild(logo);
+ logo.appendChild(el('div',{class:'t',style:'font-size:13px;letter-spacing:3px;color:#bcd3ff;margin-top:4px'},t('A SPACE CAT TAP-FLYER')));{const hc=HW.chip();if(hc)logo.appendChild(hc);}s.appendChild(logo);
  const b=el('div',{class:'col',style:'position:absolute;left:0;right:0;top:350px'});
  const play=el('div',{class:'btn big green'},'&#9654; '+t('PLAY'));play.onclick=()=>startGame();b.appendChild(play);
  const w=el('div',{class:'btn wide pink'},t('WARDROBE'));w.onclick=()=>{sfx('click');show('wardrobe');};b.appendChild(w);
@@ -1786,7 +1891,7 @@ function loop(now){const dt=Math.min(.1,(now-(LAST||now))/1000);LAST=now;
  requestAnimationFrame(loop);}
 function unlockAudio(){ac();if(MUSIC.want&&!MUSIC.timer&&!SAVE.muted&&!document.hidden)startMusic(MUSIC.want);}
 addEventListener('pointerdown',unlockAudio,{passive:true});addEventListener('keydown',unlockAudio);
-window.addEventListener('load',()=>{loadSave();WALLET.init();LB.init();LB.prefetchTicket();CHAMP.init();fit();bgInit();gameInit();inputInit();drawMuteIcon();
+window.addEventListener('load',()=>{loadSave();WALLET.init();LB.init();LB.prefetchTicket();AUTH.load();AUTH.ensure().then(()=>{CHAMP.inventory(true);HW.flush();});CHAMP.init();HW.init();fit();bgInit();gameInit();inputInit();drawMuteIcon();
  $('#mute').addEventListener('click',e=>{e.stopPropagation();setMuted(!SAVE.muted);sfx('click');});
  $('#pauseb').addEventListener('click',e=>{e.stopPropagation();if(G.paused)resumeGame();else pauseGame();});
  $('#pauseb').title=t('Pause');$('#mute').title=t('Mute / unmute (M)');

@@ -155,6 +155,7 @@ canvas.keyart{display:block;width:100%;height:auto;aspect-ratio:16/9;image-rende
 .lb-live:hover,.lb-live:focus-visible{background:#fff;animation:none}
 @keyframes lbLive{50%{opacity:.55}}
 @media (prefers-reduced-motion:reduce){.lb-live{animation:none}}
+.lb-replay{display:inline-flex;align-items:center;gap:4px;margin-left:6px;padding:1px 6px;font-size:.75em;line-height:1.4;color:#fff;background:#3a7bff;border:2px solid #000;text-decoration:none;vertical-align:middle}.lb-replay:hover{background:#fff;color:#000}
 .lb-medal{margin-right:3px}.lb-medal.m1{color:var(--gold)}.lb-medal.m2{color:#d8dce8}.lb-medal.m3{color:#e09a5a}
 .lb-row.top1 .lb-pos{color:var(--gold)}.lb-row.top2 .lb-pos{color:#d8dce8}.lb-row.top3 .lb-pos{color:#e09a5a}
 .lb-row.me{background:rgba(60,255,90,.12);outline:3px solid var(--green);outline-offset:-3px;box-shadow:0 0 14px rgba(60,255,90,.35)}

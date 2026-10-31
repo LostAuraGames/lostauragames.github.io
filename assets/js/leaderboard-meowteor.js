@@ -37,9 +37,12 @@ function esc(s){return String(s).replace(/[&<>"']/g,function(c){return{'&':'&amp
 function fmt(n){return String(n).replace(/\B(?=(\d{3})+(?!\d))/g,',');}
 function rankCell(n){return n<=3?'<span class="lb-medal m'+n+'" aria-hidden="true">&#9733;</span>'+n:'#'+n;}
 function row(r,pinned){return '<li class="lb-row'+(r.me?' me':'')+(r.rank<=3?' top'+r.rank:'')+'"'+(r.me?' aria-current="true"':'')+'>'+
-  '<span class="lb-pos">'+rankCell(r.rank)+'</span><span class="lb-name">'+esc(r.name)+(r.me?' <em>'+esc(T('(you)'))+'</em>':'')+liveBtn(r)+'</span><span class="lb-score">'+fmt(r.score)+'</span></li>';}
+  '<span class="lb-pos">'+rankCell(r.rank)+'</span><span class="lb-name">'+esc(r.name)+(r.me?' <em>'+esc(T('(you)'))+'</em>':'')+liveBtn(r)+replayBtn(r)+'</span><span class="lb-score">'+fmt(r.score)+'</span></li>';}
 // ---- Live match broadcasting: top-100 players who opted in get a play button while they are in a run.
 // get_live_players returns names + a random per-run stream id only (never player ids). The button opens the game's
+// replay of the player's current best run (games/meowteor/?replay=<name>), rebuilt from seed + taps; anyone can watch.
+function replayBtn(r){if(!r||!r.name||r.score<=0)return'';var lab=T('Watch the best run of {name}',{name:r.name});
+  return ' <a class="lb-replay" href="meowteor/?replay='+encodeURIComponent(r.name)+'" title="'+esc(lab)+'" aria-label="'+esc(lab)+'"><span aria-hidden="true">&#8634;</span> '+esc(T('REPLAY'))+'</a>';}
 // spectator view (games/meowteor/?watch=<stream id>), which rebuilds the run from its seed + taps.
 var live=[],liveKey='',LIVE_MS=5000;
 function liveFor(r){var i,m=null;for(i=0;i<live.length;i++){if(live[i].name===r.name&&live[i].best===r.score)return live[i];if(!m&&live[i].name===r.name)m=live[i];}return m;}

@@ -211,7 +211,14 @@ function fire(){const m=G.me,W_=WEAP[m.w];const now=performance.now()/1000;if(m.
  const fl=vm[m.w].userData.flash;fl.visible=true;setTimeout(()=>fl.visible=false,45);
  if(G.practice){if(hit)practiceHit(G.players[hit],W_.dmg*(head?W_.head:1),head,e);}else send('shot',{id:myId,o,e,w:m.w,hit,head});
  // permanent recoil: same rise the old camera kick peaked at, applied to the real aim, never recovered
- m.pitch=Math.max(-1.5,Math.min(1.5,m.pitch+W_.recoil));m.yaw+=W_.recoilYaw;if(m.ammo[m.w]===0)startReload();}
+ const pBefore=m.pitch;m.pitch=Math.max(-1.5,Math.min(1.5,m.pitch+W_.recoil));crossKick(m.pitch-pBefore,W_.rate*0.7);m.yaw+=W_.recoilYaw;if(m.ammo[m.w]===0)startReload();}
+// ---------- crosshair recoil lag (display only; aim/camera snap instantly) ----------
+// offset (rad, + = below centre) starts at the pitch delta and eases to 0 over 70% of the fire interval (quadratic ease-out)
+const XH={start:0,t0:0,dur:0.07};const easeOut=t=>1-(1-t)*(1-t);
+function crossOff(){const t=(performance.now()/1000-XH.t0)/XH.dur;return t>=1?0:XH.start*(1-easeOut(Math.max(0,t)));}
+function crossKick(d,dur){XH.start=crossOff()+d;XH.t0=performance.now()/1000;XH.dur=dur;}
+function crossPx(off){return Math.tan(off)/Math.tan(camera.fov*Math.PI/360)*(innerHeight/2);}
+function drawCross(){const off=crossOff();$('cross').style.transform=off?`translateY(${crossPx(off).toFixed(2)}px)`:'';return off;}
 // ---------- HUD ----------
 let msgTO;function msg(h,ms){$('msg').innerHTML=h;clearTimeout(msgTO);msgTO=setTimeout(()=>$('msg').innerHTML='',ms);}
 function feed(h){const d=document.createElement('div');d.innerHTML=h;$('feed').prepend(d);setTimeout(()=>d.remove(),6000);}
@@ -221,7 +228,7 @@ function hud(){const m=G.me;const tc=`t${G.team}`;$('hp').className='glow '+tc;$
  $('hp').innerHTML=m.dead?'✕ DOWN':`✚ ${m.hp}`;$('ammo').innerHTML=(m.reloadT>0?'RELOADING ':'')+`${m.ammo[m.w]}<span style="font-size:18px">/${WEAP[m.w].mag} ${m.w.toUpperCase()}</span>`;
  const tm=G.phase==='live'?Math.ceil(G.phaseT):G.phase==='freeze'?Math.ceil(G.phaseT):'';
  if(G.practice){$('score').innerHTML=`<span class="tb">PRACTICE</span> · bot kills ${G.kills} · bot HP ${G.players.bot.hp}<div style="font-size:12px;color:#699">offline · no RP · Esc then LEAVE (or P) to exit</div>`;}else $('score').innerHTML=`<span class="ta">CYAN ${G.score.a}</span> &nbsp;<span style="color:#ff4">${G.phase==='freeze'?'⟳ '+tm:tm}</span>&nbsp; <span class="tb">${G.score.b} MAGENTA</span><div style="font-size:12px;color:#699">ROUND ${G.round||'-'} · first to ${WIN_ROUNDS} · you are ${G.team==='a'?'CYAN':'MAGENTA'}</div>`;
- document.body.style.boxShadow=dmgFlash>0?`inset 0 0 ${80*dmgFlash}px rgba(255,0,60,${dmgFlash})`:'none';}
+ drawCross();document.body.style.boxShadow=dmgFlash>0?`inset 0 0 ${80*dmgFlash}px rgba(255,0,60,${dmgFlash})`:'none';}
 // ---------- simulation ----------
 function stepMe(dt){const m=G.me;if(keys.ArrowLeft)m.yaw+=dt*2;if(keys.ArrowRight)m.yaw-=dt*2;
  m.reloadT>0&&(m.reloadT-=dt)<=0&&(m.reloadT=0,m.ammo[m.w]=WEAP[m.w].mag);
@@ -237,8 +244,9 @@ function stepMe(dt){const m=G.me;if(keys.ArrowLeft)m.yaw+=dt*2;if(keys.ArrowRigh
  if(m.trig||(mouseDown&&WEAP[m.w].auto)){fire();}m.trig=false;
  m.aimT=Math.max(0,m.aimT-dt);m.kick=Math.max(0,m.kick-dt*9);
  camera.position.set(m.x,m.y+(m.dead?0.35:EYE)+(m.ground?Math.sin(m.bob*2.2)*0.03:0),m.z);camera.rotation.set(m.pitch,m.yaw,m.dead?0.5:0);
+ const st_=performance.now()/1000,swX=Math.sin(st_*2*Math.PI*0.23)*0.002,swY=Math.sin(st_*2*Math.PI*0.31+1.1)*0.0015,swR=Math.sin(st_*2*Math.PI*0.27)*0.003;G.sway={x:swX,y:swY,r:swR};
  for(const k in vm){const g_=vm[k];const rel=m.reloadT>0?Math.sin(Math.min(1,1-m.reloadT/WEAP[k].reload)*Math.PI):0;
-  g_.position.set(0.17+Math.sin(m.bob)*0.012,-0.2-rel*0.18+Math.abs(Math.cos(m.bob))*0.01,(k==='rifle'?-0.38:-0.42)+m.kick*0.05);g_.rotation.set(m.kick*0.08-rel*0.6,0.04,rel*0.3);g_.visible=k===m.w&&!m.dead;}
+  g_.position.set(0.17+swX+Math.sin(m.bob)*0.012,-0.2+swY-rel*0.18+Math.abs(Math.cos(m.bob))*0.01,(k==='rifle'?-0.38:-0.42)+m.kick*0.05);g_.rotation.set(m.kick*0.08-rel*0.6+swR*0.5,0.04+swR,rel*0.3+swR*0.6);g_.visible=k===m.w&&!m.dead;}
  const now=performance.now();if(now-G.lastSend>1000/NET_HZ){G.lastSend=now;
   send('st',{id:myId,x:+m.x.toFixed(3),y:+m.y.toFixed(3),z:+m.z.toFixed(3),yaw:+m.yaw.toFixed(3),p:+m.pitch.toFixed(3),a:m.dead?'dead':m.aimT>0?'aim':mv>0.001?(Math.floor(m.moveD/0.9)%2?'run1':'run2'):'idle',w:m.w,hp:m.hp,d:m.dead,r:G.round});}}
 function stepRemote(dt){const rt=performance.now()/1000-INTERP;
@@ -288,5 +296,5 @@ async function poll(){try{const r=await rpc('nfps_queue_poll',{p_id:myId,p_secre
 addEventListener('beforeunload',()=>{if(qTimer)navigator.sendBeacon&&0;});
 // ---------- boot ----------
 fetch('assets/art.json').then(r=>r.json()).then(a=>{ART=a;buildVM();loop();register().catch(e=>{$('me').textContent='offline: '+e.message;});});
-window.NFPS={get G(){return G;},camera,swap:w=>swap(w),fire:()=>G&&(G.me.trig=true),keys,rayMap,solids,WEAP};
+window.NFPS={get G(){return G;},cross:()=>{const o=crossOff();return{off:o,px:crossPx(o),dur:XH.dur,t:performance.now()/1000-XH.t0};},camera,swap:w=>swap(w),fire:()=>G&&(G.me.trig=true),keys,rayMap,solids,WEAP};
 })();

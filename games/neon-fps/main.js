@@ -139,8 +139,8 @@ function tickFx(dt){for(let i=fx.length-1;i>=0;i--){const f=fx[i];f.life-=dt;f.o
 // ---------- mouse sensitivity (1-100 %, multiplier = value*0.1) ----------
 const SENS={val:10,mult:1};
 function setSens(v){v=Math.max(1,Math.min(100,Math.round(+v)||10));SENS.val=v;SENS.mult=v*0.1;localStorage.setItem('nfps.sens',v);
- document.querySelectorAll('.sens input').forEach(i=>{if(+i.value!==v)i.value=v;});document.querySelectorAll('.sens .sensOut').forEach(o=>o.textContent=`${v}% – ${SENS.mult.toFixed(1)}x mouse sensitivity`);}
-document.querySelectorAll('.sens input').forEach(i=>i.addEventListener('input',()=>setSens(i.value)));
+ document.querySelectorAll('.msens input').forEach(i=>{if(+i.value!==v)i.value=v;});document.querySelectorAll('.msens .sensOut').forEach(o=>o.textContent=`${v}% – ${SENS.mult.toFixed(1)}x mouse sensitivity`);}
+document.querySelectorAll('.msens input').forEach(i=>i.addEventListener('input',()=>setSens(i.value)));
 setSens(localStorage.getItem('nfps.sens')||10);
 // ---------- input ----------
 const keys={};let mouseDown=false,locked=false;const TEST=window.__NFPS_TEST||false;
@@ -301,13 +301,14 @@ function hud(){const m=G.me;const tc=`t${G.team}`;$('hp').className='glow '+tc;$
  $('hp').innerHTML=m.dead?'✕ DOWN':`✚ ${m.hp}`;$('ammo').innerHTML=(m.reloadT>0?'RELOADING ':'')+`${m.ammo[m.w]}<span style="font-size:18px">/${WEAP[m.w].mag} ${m.w.toUpperCase()}</span>`;
  const tm=G.phase==='live'?Math.ceil(G.phaseT):G.phase==='freeze'?Math.ceil(G.phaseT):'';
  if(G.practice){$('score').innerHTML=`<span class="tb">PRACTICE</span> · bot kills ${G.kills} · bot HP ${G.players.bot.hp}<div style="font-size:12px;color:#699">offline · no RP · Esc then LEAVE (or P) to exit</div>`;}else $('score').innerHTML=`<span class="ta">CYAN ${G.score.a}</span> &nbsp;<span style="color:#ff4">${G.phase==='freeze'?'⟳ '+tm:tm}</span>&nbsp; <span class="tb">${G.score.b} MAGENTA</span><div style="font-size:12px;color:#699">ROUND ${G.round||'-'} · first to ${WIN_ROUNDS} · you are ${G.team==='a'?'CYAN':'MAGENTA'}</div>`;
- drawCross();{const pv=(!locked&&!TEST&&!G.ended)?'flex':'none';if($('pause').style.display!==pv)$('pause').style.display=pv;}{const rt=rollT(G.me.roll);$('black').style.opacity=rt==null?0:rollBlack(rt).toFixed(3);}document.body.style.boxShadow=dmgFlash>0?`inset 0 0 ${80*dmgFlash}px rgba(255,0,60,${dmgFlash})`:'none';}
+ drawCross();{const pv=(!G.ended&&(PAD.paused||(!locked&&!TEST&&!PAD.active)))?'flex':'none';if($('pause').style.display!==pv)$('pause').style.display=pv;const lv=G.practice?'inline-block':'none';if($('leave').style.display!==lv)$('leave').style.display=lv;}{const rt=rollT(G.me.roll);$('black').style.opacity=rt==null?0:rollBlack(rt).toFixed(3);}document.body.style.boxShadow=dmgFlash>0?`inset 0 0 ${80*dmgFlash}px rgba(255,0,60,${dmgFlash})`:'none';}
 // ---------- simulation ----------
 function stepMe(dt){const m=G.me;if(keys.ArrowLeft)m.yaw+=dt*2;if(keys.ArrowRight)m.yaw-=dt*2;
  m.reloadT>0&&(m.reloadT-=dt)<=0&&(m.reloadT=0,m.ammo[m.w]=WEAP[m.w].mag);
- const canMove=!m.dead&&G.phase!=='freeze'&&G.phase!=='warmup';let fx_=0,fz=0;if(canMove){if(keys.KeyW)fz-=1;if(keys.KeyS)fz+=1;if(keys.KeyA)fx_-=1;if(keys.KeyD)fx_+=1;}
- const sprint=keys.ShiftLeft||keys.ShiftRight;const sp=(sprint&&fz<0?10.92:5.4)*(m.ground?1:0.9);const l=Math.hypot(fx_,fz)||1;
- let vx=(fx_*Math.cos(m.yaw)+fz*Math.sin(m.yaw))/l*sp,vz=(-fx_*Math.sin(m.yaw)+fz*Math.cos(m.yaw))/l*sp;
+ const canMove=!m.dead&&G.phase!=='freeze'&&G.phase!=='warmup'&&!PAD.paused;let fx_=0,fz=0,padMag=1;if(canMove){if(keys.KeyW)fz-=1;if(keys.KeyS)fz+=1;if(keys.KeyA)fx_-=1;if(keys.KeyD)fx_+=1;
+  if(PAD.active&&!fx_&&!fz&&(PAD.ls[0]||PAD.ls[1])){fx_=PAD.ls[0];fz=PAD.ls[1];padMag=Math.min(1,Math.hypot(fx_,fz));}}
+ const sprint=keys.ShiftLeft||keys.ShiftRight||(PAD.active&&PAD.sprint);const sp=(sprint&&fz<0?10.92:5.4)*(m.ground?1:0.9);const l=Math.hypot(fx_,fz)||1;
+ let vx=(fx_*Math.cos(m.yaw)+fz*Math.sin(m.yaw))/l*sp*padMag,vz=(-fx_*Math.sin(m.yaw)+fz*Math.cos(m.yaw))/l*sp*padMag;
  let rt=rollT(m.roll);if(m.roll&&m.dead){m.roll=null;rt=null;}
  // after phase C the roll becomes a locked 1.5x slide until a horizontal collision or Space
  if(m.roll){const rs=5.4*(rt>=ROLL.b?ROLL.speedMul:1);vx=m.roll.dx*rs;vz=m.roll.dz*rs;}
@@ -322,7 +323,7 @@ function stepMe(dt){const m=G.me;if(keys.ArrowLeft)m.yaw+=dt*2;if(keys.ArrowRigh
  for(const b of solids){if(m.vy>0&&m.x>b.x0-PR&&m.x<b.x1+PR&&m.z>b.z0-PR&&m.z<b.z1+PR&&m.y+PH<=b.y0+0.01&&ny+PH>b.y0){ny=b.y0-PH;m.vy=0;}}
  if(ny<=g){ny=g;m.vy=0;m.ground=true;}else if(m.ground&&m.vy<=0&&m.y-g<0.5){ny=g;m.vy=0;}else m.ground=false;
  m.y=ny;const mv=Math.hypot(vx,vz)*dt;m.moveD+=mv;m.bob+=mv*1.6;
- if(m.trig||(mouseDown&&WEAP[m.w].auto)){fire();}m.trig=false;
+ if(m.trig||((mouseDown||(PAD.active&&PAD.rt>0.5&&!PAD.paused))&&WEAP[m.w].auto)){fire();}m.trig=false;
  m.aimT=Math.max(0,m.aimT-dt);m.kick=Math.max(0,m.kick-dt*9);
  camera.position.set(m.x,m.y+(m.dead?0.35:EYE*(m.eyeMul=easeEye(m.eyeMul,rollLow(m.roll),dt)))+(m.ground&&!m.roll?Math.sin(m.bob*2.2)*0.03:0),m.z);camera.rotation.set(m.pitch+(m.roll&&rt<ROLL.dur?rollOff(rt):0),m.yaw,m.dead?0.5:0);
  const st_=performance.now()/1000,swX=Math.sin(st_*2*Math.PI*0.23)*0.002,swY=Math.sin(st_*2*Math.PI*0.31+1.1)*0.0015,swR=Math.sin(st_*2*Math.PI*0.27)*0.003;G.sway={x:swX,y:swY,r:swR};
@@ -339,8 +340,76 @@ function stepRemote(dt){const rt=performance.now()/1000-INTERP;
   const fwx=-Math.sin(p.yaw),fwz=-Math.cos(p.yaw);const rx=cz,rz=-cx;const side=(fwx*rx+fwz*rz)>=0?-1:1;
   const prt=rollT(p.roll);f.g.scale.setScalar(rollLow(p.roll));f.setAlpha(p.roll?remoteAlpha(prt):1);
   f.set(pose,side,p.w||'rifle');f.g.visible=G.present.has(id)||performance.now()-p.seenAt<3000;}}
+// ---------- gamepad support ----------
+// Classification by vendor id (Chrome "Vendor: 054c Product: 0ce6", Firefox "054c-0ce6-...") + name strings.
+const PS_PRODUCTS={'0ce6':'PS5 DualSense','0df2':'PS5 DualSense Edge','05c4':'PS4 DualShock 4','09cc':'PS4 DualShock 4','0ba0':'PS4 DualShock 4 adapter','0268':'PS3 DualShock 3'};
+const THIRD={'2e95':'Scuf','1532':'Razer','20d6':'PowerA','0e6f':'PDP','0f0d':'Hori','146b':'Nacon','3285':'Nacon','10f5':'Turtle Beach','2c22':'Turtle Beach','0738':'Mad Catz','2dc8':'8BitDo','044f':'Thrustmaster'};
+const PS_NAME=/dualsense|dualshock|playstation|wireless controller|\bps[345]\b|raiju|kishi.*ps|sony/i, XB_NAME=/xbox|xinput|x-box|wolverine|elite|microsoft/i;
+function classifyPad(id){id=String(id||'');let ven=null,prod=null;let mm=id.match(/vendor:\s*([0-9a-f]{4})\s*product:\s*([0-9a-f]{4})/i)||id.match(/^([0-9a-f]{4})-([0-9a-f]{4})-/i);if(mm){ven=mm[1].toLowerCase();prod=mm[2].toLowerCase();}
+ const brand=ven&&THIRD[ven]||(/scuf/i.test(id)?'Scuf':/razer/i.test(id)?'Razer':null);
+ let style,label;
+ if(ven==='054c'||(!XB_NAME.test(id)&&PS_NAME.test(id))){style='ps';const model=(ven==='054c'&&PS_PRODUCTS[prod])||(/edge/i.test(id)?'PS5 DualSense Edge':/dualsense/i.test(id)?'PS5 DualSense':/dualshock\s*4|ps4/i.test(id)?'PS4 DualShock 4':'PlayStation');
+  label=(brand?brand+' ':'')+(model.startsWith('PS5')?'PS5':model.startsWith('PS4')?'PS4':model.startsWith('PS3')?'PS3':'PlayStation')+' controller'+(model.includes('Edge')?' (DualSense Edge)':'');}
+ else if(ven==='045e'||XB_NAME.test(id)){style='xbox';label=(brand?brand+' ':'')+'Xbox controller'+(/elite/i.test(id)?' (Elite)':'');}
+ else if(brand){style='xbox';label=brand+' controller (Xbox layout)';}
+ else{style='xbox';label='Controller (Xbox layout)';}
+ return{style,label,ven,prod};}
+const PROMPTS={xbox:{A:'A',B:'B',X:'X',Y:'Y',LT:'LT',RT:'RT',LB:'LB',RB:'RB',L3:'L3',start:'Menu',back:'View'},ps:{A:'Cross',B:'Circle',X:'Square',Y:'Triangle',LT:'L2',RT:'R2',LB:'L1',RB:'R1',L3:'L3',start:'Options',back:'Create'}};
+const PAD={active:false,index:-1,info:null,ls:[0,0],rs:[0,0],rt:0,prev:[],sprint:false,paused:false,aa:0,aaTarget:0,lookMul:1,navT:0,focus:0};
+const CSENS={val:10,mult:1};
+function setCSens(v){v=Math.max(1,Math.min(100,Math.round(+v)||10));CSENS.val=v;CSENS.mult=v*0.1;localStorage.setItem('nfps.csens',v);
+ document.querySelectorAll('.csens input').forEach(i=>{if(+i.value!==v)i.value=v;});document.querySelectorAll('.csens .sensOut').forEach(o=>o.textContent=`${v}% – ${CSENS.mult.toFixed(1)}x controller sensitivity`);}
+document.querySelectorAll('.csens input').forEach(i=>i.addEventListener('input',()=>setCSens(i.value)));setCSens(localStorage.getItem('nfps.csens')||10);
+const PAD_LOOK=3.0;   // rad/s at full deflection, 1.0x
+function dz2(x,y,d){const m=Math.hypot(x,y);if(m<d)return[0,0];const k=Math.min(1,(m-d)/(1-d))/m;return[x*k,y*k];}   // radial deadzone, rescaled
+let toastTO;function padToast(t){const e=$('padToast');e.textContent=t;e.style.opacity=1;clearTimeout(toastTO);toastTO=setTimeout(()=>e.style.opacity=0,3500);}
+function padHelp(){const P=PROMPTS[PAD.info?PAD.info.style:'xbox'];$('padHelp').innerHTML=PAD.active?`<b style="color:#ff4">${esc(PAD.info.label)}</b> · L-stick move · R-stick look · ${P.L3} sprint · ${P.A} jump (again at a wall = wall jump) · ${P.RT} shoot · ${P.X} reload · ${P.B} roll · ${P.Y} swap · ${P.start} pause · ${P.back} mute`:'🎮 Press any button on your controller';}
+addEventListener('gamepadconnected',e=>{PAD.hint=true;});addEventListener('gamepaddisconnected',e=>{if(e.gamepad&&e.gamepad.index===PAD.index){PAD.active=false;PAD.index=-1;padToast((PAD.info?PAD.info.label:'Controller')+' disconnected');padHelp();}});
+// Map to the W3C standard layout. Non-standard (e.g. Firefox/Linux DualSense) gets a best-effort Sony remap.
+function readPad(gp){const B=i=>{const b=gp.buttons[i];return b?(typeof b==='object'?(b.value||(b.pressed?1:0)):b):0;};const ax=gp.axes||[];
+ if(gp.mapping==='standard'||!PAD.info||PAD.info.style!=='ps')return{b:[...Array(17)].map((_,i)=>B(i)),ax:[ax[0]||0,ax[1]||0,ax[2]||0,ax[3]||0]};
+ const b=new Array(17).fill(0);b[0]=B(1);b[1]=B(2);b[2]=B(0);b[3]=B(3);b[4]=B(4);b[5]=B(5);b[6]=Math.max(B(6),((ax[3]||-1)+1)/2);b[7]=Math.max(B(7),((ax[4]||-1)+1)/2);b[8]=B(8);b[9]=B(9);b[10]=B(10);b[11]=B(11);
+ const hy=ax[7]||0,hx=ax[6]||0;b[12]=hy<-0.5?1:0;b[13]=hy>0.5?1:0;b[14]=hx<-0.5?1:0;b[15]=hx>0.5?1:0;return{b,ax:[ax[0]||0,ax[1]||0,ax[2]||0,ax[5]||0]};}
+function key(code,down){window.dispatchEvent(new KeyboardEvent(down?'keydown':'keyup',{code}));}
+function pollPad(dt){const list=navigator.getGamepads?Array.from(navigator.getGamepads()||[]):[];let gp=PAD.index>=0?list[PAD.index]:null;
+ if(!gp||!gp.connected){gp=null;for(const g of list){if(g&&g.connected&&(g.buttons.some(b=>b&&(b.pressed||b.value>0.5))||Math.max(...g.axes.map(Math.abs))>0.5)){gp=g;break;}}   // pad appears/activates on first input
+  if(gp){PAD.index=gp.index;PAD.active=true;PAD.info=classifyPad(gp.id);PAD.prev=readPad(gp).b;PAD.swallow=true;padToast(PAD.info.label+' connected');padHelp();}else{if(PAD.active){PAD.active=false;padHelp();}return;}}
+ const r=readPad(gp),b=r.b,pr=PAD.swallow?b:PAD.prev;PAD.swallow=false;const edge=i=>b[i]>0.5&&!(pr[i]>0.5),rel=i=>b[i]<=0.5&&pr[i]>0.5;PAD.prev=b;
+ PAD.ls=dz2(r.ax[0],r.ax[1],0.15);PAD.rs=dz2(r.ax[2],r.ax[3],0.15);PAD.rt=b[7];
+ const inMenu=!G||G.ended||PAD.paused;
+ if(inMenu){menuNav(b,edge,dt);if(G&&PAD.paused&&edge(9)){PAD.paused=false;}return;}
+ if(edge(9)){PAD.paused=true;PAD.focus=0;return;}
+ const map={0:'Space',2:'KeyR',1:'KeyC',3:'KeyQ',8:'KeyM'};for(const i in map){if(edge(+i))key(map[i],true);else if(rel(+i))key(map[i],false);}
+ if(edge(10))PAD.sprint=!PAD.sprint;if(Math.hypot(...PAD.ls)<0.2)PAD.sprint=false;
+ if(edge(7)&&G)G.me.trig=true;}
+function menuNav(b,edge,dt){const panel=[...document.querySelectorAll('.ov')].find(o=>o.style.display!=='none'&&getComputedStyle(o).display!=='none');if(!panel)return;
+ const items=[...panel.querySelectorAll('button,input[type=range]')].filter(e=>e.offsetParent!==null);if(!items.length)return;PAD.focus=Math.max(0,Math.min(items.length-1,PAD.focus));
+ PAD.navT-=dt;const up=b[12]>0.5||PAD.ls[1]<-0.6,down=b[13]>0.5||PAD.ls[1]>0.6,left=b[14]>0.5||PAD.ls[0]<-0.6,right=b[15]>0.5||PAD.ls[0]>0.6;
+ if((up||down||left||right)&&PAD.navT<=0){PAD.navT=PAD.navHeld?0.12:0.4;PAD.navHeld=true;const el=items[PAD.focus];if((left||right)&&el.type==='range'){el.value=+el.value+(right?1:-1);el.dispatchEvent(new Event('input'));}else if(up||down)PAD.focus=(PAD.focus+(down?1:items.length-1))%items.length;}
+ if(!(up||down||left||right)){PAD.navT=0;PAD.navHeld=false;}
+ items.forEach((e,i)=>e.classList.toggle('padfocus',i===PAD.focus));if(edge(0)&&items[PAD.focus].tagName==='BUTTON')items[PAD.focus].click();if(edge(1)&&G&&PAD.paused)PAD.paused=false;}
+// Aim assist: crosshair ray vs the existing hitbox (vertical box/cylinder r=0.42, h=1.82, 70% while rolling low).
+// inside: slowdown = 15% + 15%*(1-d), d=|x offset from box centre line|/half-width; outside 0. Controller look only.
+function aimAssistTarget(){if(!G)return 0;const m=G.me;const eye=[m.x,m.y+EYE*rollLow(m.roll),m.z];const cy=Math.cos(m.yaw),sy=Math.sin(m.yaw),cp=Math.cos(m.pitch),spp=Math.sin(m.pitch);let best=0;
+ for(const id in G.players){const p=G.players[id];if(p.dead||p.team===G.team)continue;if(p.fig&&p.fig.alpha!=null&&p.fig.alpha<0.05)continue;   // invisible (roll phase B)
+  const h=1.82*rollLow(p.roll),cx=p.x-eye[0],cz=p.z-eye[2];
+  const xr=cx*cy-cz*sy,zr=cx*sy+cz*cy;                 // rotate into yaw frame (forward = -z)
+  const depth=-zr;if(depth<=0.1)continue;
+  const yb=p.y-eye[1],yt=yb+h;const ybr=yb*cp-depth*spp,ytr=yt*cp-depth*spp;           // vertical extent relative to crosshair ray (approx. at that depth)
+  if(!(ybr<=0&&ytr>=0))continue;const d=Math.abs(xr)/0.42;if(d>1)continue;
+  const dist=Math.hypot(cx,(yb+yt)/2,cz);const dir=[cx/dist,(yb+yt)/2/dist,cz/dist];if(N_rayMap(eye,dir,dist)<dist-0.5)continue;   // line of sight
+  best=Math.max(best,0.15+0.15*(1-Math.min(1,Math.max(0,d))));}
+ return best;}
+function N_rayMap(o,d,t){return rayMap(o,d,t);}
+function padLook(dt){if(!PAD.active||!G||G.ended||PAD.paused)return;PAD.aaTarget=aimAssistTarget();PAD.aa+=(PAD.aaTarget-PAD.aa)*(1-Math.exp(-dt/0.05));
+ const curve=v=>Math.sign(v)*Math.pow(Math.abs(v),1.8);PAD.lookMul=CSENS.mult*(1-PAD.aa);const k=PAD_LOOK*PAD.lookMul*dt;const m=G.me;
+ m.yaw-=curve(PAD.rs[0])*k;m.pitch=Math.max(-1.5,Math.min(1.5,m.pitch-curve(PAD.rs[1])*k));
+ if(DEBUG)$('aadbg').textContent=`AA target ${(PAD.aaTarget*100).toFixed(1)}% · applied ${(PAD.aa*100).toFixed(1)}% · look x${PAD.lookMul.toFixed(2)}`;}
+const DEBUG=/[?&]debug\b/.test(location.search);
+padHelp();
 let last=performance.now();
 function loop(){requestAnimationFrame(loop);const now=performance.now();const rdt=Math.min(1,(now-last)/1000),dt=Math.min(0.05,rdt);last=now;
+ pollPad(rdt);padLook(dt);
  if(G&&!G.ended){if(G.practice){}else if(isLeader())leaderTick(rdt);else clientTick();stepMe(dt);stepRemote(dt);hud();dmgFlash=Math.max(0,dmgFlash-dt*2);}
  else{const t=now/1000;camera.position.set(Math.cos(t*0.08)*26,9,Math.sin(t*0.08)*18);camera.lookAt(0,1,0);}
  tickFx(dt);render();}
@@ -366,6 +435,7 @@ function dmgNum(pt,dmg,head){const v=new THREE.Vector3(...pt).project(camera);if
  $('hud').appendChild(d);requestAnimationFrame(()=>{d.style.transform='translateY(-40px)';d.style.opacity=0;});setTimeout(()=>d.remove(),750);}
 function leavePractice(){if(!G||!G.practice)return;$('black').style.opacity=0;for(const id in G.players)G.players[id].fig.dispose();G=null;document.exitPointerLock&&document.exitPointerLock();for(const k in vm)vm[k].visible=false;
  $('hud').style.display='none';$('pause').style.display='none';$('menu').style.display='flex';refreshMe();}
+$('resume').onclick=()=>{PAD.paused=false;if(!PAD.active&&!TEST)renderer.domElement.requestPointerLock();};
 $('mute').onclick=()=>setMute(!SND.muted);setMute(SND.muted);
 $('practice').onclick=()=>{if(!G)startPractice();};$('leave').onclick=leavePractice;
 // ---------- queue ----------
@@ -379,5 +449,5 @@ async function poll(){try{const r=await rpc('nfps_queue_poll',{p_id:myId,p_secre
 addEventListener('beforeunload',()=>{if(qTimer)navigator.sendBeacon&&0;});
 // ---------- boot ----------
 fetch('assets/art.json').then(r=>r.json()).then(a=>{ART=a;buildVM();loop();register().catch(e=>{$('me').textContent='offline: '+e.message;});});
-window.NFPS={get G(){return G;},WJ,SENS,setSens,SND,ROLL,roll:()=>{const m=G.me,t=rollT(m.roll);return{rolling:!!m.roll,t,off:m.roll?rollOff(t):0,camX:camera.rotation.x,pitch:m.pitch,black:+getComputedStyle($('black')).opacity,eyeY:camera.position.y-m.y,x:m.x,z:m.z,y:m.y,vy:m.vy};},cross:()=>{const o=crossOff();return{off:o,px:crossPx(o),dur:XH.dur,t:performance.now()/1000-XH.t0};},camera,swap:w=>swap(w),fire:()=>G&&(G.me.trig=true),keys,rayMap,solids,WEAP};
+window.NFPS={get G(){return G;},PAD,CSENS,setCSens,classifyPad,aimAssistTarget,WJ,SENS,setSens,SND,ROLL,roll:()=>{const m=G.me,t=rollT(m.roll);return{rolling:!!m.roll,t,off:m.roll?rollOff(t):0,camX:camera.rotation.x,pitch:m.pitch,black:+getComputedStyle($('black')).opacity,eyeY:camera.position.y-m.y,x:m.x,z:m.z,y:m.y,vy:m.vy};},cross:()=>{const o=crossOff();return{off:o,px:crossPx(o),dur:XH.dur,t:performance.now()/1000-XH.t0};},camera,swap:w=>swap(w),fire:()=>G&&(G.me.trig=true),keys,rayMap,solids,WEAP};
 })();

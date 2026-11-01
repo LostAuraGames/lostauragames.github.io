@@ -28,6 +28,7 @@ input{background:transparent;border:1px solid #0ff;color:#fff;font:16px "Courier
 #hitm{position:absolute;left:50%;top:50%;width:30px;height:30px;margin:-15px;border:1px solid #fff;transform:rotate(45deg);opacity:0;box-shadow:0 0 8px #fff}
 .ta{color:#3ff}.tb{color:#f4e}
 .sens{margin:12px auto 4px;width:300px;color:#8ff}.sens label{display:block;font-size:13px;color:#f6f;text-shadow:0 0 6px #f0f}.sens input{width:100%;accent-color:#0ff;filter:drop-shadow(0 0 4px #0ff)}.sens .sensOut{font-size:13px;color:#ff4;text-shadow:0 0 6px #ff4}
+.padfocus{outline:2px solid #ff4!important;outline-offset:3px;box-shadow:0 0 14px #ff4!important}
 </style></head><body>
 <div class="ov" id="menu"><div class="panel">
 <h1>VOLTLINE</h1><div class="sub glow">1 v 1 · neon line arena · ranked</div>
@@ -35,13 +36,13 @@ input{background:transparent;border:1px solid #0ff;color:#fff;font:16px "Courier
 <div style="margin-top:10px" class="glow" id="me">connecting…</div>
 <button id="play">PLAY</button><button id="practice" style="border-color:#0ff;box-shadow:0 0 10px #0ff,inset 0 0 8px #0ff;text-shadow:0 0 8px #0ff">PRACTICE</button>
 <div style="font-size:12px;color:#699">Win +10 RP · Loss −7 RP · First team to 3 rounds wins</div>
-<div class="sens"><label>Mouse sensitivity %</label><input type="range" min="1" max="100" step="1" value="10"><div class="sensOut"></div></div><button id="mute" style="font-size:12px;padding:3px 12px;border-color:#088;box-shadow:none">SOUND: ON (M)</button><div id="lb"></div>
-<div style="font-size:11px;color:#577;margin-top:10px">WASD move · Shift sprint · Space jump (again facing a wall = wall jump) · C roll · Click shoot · R reload · 1/2/Q weapon · M mute · Esc release mouse</div>
+<div class="sens msens"><label>Mouse sensitivity %</label><input type="range" min="1" max="100" step="1" value="10"><div class="sensOut"></div></div><div class="sens csens"><label>Controller sensitivity %</label><input type="range" min="1" max="100" step="1" value="10"><div class="sensOut"></div></div><button id="mute" style="font-size:12px;padding:3px 12px;border-color:#088;box-shadow:none">SOUND: ON (M)</button><div id="lb"></div>
+<div style="font-size:11px;color:#577;margin-top:10px">WASD move · Shift sprint · Space jump (again facing a wall = wall jump) · C roll · Click shoot · R reload · 1/2/Q weapon · M mute · Esc release mouse</div><div id="padHelp" style="font-size:11px;color:#8ff;margin-top:6px"></div>
 </div></div>
 <div class="ov" id="queue" style="display:none"><div class="panel"><h1 style="font-size:32px">QUEUE</h1>
 <div id="qtxt" class="glow">Searching…</div><button id="cancel">CANCEL</button></div></div>
 <div class="ov" id="result" style="display:none"><div class="panel"><h1 id="rtitle" style="font-size:40px"></h1><div id="rtxt" class="glow"></div><button id="back">MENU</button></div></div>
-<div id="black" style="position:fixed;inset:0;background:#000;opacity:0;pointer-events:none;z-index:5"></div><div class="ov" id="pause" style="display:none;z-index:6"><div class="panel"><h1 style="font-size:30px">PAUSED</h1><div style="font-size:12px;color:#699">click the game to resume</div><div class="sens"><label>Mouse sensitivity %</label><input type="range" min="1" max="100" step="1" value="10"><div class="sensOut"></div></div><button id="leave" style="display:none">LEAVE PRACTICE</button></div></div><div id="hud"><div id="cross"></div><div id="hitm"></div><div id="hp" class="glow ta"></div><div id="ammo" class="glow ta"></div>
+<div id="black" style="position:fixed;inset:0;background:#000;opacity:0;pointer-events:none;z-index:5"></div><div class="ov" id="pause" style="display:none;z-index:6"><div class="panel"><h1 style="font-size:30px">PAUSED</h1><div style="font-size:12px;color:#699">click the game to resume</div><div class="sens msens"><label>Mouse sensitivity %</label><input type="range" min="1" max="100" step="1" value="10"><div class="sensOut"></div></div><div class="sens csens"><label>Controller sensitivity %</label><input type="range" min="1" max="100" step="1" value="10"><div class="sensOut"></div></div><button id="resume">RESUME</button><button id="leave" style="display:none">LEAVE PRACTICE</button></div></div><div id="padToast" style="position:fixed;left:50%;top:70px;transform:translateX(-50%);z-index:9;color:#fff;font:bold 16px Courier New;padding:6px 16px;border:1px solid #0ff;box-shadow:0 0 10px #0ff;background:rgba(0,0,0,.8);opacity:0;transition:opacity .4s;pointer-events:none"></div><div id="aadbg" style="position:fixed;left:8px;top:8px;z-index:9;color:#ff4;font:12px Courier New"></div><div id="hud"><div id="cross"></div><div id="hitm"></div><div id="hp" class="glow ta"></div><div id="ammo" class="glow ta"></div>
 <div id="score" class="glow"></div><div id="msg" class="glow"></div><div id="feed"></div><div id="hint">click to lock mouse</div></div>
 <script src="../cave-runner/assets/three.min.js"></script>
 <script src="assets/supabase.js"></script>

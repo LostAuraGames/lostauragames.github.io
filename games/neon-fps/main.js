@@ -184,7 +184,8 @@ function onPing(p){if(isLeader())send('pong',{id:p.id,t:p.t,lt:nowMs()});}
 function onPong(p){if(p.id!==myId)return;const n=nowMs(),rtt=n-p.t;if(rtt<0||rtt>5000)return;const off=p.lt+rtt/2-n;
  (G.offS=G.offS||[]).push({rtt,off});G.offS.sort((x,y)=>x.rtt-y.rtt);G.offS.length=Math.min(G.offS.length,8);G.off=G.offS[0].off;G.rtt=G.offS[0].rtt;G.offOK=true;}
 function onAck(a){if(G.acks&&a.round===G.round)G.acks.add(a.id);}
-function adoptEnd(c){if(c.endL==null)return;G.endL=(G.offOK||isLeader())?c.endL:leaderNow()+c.rem*1000;}
+// endL is always kept in the leader's clock; until ping/pong has measured the offset, take a rough one from the message itself (ignores one-way latency)
+function adoptEnd(c){if(c.endL==null)return;if(!G.offOK&&!isLeader())G.off=c.endL-c.rem*1000-nowMs();G.endL=c.endL;}
 function alive(team){let n=0;for(const p of G.order){if(p.team!==team)continue;if(p.id===myId){if(!G.me.dead)n++;continue;}const r=G.players[p.id];if(G.present.has(p.id)&&!r.dead)n++;}return n;}
 function onCtl(c){if(!G||G.ended)return;if(c.score)G.score=c.score;
  if(c.ev==='round'){send('ack',{id:myId,round:c.round});if(c.round!==G.round){G.round=c.round;G.phase='freeze';adoptEnd(c);respawn();msg(`ROUND ${c.round}`,1500);}}

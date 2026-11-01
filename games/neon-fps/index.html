@@ -34,7 +34,7 @@ input{background:transparent;border:1px solid #0ff;color:#fff;font:16px "Courier
 #heart{overflow:visible;background:none;filter:drop-shadow(0 0 3px #3af) drop-shadow(0 0 9px #18f)}#heart path{fill:none;stroke:#3af;stroke-width:2.4}
 #heart.red path{stroke:#ff2244}#heart.red{filter:drop-shadow(0 0 3px #f24) drop-shadow(0 0 11px #f02)}
 #hpBar{transition:box-shadow .2s}#hpBar:not(.red){border-color:#bdf;box-shadow:0 0 6px #3af,0 0 16px #18f,inset 0 0 6px #3af}#hpBar.red{border-color:#fcd;box-shadow:0 0 6px #f24,0 0 16px #f02,inset 0 0 6px #f24;animation:hbg .8s infinite}@keyframes hbg{0%,100%{box-shadow:0 0 6px #f24,0 0 14px #f02,inset 0 0 6px #f24}15%{box-shadow:0 0 10px #f46,0 0 26px #f02,inset 0 0 8px #f24}}
-.ctlsec{border-top:1px solid rgba(0,255,255,.25);margin-top:8px;padding-top:4px}.ctlh{font-size:12px;color:#0ff;letter-spacing:3px;text-shadow:0 0 6px #0ff}
+.panel{max-height:96vh;overflow-y:auto;box-sizing:border-box}.sens{margin:6px auto 2px}.ctlsec{border-top:1px solid rgba(0,255,255,.25);margin-top:8px;padding-top:4px}.ctlh{font-size:12px;color:#0ff;letter-spacing:3px;text-shadow:0 0 6px #0ff}
 #hpHealth{filter:drop-shadow(0 0 4px #f6c)}#hpShield{filter:drop-shadow(0 0 5px #3af)}#heart.red{animation:hb .8s infinite}
 @keyframes hb{0%,100%{transform:scale(1)}15%{transform:scale(1.18)}30%{transform:scale(1)}45%{transform:scale(1.1)}}
 #healRing{position:absolute;inset:0;display:none;transform:rotate(-90deg)}#healRing circle{fill:none;stroke-width:2.5}#healRing .b{stroke:rgba(60,170,255,.2)}#healRing .p{stroke:#6cf;stroke-dasharray:113;filter:drop-shadow(0 0 4px #3af)}

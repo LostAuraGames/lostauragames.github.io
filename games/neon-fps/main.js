@@ -136,15 +136,21 @@ const fx=[];function tracer(o,e,color){const L=segs([...o,...e],color);L.materia
 function spark(p,color){const a=[];for(let i=0;i<10;i++){const d=[Math.random()-0.5,Math.random()-0.5,Math.random()-0.5];const l=0.15+Math.random()*0.25;a.push(...p,p[0]+d[0]*l,p[1]+d[1]*l,p[2]+d[2]*l);}
  const L=segs(a,color);L.material=new THREE.LineBasicMaterial({color,transparent:true});scene.add(L);fx.push({o:L,life:0.25,max:0.25});}
 function tickFx(dt){for(let i=fx.length-1;i>=0;i--){const f=fx[i];f.life-=dt;f.o.material.opacity=Math.max(0,f.life/f.max);if(f.life<=0){scene.remove(f.o);f.o.geometry.dispose();f.o.material.dispose();fx.splice(i,1);}}}
+// ---------- mouse sensitivity (1-100 %, multiplier = value*0.1) ----------
+const SENS={val:10,mult:1};
+function setSens(v){v=Math.max(1,Math.min(100,Math.round(+v)||10));SENS.val=v;SENS.mult=v*0.1;localStorage.setItem('nfps.sens',v);
+ document.querySelectorAll('.sens input').forEach(i=>{if(+i.value!==v)i.value=v;});document.querySelectorAll('.sens .sensOut').forEach(o=>o.textContent=`${v}% – ${SENS.mult.toFixed(1)}x mouse sensitivity`);}
+document.querySelectorAll('.sens input').forEach(i=>i.addEventListener('input',()=>setSens(i.value)));
+setSens(localStorage.getItem('nfps.sens')||10);
 // ---------- input ----------
 const keys={};let mouseDown=false,locked=false;const TEST=window.__NFPS_TEST||false;
 addEventListener('keydown',e=>{keys[e.code]=true;if(!G)return;if(e.code==='KeyC'&&!e.repeat)startRoll();if(e.code==='Space'&&G.me.roll)cancelRoll();if(e.code==='KeyR')startReload();if(e.code==='Digit1')swap('rifle');if(e.code==='Digit2')swap('pistol');if(e.code==='KeyQ')swap(G.me.w==='rifle'?'pistol':'rifle');});
 addEventListener('keydown',e=>{if(e.code==='KeyP'&&G&&G.practice)leavePractice();});
 addEventListener('keyup',e=>{keys[e.code]=false;if(e.code==='Space'&&G)G.me.noJumpUntilRelease=false;});
-addEventListener('mousedown',e=>{if(!G)return;if(!locked&&!TEST){renderer.domElement.requestPointerLock();return;}if(e.button===0){mouseDown=true;G.me.trig=true;}});
+addEventListener('mousedown',e=>{if(!G||(e.target.closest&&e.target.closest('.panel')))return;if(!locked&&!TEST){renderer.domElement.requestPointerLock();return;}if(e.button===0){mouseDown=true;G.me.trig=true;}});
 addEventListener('mouseup',e=>{if(e.button===0)mouseDown=false;});
-document.addEventListener('pointerlockchange',()=>{locked=document.pointerLockElement===renderer.domElement;$('hint').style.display=locked?'none':'block';$('leave').style.display=(!locked&&G&&G.practice)?'block':'none';});
-addEventListener('mousemove',e=>{if(!G||!locked)return;G.me.yaw-=e.movementX*0.0022;G.me.pitch=Math.max(-1.5,Math.min(1.5,G.me.pitch-e.movementY*0.0022));});
+document.addEventListener('pointerlockchange',()=>{locked=document.pointerLockElement===renderer.domElement;$('hint').style.display=locked?'none':'block';$('leave').style.display=(G&&G.practice)?'inline-block':'none';});
+addEventListener('mousemove',e=>{if(!G||(!locked&&!TEST))return;const k=0.0022*SENS.mult;G.me.yaw-=e.movementX*k;G.me.pitch=Math.max(-1.5,Math.min(1.5,G.me.pitch-e.movementY*k));});
 // ---------- match state ----------
 let G=null;
 function spawnPos(team,idx){const s=team==='a'?-1:1;const solo=!G||G.order.filter(p=>p.team===team).length<2;return{x:s*30,z:solo?0:(idx?3.5:-3.5),yaw:team==='a'?-Math.PI/2:Math.PI/2};}
@@ -266,7 +272,7 @@ function hud(){const m=G.me;const tc=`t${G.team}`;$('hp').className='glow '+tc;$
  $('hp').innerHTML=m.dead?'✕ DOWN':`✚ ${m.hp}`;$('ammo').innerHTML=(m.reloadT>0?'RELOADING ':'')+`${m.ammo[m.w]}<span style="font-size:18px">/${WEAP[m.w].mag} ${m.w.toUpperCase()}</span>`;
  const tm=G.phase==='live'?Math.ceil(G.phaseT):G.phase==='freeze'?Math.ceil(G.phaseT):'';
  if(G.practice){$('score').innerHTML=`<span class="tb">PRACTICE</span> · bot kills ${G.kills} · bot HP ${G.players.bot.hp}<div style="font-size:12px;color:#699">offline · no RP · Esc then LEAVE (or P) to exit</div>`;}else $('score').innerHTML=`<span class="ta">CYAN ${G.score.a}</span> &nbsp;<span style="color:#ff4">${G.phase==='freeze'?'⟳ '+tm:tm}</span>&nbsp; <span class="tb">${G.score.b} MAGENTA</span><div style="font-size:12px;color:#699">ROUND ${G.round||'-'} · first to ${WIN_ROUNDS} · you are ${G.team==='a'?'CYAN':'MAGENTA'}</div>`;
- drawCross();{const rt=rollT(G.me.roll);$('black').style.opacity=rt==null?0:rollBlack(rt).toFixed(3);}document.body.style.boxShadow=dmgFlash>0?`inset 0 0 ${80*dmgFlash}px rgba(255,0,60,${dmgFlash})`:'none';}
+ drawCross();{const pv=(!locked&&!TEST&&!G.ended)?'flex':'none';if($('pause').style.display!==pv)$('pause').style.display=pv;}{const rt=rollT(G.me.roll);$('black').style.opacity=rt==null?0:rollBlack(rt).toFixed(3);}document.body.style.boxShadow=dmgFlash>0?`inset 0 0 ${80*dmgFlash}px rgba(255,0,60,${dmgFlash})`:'none';}
 // ---------- simulation ----------
 function stepMe(dt){const m=G.me;if(keys.ArrowLeft)m.yaw+=dt*2;if(keys.ArrowRight)m.yaw-=dt*2;
  m.reloadT>0&&(m.reloadT-=dt)<=0&&(m.reloadT=0,m.ammo[m.w]=WEAP[m.w].mag);
@@ -307,7 +313,7 @@ function loop(){requestAnimationFrame(loop);const now=performance.now();const rd
  else{const t=now/1000;camera.position.set(Math.cos(t*0.08)*26,9,Math.sin(t*0.08)*18);camera.lookAt(0,1,0);}
  tickFx(dt);render();}
 // ---------- match end + reporting ----------
-async function endMatch(w){if(!G||G.ended)return;G.ended=true;$('black').style.opacity=0;const win=w===G.team;document.exitPointerLock&&document.exitPointerLock();
+async function endMatch(w){if(!G||G.ended)return;G.ended=true;$('pause').style.display='none';$('black').style.opacity=0;const win=w===G.team;document.exitPointerLock&&document.exitPointerLock();
  $('hud').style.display='none';$('result').style.display='flex';$('rtitle').innerHTML=`<span class="t${w}">${win?'VICTORY':'DEFEAT'}</span>`;$('rtxt').innerHTML=`${G.score.a} – ${G.score.b}<br>Reporting result…`;
  const before=me.rp;let st=null;
  for(let i=0;i<40;i++){try{st=await rpc('nfps_report',{p_id:myId,p_secret:mySecret,p_match:G.mid,p_winner:w});if(st.status!=='pending')break;}catch(e){if(!/too early/.test(e.message)){console.warn(e.message);}}await new Promise(r=>setTimeout(r,1500));}
@@ -327,7 +333,7 @@ function dmgNum(pt,dmg,head){const v=new THREE.Vector3(...pt).project(camera);if
  d.textContent=(head?'◎ ':'')+dmg;d.className='glow';d.style.cssText=`position:absolute;left:${(v.x+1)/2*innerWidth}px;top:${(1-v.y)/2*innerHeight}px;color:${head?'#ff4':'#fff'};font:bold ${head?26:20}px Courier New;transition:all .7s ease-out;pointer-events:none`;
  $('hud').appendChild(d);requestAnimationFrame(()=>{d.style.transform='translateY(-40px)';d.style.opacity=0;});setTimeout(()=>d.remove(),750);}
 function leavePractice(){if(!G||!G.practice)return;$('black').style.opacity=0;for(const id in G.players)G.players[id].fig.dispose();G=null;document.exitPointerLock&&document.exitPointerLock();for(const k in vm)vm[k].visible=false;
- $('hud').style.display='none';$('leave').style.display='none';$('menu').style.display='flex';refreshMe();}
+ $('hud').style.display='none';$('pause').style.display='none';$('menu').style.display='flex';refreshMe();}
 $('mute').onclick=()=>setMute(!SND.muted);setMute(SND.muted);
 $('practice').onclick=()=>{if(!G)startPractice();};$('leave').onclick=leavePractice;
 // ---------- queue ----------
@@ -341,5 +347,5 @@ async function poll(){try{const r=await rpc('nfps_queue_poll',{p_id:myId,p_secre
 addEventListener('beforeunload',()=>{if(qTimer)navigator.sendBeacon&&0;});
 // ---------- boot ----------
 fetch('assets/art.json').then(r=>r.json()).then(a=>{ART=a;buildVM();loop();register().catch(e=>{$('me').textContent='offline: '+e.message;});});
-window.NFPS={get G(){return G;},SND,ROLL,roll:()=>{const m=G.me,t=rollT(m.roll);return{rolling:!!m.roll,t,off:m.roll?rollOff(t):0,camX:camera.rotation.x,pitch:m.pitch,black:+getComputedStyle($('black')).opacity,eyeY:camera.position.y-m.y,x:m.x,z:m.z,y:m.y,vy:m.vy};},cross:()=>{const o=crossOff();return{off:o,px:crossPx(o),dur:XH.dur,t:performance.now()/1000-XH.t0};},camera,swap:w=>swap(w),fire:()=>G&&(G.me.trig=true),keys,rayMap,solids,WEAP};
+window.NFPS={get G(){return G;},SENS,setSens,SND,ROLL,roll:()=>{const m=G.me,t=rollT(m.roll);return{rolling:!!m.roll,t,off:m.roll?rollOff(t):0,camX:camera.rotation.x,pitch:m.pitch,black:+getComputedStyle($('black')).opacity,eyeY:camera.position.y-m.y,x:m.x,z:m.z,y:m.y,vy:m.vy};},cross:()=>{const o=crossOff();return{off:o,px:crossPx(o),dur:XH.dur,t:performance.now()/1000-XH.t0};},camera,swap:w=>swap(w),fire:()=>G&&(G.me.trig=true),keys,rayMap,solids,WEAP};
 })();

@@ -4,7 +4,7 @@
 .nftb{padding:6px 12px;border:2px solid #000;background:#3cff5a;font-weight:bold;cursor:pointer}.nftb[disabled]{opacity:.5}</style></head><body><main class="mk">
 <h1>MeowTeor Pro Items: trading</h1>
 <p>Listings use Immutable's Orderbook. Prices are in IMX. Every sale pays a 1% creator royalty plus Immutable's protocol fee. Whoever holds the NFT gets the skin in the game (synced every few minutes).</p>
-<p>Wallet: <label><input type="radio" name="mkw" value="metamask" checked> MetaMask</label> <label><input type="radio" name="mkw" value="passport" id="mkwpp"> Immutable Passport (gas sponsored)</label></p>
+<p>Wallet: <label><input type="radio" name="mkw" value="metamask" checked> MetaMask</label> <label><input type="radio" name="mkw" value="passport" id="mkwpp"> Immutable Passport (gas sponsored)</label> <button class="nftb" id="mkconn">Connect wallet</button> <button class="nftb" id="mkdisc" style="display:none;background:#ccc">Disconnect</button></p><p id="mkwst">Not connected.</p>
 <div id="mkstate">Loading listings...</div><div id="mklist"></div>
 <h2>List your item</h2><p><label>Token # <input id="mktok" type="number" min="1" style="width:5em"></label> <label>Price (IMX) <input id="mkprice" type="number" min="0" step="0.01" style="width:7em"></label>
 <button class="nftb" id="mksell">Create listing</button></p><p id="mklog"></p><p style="font-size:.75em;color:#8a8470"><a href="https://db-ip.com">IP Geolocation by DB-IP</a> (IP data by DB-IP, CC BY 4.0)</p></main>
@@ -23,13 +23,23 @@ else{
  const ob=new sdk.orderbook.Orderbook({baseConfig:{environment:env,publishableKey:C.publishableKey}});
  const wsel=()=>(document.querySelector('input[name=mkw]:checked')||{}).value||'metamask';
  if(!I.passportConfigured()){const r=document.getElementById('mkwpp');r.disabled=true;r.parentNode.title='Passport not configured';}
- let cache={};
- async function provider(){const kind=wsel();const {BrowserProvider}=await import('https://cdn.jsdelivr.net/npm/ethers@6/+esm');let p;
-  if(kind==='passport'){if(cache.pp)return cache.pp;const pp=await I.getPassport();const eip=await pp.connectEvm();await eip.request({method:'eth_requestAccounts'});p=new BrowserProvider(eip);}
-  else{if(!window.ethereum)throw new Error('MetaMask not found');await I.switchChain();p=new BrowserProvider(window.ethereum);}
-  const s=await p.getSigner();
-  let v;try{v=await I.screen(await s.getAddress());}catch(e){throw new Error('Could not verify this wallet right now. Try again later.');}
-  if(v&&v.blocked)throw new Error(v.message);if(kind==='passport')cache.pp=[p,s];return [p,s];}
+ let cur=null;const NM={metamask:'MetaMask',passport:'Immutable Passport'};const wst=document.getElementById('mkwst'),cb=document.getElementById('mkconn'),db=document.getElementById('mkdisc');
+ const short=a=>a.slice(0,6)+'…'+a.slice(-4);
+ function show(){if(cur){wst.textContent='Connected: '+short(cur.addr)+' ('+NM[cur.kind]+')';cb.style.display='none';db.style.display='';db.textContent=cur.kind==='passport'?'Log out of Passport':'Disconnect';}else{wst.textContent='Not connected.';cb.style.display='';db.style.display='none';}}
+ function nice(e){const m=(e&&e.message)||String(e);if(/popup/i.test(m)&&/block|open|window/i.test(m))return 'Popup blocked. Allow popups for lostauragames.com and try again.';if(/reject|denied|cancel|closed/i.test(m))return 'Connection cancelled.';return m;}
+ async function finish(kind,eip){const {BrowserProvider}=await import('https://cdn.jsdelivr.net/npm/ethers@6/+esm');const p=new BrowserProvider(eip);const s=await p.getSigner();const addr=await s.getAddress();
+  let v;try{v=await I.screen(addr);}catch(e){throw new Error('Could not verify this wallet right now. Try again later.');}
+  if(v&&v.blocked)throw new Error(v.message);cur={kind,p,s,addr};show();return [p,s];}
+ async function connect(){const kind=wsel();wst.textContent=kind==='passport'?'Sign in with Immutable Passport in the window that opened…':'Approve the connection in MetaMask…';
+  try{if(kind==='passport'){const pp=await I.getPassport();const eip=await pp.connectEvm();await eip.request({method:'eth_requestAccounts'});return await finish(kind,eip);}
+   if(!window.ethereum)throw new Error('MetaMask not found. Install MetaMask or choose Immutable Passport.');await window.ethereum.request({method:'eth_requestAccounts'});await I.switchChain();return await finish(kind,window.ethereum);}
+  catch(e){cur=null;show();const m=nice(e);wst.textContent='Not connected: '+m;throw new Error(m);}}
+ async function provider(){if(cur&&cur.kind===wsel())return [cur.p,cur.s];return connect();}
+ cb.onclick=()=>connect().catch(()=>{});
+ db.onclick=async()=>{const k=cur&&cur.kind;cur=null;show();if(k==='passport'){try{(await I.getPassport()).logout();}catch(e){}}};
+ document.querySelectorAll('input[name=mkw]').forEach(r=>r.onchange=()=>{if(cur&&cur.kind!==wsel()){cur=null;show();}});
+ // Restore an existing Passport session silently (no popup).
+ if(I.passportConfigured())(async()=>{try{const pp=await I.getPassport();const u=await pp.getUserInfo();if(!u)return;const eip=await pp.connectEvm({announceProvider:false});const acc=await eip.request({method:'eth_accounts'});if(!acc||!acc[0])return;document.getElementById('mkwpp').checked=true;await finish('passport',eip);}catch(e){}})();
  async function refresh(){const r=await ob.listListings({sellItemContractAddress:C.contract,status:sdk.orderbook.OrderStatusName.ACTIVE,pageSize:50});const box=document.getElementById('mklist');box.innerHTML='';st.textContent=r.result.length?'':'No active listings.';
   for(const o of r.result){const id=o.sell[0].tokenId,price=Number(BigInt(o.buy[0].amount))/1e18;const d=document.createElement('div');d.className='mkr';d.innerHTML=`<img alt="" src="images/${id}.png"><div><b>#${id}</b><br>${price} IMX</div>`;
    const b=document.createElement('button');b.className='nftb';b.textContent='Buy';b.onclick=async()=>{try{const [p,s]=await provider();const me=await s.getAddress();

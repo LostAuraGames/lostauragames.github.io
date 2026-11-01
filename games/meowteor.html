@@ -4,14 +4,14 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>MEOWTEOR - A Space Cat Tap-Flyer | Lost Aura Games</title>
-<meta name="description" content="MEOWTEOR is a free retro pixel-art space cat tap-flyer. Tap to hop through endless gaps across 6 zones, unlock 51 cosmetics and 17 trails, and chase the top of the global leaderboard. Play in your browser.">
+<meta name="description" content="MEOWTEOR is a free-to-play web3 space cat tap-flyer. Tap through endless gaps across 6 zones, unlock 51 cosmetics and 17 trails, climb the global leaderboard, and claim optional NFT skins on Immutable zkEVM. Play in your browser.">
 <link rel="canonical" href="https://lostauragames.com/games/meowteor.html">
 <meta name="theme-color" content="#020403">
 <meta name="color-scheme" content="dark">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Lost Aura Games">
 <meta property="og:title" content="MEOWTEOR - A Space Cat Tap-Flyer | Lost Aura Games">
-<meta property="og:description" content="MEOWTEOR is a free retro pixel-art space cat tap-flyer. Tap to hop through endless gaps across 6 zones, unlock 51 cosmetics and 17 trails, and chase the top of the global leaderboard. Play in your browser.">
+<meta property="og:description" content="MEOWTEOR is a free-to-play web3 space cat tap-flyer. Tap through endless gaps across 6 zones, unlock 51 cosmetics and 17 trails, climb the global leaderboard, and claim optional NFT skins on Immutable zkEVM. Play in your browser.">
 <meta property="og:url" content="https://lostauragames.com/games/meowteor.html">
 <meta property="og:image" content="https://lostauragames.com/assets/img/games/meowteor/og.png">
 <meta property="og:image:width" content="1200">
@@ -19,7 +19,7 @@
 <meta property="og:image:alt" content="MEOWTEOR key art: a pixel space cat in a bubble helmet hopping through a gap between asteroid pillars, trailing stardust">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="MEOWTEOR - A Space Cat Tap-Flyer | Lost Aura Games">
-<meta name="twitter:description" content="MEOWTEOR is a free retro pixel-art space cat tap-flyer. Tap to hop through endless gaps across 6 zones, unlock 51 cosmetics and 17 trails, and chase the top of the global leaderboard. Play in your browser.">
+<meta name="twitter:description" content="MEOWTEOR is a free-to-play web3 space cat tap-flyer. Tap through endless gaps across 6 zones, unlock 51 cosmetics and 17 trails, climb the global leaderboard, and claim optional NFT skins on Immutable zkEVM. Play in your browser.">
 <meta name="twitter:image" content="https://lostauragames.com/assets/img/games/meowteor/og.png">
 <link rel="icon" href="../favicon.ico" sizes="any">
 <link rel="icon" type="image/png" sizes="32x32" href="../assets/img/favicon-32.png">
@@ -27,6 +27,7 @@
 <link rel="apple-touch-icon" href="../assets/img/apple-touch-icon.png">
 <link rel="manifest" href="../site.webmanifest">
 <link rel="stylesheet" href="../assets/css/site.css">
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "VideoGame", "name": "MEOWTEOR", "url": "https://lostauragames.com/games/meowteor.html", "description": "MEOWTEOR is a free-to-play web3 space cat tap-flyer. Tap through endless gaps across 6 zones, unlock 51 cosmetics and 17 trails, climb the global leaderboard, and claim optional NFT skins on Immutable zkEVM. Play in your browser.", "image": "https://lostauragames.com/assets/img/games/meowteor/og.png", "genre": ["Arcade", "Casual", "Web3"], "keywords": "web3, NFT, Immutable zkEVM, free-to-play, browser game, pixel art, arcade, tap-flyer, ERC-1155", "gamePlatform": ["Web browser", "Desktop", "Mobile"], "applicationCategory": "Game", "operatingSystem": "Any (web browser)", "playMode": "SinglePlayer", "isAccessibleForFree": true, "offers": {"@type": "Offer", "price": "0", "priceCurrency": "USD"}, "author": {"@type": "Organization", "name": "Lost Aura Games", "url": "https://lostauragames.com/"}, "publisher": {"@type": "Organization", "name": "Lost Aura Games", "url": "https://lostauragames.com/"}}</script>
 </head>
 <body data-root="../">
 <a class="skip" href="#main">Skip to content</a>
@@ -41,7 +42,7 @@
  <section aria-labelledby="g-h" class="featured panel blue" style="margin-top:34px" data-keyart-trigger>
   <div class="feat-img ka-frame"><canvas class="keyart" data-art="meowteor" width="320" height="180" role="img" aria-label="MEOWTEOR key art: a pixel space cat in a bubble helmet hops through a gap between asteroid pillars, trailing sparkly stardust past stars and meteors"></canvas><span class="ka-hint" aria-hidden="true">Hover or tap to fly</span><noscript><img src="../assets/img/games/meowteor/cover.png" alt="MEOWTEOR key art" width="640" height="360"></noscript></div>
   <div class="feat-body">
-   <p class="kicker">Arcade &middot; Tap-flyer &middot; Free</p>
+   <p class="kicker">Arcade &middot; Tap-flyer &middot; Free-to-play &middot; Web3</p>
    <h1 id="g-h" style="font-size:clamp(28px,4.5vw,42px)">MEOWTEOR</h1>
    <p class="sub">A Space Cat Tap-Flyer</p>
    <p id="hw-live" hidden style="margin:10px 0;padding:10px 12px;border:3px solid #000;box-shadow:0 0 0 3px #ff8a1a;background:#1a0d06;color:#ffd9a8;font-weight:bold">&#127875; Halloween Event is LIVE! Spooky webs and jack-o'-lanterns fill the endless mode, and black widow spiders sometimes drop from the ceiling. Tap them to slay them: slay 25 to earn the Black Widow skin (one per player, mintable as an NFT). Black widows are rare and only appear once in a while, so keep playing and keep your eyes peeled! <span id="hw-ends" data-i18n-skip></span></p>
@@ -49,6 +50,7 @@
     if(/[?&]hw=preview\b/.test(location.search))return on({ends_at:'2026-11-14T05:00:00Z'});
     fetch('https://fugfgorircipfntzopon.supabase.co/rest/v1/rpc/get_halloween_status',{method:'POST',headers:{apikey:'sb_publishable_9yZM4c8UaklP2z4Vj8NrpQ_4lRRKC0O','Content-Type':'application/json'},body:'{}'}).then(function(r){return r.json();}).then(function(v){if(v&&v.live)on(v);}).catch(function(){});})();</script>
    <p>One cat. One button. Infinite space. Tap to make quick, sharp hops through the gaps in an endless asteroid belt. Every gap is +1, every run gets faster and tighter, and there is no finish line. Just you, your helmet and the next gap. How far can your cat fly?</p>
+   <p>MEOWTEOR is a free-to-play web3 game with optional NFT skins. Top-100 leaderboard event Pro Items and event skins like the Halloween Black Widow are ERC-1155 NFTs ("MEOWTEOR Pro Items") on Immutable zkEVM. Link a wallet (MetaMask or Immutable Passport) to claim them for free, then trade them on the NFT Market or other Immutable marketplaces. No wallet is needed to play, and optional coin bundles are also available.</p>
    <div class="actions"><a class="btn gold big" href="meowteor/">&#9654; Play now</a><a class="btn" href="#lb-h">Leaderboard</a><a class="btn" href="../nft/meowteor/market.html">&#9670; NFT Market</a></div>
    <p class="muted" style="font-size:14px;margin-top:12px">Runs in your browser on desktop and phone. Progress saves on this device automatically.</p>
   </div>

@@ -9,7 +9,7 @@ HERE=os.path.dirname(os.path.abspath(__file__));ROOT=os.path.dirname(HERE)
 C=json.load(open(os.path.join(HERE,'legal-config.json')))
 PAGES=[
  ('terms','Terms of Service','Terms of Service for Lost Aura Games: accounts, the game license, virtual currency with no cash value, purchases, termination and disputes.'),
- ('privacy','Privacy Policy','Privacy Policy for Lost Aura Games: what is stored in your browser, accounts and Coins on Supabase, payments through our merchant of record, your rights and children.'),
+ ('privacy','Privacy Policy','Privacy Policy for Lost Aura Games: what is stored in your browser, accounts and Coins on Supabase, optional NFT wallets and sanctions screening, payments through our merchant of record, your rights and children.'),
  ('refunds','Refund Policy','Refund Policy for Lost Aura Games coin bundles: immediate delivery, the 14-day withdrawal waiver, when refunds are given and how to ask.'),
  ('contact','Contact & Imprint','Contact Lost Aura Games and operator (imprint) information.'),
 ]

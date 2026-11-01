@@ -5,8 +5,8 @@ const sb=supabase.createClient(SB_URL,SB_KEY,{auth:{persistSession:false},realti
 const $=id=>document.getElementById(id);
 const COL={a:0x22f4ff,b:0xff2bd6},CSS={a:'#3ff',b:'#f4e'};
 const WIN_ROUNDS=3,ROUND_TIME=90,NET_HZ=15,INTERP=0.13;
-const WEAP={rifle:{dmg:20,head:2,rate:0.1,mag:30,reload:2.0,auto:true,spread:0.012,range:120},
-            pistol:{dmg:30,head:2,rate:0.24,mag:12,reload:1.3,auto:false,spread:0.006,range:80}};
+const WEAP={rifle:{dmg:20,head:2,rate:0.1,mag:30,reload:2.0,auto:true,spread:0.012,range:120,recoil:0.025,recoilYaw:0},
+            pistol:{dmg:30,head:2,rate:0.24,mag:12,reload:1.3,auto:false,spread:0.006,range:80,recoil:0.025,recoilYaw:0}};
 // ---------- identity ----------
 function uuid(){return crypto.randomUUID?crypto.randomUUID():'10000000-1000-4000-8000-100000000000'.replace(/[018]/g,c=>(c^crypto.getRandomValues(new Uint8Array(1))[0]&15>>c/4).toString(16));}
 const SK=(new URLSearchParams(location.search).get('slot')||'');
@@ -209,7 +209,9 @@ function fire(){const m=G.me,W_=WEAP[m.w];const now=performance.now()/1000;if(m.
  const e=[o[0]+d[0]*t,o[1]+d[1]*t,o[2]+d[2]*t];
  const mz=new THREE.Vector3(0.18,-0.16,-0.7).applyMatrix4(camera.matrixWorld);tracer([mz.x,mz.y,mz.z],e,COL[G.team]);spark(e,hit?0xffffff:COL[G.team]);
  const fl=vm[m.w].userData.flash;fl.visible=true;setTimeout(()=>fl.visible=false,45);
- if(G.practice){if(hit)practiceHit(G.players[hit],W_.dmg*(head?W_.head:1),head,e);}else send('shot',{id:myId,o,e,w:m.w,hit,head});if(m.ammo[m.w]===0)startReload();}
+ if(G.practice){if(hit)practiceHit(G.players[hit],W_.dmg*(head?W_.head:1),head,e);}else send('shot',{id:myId,o,e,w:m.w,hit,head});
+ // permanent recoil: same rise the old camera kick peaked at, applied to the real aim, never recovered
+ m.pitch=Math.max(-1.5,Math.min(1.5,m.pitch+W_.recoil));m.yaw+=W_.recoilYaw;if(m.ammo[m.w]===0)startReload();}
 // ---------- HUD ----------
 let msgTO;function msg(h,ms){$('msg').innerHTML=h;clearTimeout(msgTO);msgTO=setTimeout(()=>$('msg').innerHTML='',ms);}
 function feed(h){const d=document.createElement('div');d.innerHTML=h;$('feed').prepend(d);setTimeout(()=>d.remove(),6000);}
@@ -234,7 +236,7 @@ function stepMe(dt){const m=G.me;if(keys.ArrowLeft)m.yaw+=dt*2;if(keys.ArrowRigh
  m.y=ny;const mv=Math.hypot(vx,vz)*dt;m.moveD+=mv;m.bob+=mv*1.6;
  if(m.trig||(mouseDown&&WEAP[m.w].auto)){fire();}m.trig=false;
  m.aimT=Math.max(0,m.aimT-dt);m.kick=Math.max(0,m.kick-dt*9);
- camera.position.set(m.x,m.y+(m.dead?0.35:EYE)+(m.ground?Math.sin(m.bob*2.2)*0.03:0),m.z);camera.rotation.set(m.pitch+m.kick*0.025,m.yaw,m.dead?0.5:0);
+ camera.position.set(m.x,m.y+(m.dead?0.35:EYE)+(m.ground?Math.sin(m.bob*2.2)*0.03:0),m.z);camera.rotation.set(m.pitch,m.yaw,m.dead?0.5:0);
  for(const k in vm){const g_=vm[k];const rel=m.reloadT>0?Math.sin(Math.min(1,1-m.reloadT/WEAP[k].reload)*Math.PI):0;
   g_.position.set(0.17+Math.sin(m.bob)*0.012,-0.2-rel*0.18+Math.abs(Math.cos(m.bob))*0.01,(k==='rifle'?-0.38:-0.42)+m.kick*0.05);g_.rotation.set(m.kick*0.08-rel*0.6,0.04,rel*0.3);g_.visible=k===m.w&&!m.dead;}
  const now=performance.now();if(now-G.lastSend>1000/NET_HZ){G.lastSend=now;

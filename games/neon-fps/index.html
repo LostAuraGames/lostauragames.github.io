@@ -35,12 +35,12 @@ input{background:transparent;border:1px solid #0ff;color:#fff;font:16px "Courier
 <button id="play">PLAY</button><button id="practice" style="border-color:#0ff;box-shadow:0 0 10px #0ff,inset 0 0 8px #0ff;text-shadow:0 0 8px #0ff">PRACTICE</button>
 <div style="font-size:12px;color:#699">Win +10 RP · Loss −7 RP · First team to 3 rounds wins</div>
 <div id="lb"></div>
-<div style="font-size:11px;color:#577;margin-top:10px">WASD move · Shift sprint · Space jump · Click shoot · R reload · 1/2/Q weapon · Esc release mouse</div>
+<div style="font-size:11px;color:#577;margin-top:10px">WASD move · Shift sprint · Space jump · C roll · Click shoot · R reload · 1/2/Q weapon · Esc release mouse</div>
 </div></div>
 <div class="ov" id="queue" style="display:none"><div class="panel"><h1 style="font-size:32px">QUEUE</h1>
 <div id="qtxt" class="glow">Searching…</div><button id="cancel">CANCEL</button></div></div>
 <div class="ov" id="result" style="display:none"><div class="panel"><h1 id="rtitle" style="font-size:40px"></h1><div id="rtxt" class="glow"></div><button id="back">MENU</button></div></div>
-<div id="hud"><div id="cross"></div><div id="hitm"></div><div id="hp" class="glow ta"></div><div id="ammo" class="glow ta"></div>
+<div id="black" style="position:fixed;inset:0;background:#000;opacity:0;pointer-events:none;z-index:5"></div><div id="hud"><div id="cross"></div><div id="hitm"></div><div id="hp" class="glow ta"></div><div id="ammo" class="glow ta"></div>
 <div id="score" class="glow"></div><div id="msg" class="glow"></div><div id="feed"></div><button id="leave" style="display:none;position:absolute;top:45%;left:50%;transform:translateX(-50%);pointer-events:auto">LEAVE PRACTICE</button><div id="hint">click to lock mouse</div></div>
 <script src="../cave-runner/assets/three.min.js"></script>
 <script src="assets/supabase.js"></script>

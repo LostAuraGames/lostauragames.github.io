@@ -1,0 +1,48 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="robots" content="noindex,nofollow"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>VOLTLINE — 2v2 neon FPS</title>
+<style>
+html,body{margin:0;height:100%;background:#000;color:#bff;font:15px/1.4 "Courier New",monospace;overflow:hidden}
+canvas{display:block}
+.ov{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;pointer-events:none}
+.panel{pointer-events:auto;background:rgba(0,0,0,.82);border:2px solid #0ff;box-shadow:0 0 12px #0ff,inset 0 0 12px #0ff;padding:22px 30px;border-radius:6px;min-width:340px;text-align:center}
+h1{margin:0 0 4px;font-size:54px;letter-spacing:8px;color:#fff;text-shadow:0 0 6px #0ff,0 0 18px #0ff,0 0 36px #0af}
+.sub{color:#f6f;text-shadow:0 0 8px #f0f;margin-bottom:14px}
+button{background:transparent;color:#fff;border:2px solid #f2d;box-shadow:0 0 10px #f2d,inset 0 0 8px #f2d;text-shadow:0 0 8px #f2d;font:bold 20px "Courier New";padding:8px 34px;margin:8px;cursor:pointer;border-radius:4px;letter-spacing:3px}
+button:hover{color:#fdf}
+input{background:transparent;border:1px solid #0ff;color:#fff;font:16px "Courier New";padding:5px;text-align:center;box-shadow:0 0 6px #0ff}
+.glow{text-shadow:0 0 6px currentColor}
+#lb{margin-top:12px;text-align:left;font-size:13px;max-height:220px;overflow:auto}
+#lb div{display:flex;justify-content:space-between;gap:14px;color:#8ff}
+#lb div.me{color:#fff}
+#hud{position:fixed;inset:0;pointer-events:none;display:none}
+#cross{position:absolute;left:50%;top:50%;width:24px;height:24px;margin:-12px 0 0 -12px}
+#cross:before,#cross:after{content:"";position:absolute;background:transparent;border:1px solid #0ff;box-shadow:0 0 6px #0ff}
+#cross:before{left:11px;top:0;width:0;height:24px}#cross:after{top:11px;left:0;height:0;width:24px}
+#hp,#ammo{position:absolute;bottom:22px;font-size:34px;font-weight:bold}
+#hp{left:30px}#ammo{right:30px;text-align:right}
+#score{position:absolute;top:14px;left:50%;transform:translateX(-50%);font-size:26px;font-weight:bold;white-space:nowrap}
+#msg{position:absolute;top:34%;width:100%;text-align:center;font-size:40px;font-weight:bold}
+#feed{position:absolute;top:14px;right:18px;text-align:right;font-size:14px}
+#hint{position:absolute;bottom:6px;left:50%;transform:translateX(-50%);font-size:12px;color:#699}
+#hitm{position:absolute;left:50%;top:50%;width:30px;height:30px;margin:-15px;border:1px solid #fff;transform:rotate(45deg);opacity:0;box-shadow:0 0 8px #fff}
+.ta{color:#3ff}.tb{color:#f4e}
+</style></head><body>
+<div class="ov" id="menu"><div class="panel">
+<h1>VOLTLINE</h1><div class="sub glow">2 v 2 · neon line arena · ranked</div>
+<div>Name <input id="name" maxlength="16"></div>
+<div style="margin-top:10px" class="glow" id="me">connecting…</div>
+<button id="play">PLAY</button>
+<div style="font-size:12px;color:#699">Win +10 RP · Loss −7 RP · First team to 3 rounds wins</div>
+<div id="lb"></div>
+<div style="font-size:11px;color:#577;margin-top:10px">WASD move · Shift sprint · Space jump · Click shoot · R reload · 1/2/Q weapon · Esc release mouse</div>
+</div></div>
+<div class="ov" id="queue" style="display:none"><div class="panel"><h1 style="font-size:32px">QUEUE</h1>
+<div id="qtxt" class="glow">Searching…</div><button id="cancel">CANCEL</button></div></div>
+<div class="ov" id="result" style="display:none"><div class="panel"><h1 id="rtitle" style="font-size:40px"></h1><div id="rtxt" class="glow"></div><button id="back">MENU</button></div></div>
+<div id="hud"><div id="cross"></div><div id="hitm"></div><div id="hp" class="glow ta"></div><div id="ammo" class="glow ta"></div>
+<div id="score" class="glow"></div><div id="msg" class="glow"></div><div id="feed"></div><div id="hint">click to lock mouse</div></div>
+<script src="../cave-runner/assets/three.min.js"></script>
+<script src="assets/supabase.js"></script>
+<script src="main.js"></script>
+</body></html>

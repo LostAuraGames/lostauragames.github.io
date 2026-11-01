@@ -50,12 +50,27 @@ async function linkMetaMask(pid){
   var sig = await eth.request({method: 'personal_sign', params: [n.message, addr]});
   return fn(Object.assign({action: 'link', address: addr, signature: sig, nonce: n.nonce}, id));
 }
-// Passport: loads the Immutable SDK only when a real client id is configured.
+// Passport: loads the Immutable SDK only when a real client id is configured. One shared instance per page.
+var _pp = null;
+function passportConfigured(){ return !!CFG.passportClientId && !/__/.test(CFG.passportClientId); }
+function getPassport(){
+  if(!passportConfigured()) return Promise.reject(new Error('Passport is not configured yet'));
+  if(!_pp) _pp = import('https://cdn.jsdelivr.net/npm/@imtbl/sdk/+esm').then(function(sdk){
+    return new sdk.passport.Passport({baseConfig: {environment: CFG.env === 'mainnet' ? sdk.config.Environment.PRODUCTION : sdk.config.Environment.SANDBOX, publishableKey: CFG.publishableKey},
+      clientId: CFG.passportClientId, redirectUri: CFG.redirectUri, logoutRedirectUri: CFG.logoutRedirectUri, audience: 'platform_api', scope: 'openid offline_access email transact'}); });
+  return _pp;
+}
+// ERC1155 balanceOf(owner, id) read-only via public RPC (selector 0x00fdd58e).
+async function balanceOf(owner, tokenId, contract){
+  var a = String(owner).toLowerCase().replace(/^0x/, ''); if(!/^[0-9a-f]{40}$/.test(a)) throw new Error('bad address');
+  var data = '0x00fdd58e' + a.padStart(64, '0') + BigInt(tokenId).toString(16).padStart(64, '0');
+  var r = await fetch(chain().rpcUrls[0], {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({jsonrpc: '2.0', id: 1, method: 'eth_call', params: [{to: contract || CFG.contract, data: data}, 'latest']})});
+  var v = await r.json(); if(v.error || !v.result) throw new Error((v.error && v.error.message) || 'RPC error');
+  return BigInt(v.result);
+}
 async function linkPassport(pid){
   if(/__/.test(CFG.passportClientId)) throw new Error('Passport is not configured yet');
-  var sdk = await import('https://cdn.jsdelivr.net/npm/@imtbl/sdk/+esm');
-  var passport = new sdk.passport.Passport({baseConfig: {environment: CFG.env === 'mainnet' ? sdk.config.Environment.PRODUCTION : sdk.config.Environment.SANDBOX, publishableKey: CFG.publishableKey},
-    clientId: CFG.passportClientId, redirectUri: CFG.redirectUri, logoutRedirectUri: CFG.logoutRedirectUri, audience: 'platform_api', scope: 'openid offline_access email transact'});
+  var passport = await getPassport();
   var provider = await passport.connectEvm(); var accs = await provider.request({method: 'eth_requestAccounts'});
   var idToken = await passport.getIdToken();
   return fn(Object.assign({action: 'link', id_token: idToken, address: accs[0]}, await who()));
@@ -72,7 +87,7 @@ async function status(pid){
   var r = await fetch(SB_URL + '/rest/v1/rpc/get_my_nft_status_v2', {method: 'POST', headers: {apikey: SB_KEY, 'Content-Type': 'application/json'}, body: JSON.stringify(await who())});
   if(!r.ok) throw new Error('HTTP ' + r.status); return r.json();
 }
-window.LAGImx = {geoCheck: geoCheck, screen: screen, config: CFG, chain: chain, configured: configured, switchChain: switchChain, linkMetaMask: linkMetaMask, linkPassport: linkPassport,
+window.LAGImx = {getPassport: getPassport, passportConfigured: passportConfigured, balanceOf: balanceOf, geoCheck: geoCheck, screen: screen, config: CFG, chain: chain, configured: configured, switchChain: switchChain, linkMetaMask: linkMetaMask, linkPassport: linkPassport,
   claim: async function(pid, tokenId){ return fn(Object.assign({action: 'claim', token_id: tokenId}, await who())); },
   claimEdition: async function(pid, tokenId){ return fn(Object.assign({action: 'claim_edition', token_id: tokenId}, await who())); },
   poll: async function(pid, tokenId){ return fn(Object.assign({action: 'status', token_id: tokenId}, await who())); },

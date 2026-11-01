@@ -4,6 +4,7 @@
 .nftb{padding:6px 12px;border:2px solid #000;background:#3cff5a;font-weight:bold;cursor:pointer}.nftb[disabled]{opacity:.5}</style></head><body><main class="mk">
 <h1>MeowTeor Pro Items: trading</h1>
 <p>Listings use Immutable's Orderbook. Prices are in IMX. Every sale pays a 1% creator royalty plus Immutable's protocol fee. Whoever holds the NFT gets the skin in the game (synced every few minutes).</p>
+<p>Wallet: <label><input type="radio" name="mkw" value="metamask" checked> MetaMask</label> <label><input type="radio" name="mkw" value="passport" id="mkwpp"> Immutable Passport (gas sponsored)</label></p>
 <div id="mkstate">Loading listings...</div><div id="mklist"></div>
 <h2>List your item</h2><p><label>Token # <input id="mktok" type="number" min="1" style="width:5em"></label> <label>Price (IMX) <input id="mkprice" type="number" min="0" step="0.01" style="width:7em"></label>
 <button class="nftb" id="mksell">Create listing</button></p><p id="mklog"></p><p style="font-size:.75em;color:#8a8470"><a href="https://db-ip.com">IP Geolocation by DB-IP</a> (IP data by DB-IP, CC BY 4.0)</p></main>
@@ -20,14 +21,22 @@ else{
  const sdk=await import('https://cdn.jsdelivr.net/npm/@imtbl/sdk/+esm');
  const env=C.env==='mainnet'?sdk.config.Environment.PRODUCTION:sdk.config.Environment.SANDBOX;
  const ob=new sdk.orderbook.Orderbook({baseConfig:{environment:env,publishableKey:C.publishableKey}});
- async function provider(){await I.switchChain();const {BrowserProvider}=await import('https://cdn.jsdelivr.net/npm/ethers@6/+esm');const p=new BrowserProvider(window.ethereum);const s=await p.getSigner();
+ const wsel=()=>(document.querySelector('input[name=mkw]:checked')||{}).value||'metamask';
+ if(!I.passportConfigured()){const r=document.getElementById('mkwpp');r.disabled=true;r.parentNode.title='Passport not configured';}
+ let cache={};
+ async function provider(){const kind=wsel();const {BrowserProvider}=await import('https://cdn.jsdelivr.net/npm/ethers@6/+esm');let p;
+  if(kind==='passport'){if(cache.pp)return cache.pp;const pp=await I.getPassport();const eip=await pp.connectEvm();await eip.request({method:'eth_requestAccounts'});p=new BrowserProvider(eip);}
+  else{if(!window.ethereum)throw new Error('MetaMask not found');await I.switchChain();p=new BrowserProvider(window.ethereum);}
+  const s=await p.getSigner();
   let v;try{v=await I.screen(await s.getAddress());}catch(e){throw new Error('Could not verify this wallet right now. Try again later.');}
-  if(v&&v.blocked)throw new Error(v.message);return [p,s];}
+  if(v&&v.blocked)throw new Error(v.message);if(kind==='passport')cache.pp=[p,s];return [p,s];}
  async function refresh(){const r=await ob.listListings({sellItemContractAddress:C.contract,status:sdk.orderbook.OrderStatusName.ACTIVE,pageSize:50});const box=document.getElementById('mklist');box.innerHTML='';st.textContent=r.result.length?'':'No active listings.';
   for(const o of r.result){const id=o.sell[0].tokenId,price=Number(BigInt(o.buy[0].amount))/1e18;const d=document.createElement('div');d.className='mkr';d.innerHTML=`<img alt="" src="images/${id}.png"><div><b>#${id}</b><br>${price} IMX</div>`;
    const b=document.createElement('button');b.className='nftb';b.textContent='Buy';b.onclick=async()=>{try{const [p,s]=await provider();const me=await s.getAddress();
      const f=await ob.fulfillOrder(o.id,me,[]);for(const a of f.actions){if(a.type===sdk.orderbook.ActionType.TRANSACTION){const tx=await a.buildTransaction();await (await s.sendTransaction(tx)).wait();}}log('Bought #'+id+'. The skin moves to you within a few minutes.');refresh();}catch(e){log('Error: '+e.message);}};d.appendChild(b);box.appendChild(d);}}
  document.getElementById('mksell').onclick=async()=>{try{const [p,s]=await provider();const me=await s.getAddress();const tok=String(+document.getElementById('mktok').value);const wei=BigInt(Math.round(+document.getElementById('mkprice').value*1e6))*10n**12n;
+   if(!(+tok>0))throw new Error('Enter a token number.');let bal;try{bal=await I.balanceOf(me,tok);}catch(e){throw new Error('Could not check ownership right now. Try again later.');}
+   if(bal<1n){log("You don't own this item in this wallet.");return;}
    const prep=await ob.prepareListing({makerAddress:me,sell:{type:'ERC1155',contractAddress:C.contract,tokenId:tok,amount:'1'},buy:{type:'NATIVE',amount:wei.toString()}});
    const sigs=[];for(const a of prep.actions){if(a.type===sdk.orderbook.ActionType.TRANSACTION){await (await s.sendTransaction(await a.buildTransaction())).wait();}if(a.type===sdk.orderbook.ActionType.SIGNABLE){sigs.push(await s.signTypedData(a.message.domain,a.message.types,a.message.value));}}
    await ob.createListing({orderComponents:prep.orderComponents,orderHash:prep.orderHash,orderSignature:sigs[0],makerFees:[]});log('Listed #'+tok+'.');refresh();}catch(e){log('Error: '+e.message);}};

@@ -222,7 +222,7 @@ function crossPx(off){return Math.tan(off)/Math.tan(camera.fov*Math.PI/360)*(inn
 function drawCross(){const off=crossOff();$('cross').style.transform=off?`translateY(${crossPx(off).toFixed(2)}px)`:'';return off;}
 // ---------- somersault roll (C) ----------
 // 1.3 s: A 0-0.5 s pitch 0 -> -90deg; B 0.5-1.0 s -90 -> -270deg (screen black, invisible to others); C 1.0-1.15 s -270 -> -360deg; then locked slide. 30% lower from phase C until the slide ends. Visual offset only.
-const ROLL={dur:1.15,a:0.5,b:1.0,speedMul:1.5,heightMul:0.7,fade:0.05,remoteFade:0.2};
+const ROLL={dur:1.15,a:0.5,b:1.0,speedMul:3.5,heightMul:0.7,fade:0.05,remoteFade:0.2};
 function rollOff(t){if(t<ROLL.a)return -Math.PI/2*(t/ROLL.a);if(t<ROLL.b)return -Math.PI/2-Math.PI*((t-ROLL.a)/(ROLL.b-ROLL.a));return -1.5*Math.PI-Math.PI/2*Math.min(1,(t-ROLL.b)/(ROLL.dur-ROLL.b));}
 function rollBlack(t){if(t<ROLL.a||t>=ROLL.b)return 0;return Math.min(1,(t-ROLL.a)/ROLL.fade,(ROLL.b-t)/ROLL.fade);}
 function remoteAlpha(t){if(t==null||t<ROLL.a)return 1;if(t<ROLL.b)return 0;return Math.min(1,(t-ROLL.b)/ROLL.remoteFade);}
@@ -247,12 +247,13 @@ function hud(){const m=G.me;const tc=`t${G.team}`;$('hp').className='glow '+tc;$
 function stepMe(dt){const m=G.me;if(keys.ArrowLeft)m.yaw+=dt*2;if(keys.ArrowRight)m.yaw-=dt*2;
  m.reloadT>0&&(m.reloadT-=dt)<=0&&(m.reloadT=0,m.ammo[m.w]=WEAP[m.w].mag);
  const canMove=!m.dead&&G.phase!=='freeze';let fx_=0,fz=0;if(canMove){if(keys.KeyW)fz-=1;if(keys.KeyS)fz+=1;if(keys.KeyA)fx_-=1;if(keys.KeyD)fx_+=1;}
- const sprint=keys.ShiftLeft||keys.ShiftRight;const sp=(sprint&&fz<0?8.4:5.4)*(m.ground?1:0.9);const l=Math.hypot(fx_,fz)||1;
+ const sprint=keys.ShiftLeft||keys.ShiftRight;const sp=(sprint&&fz<0?10.92:5.4)*(m.ground?1:0.9);const l=Math.hypot(fx_,fz)||1;
  let vx=(fx_*Math.cos(m.yaw)+fz*Math.sin(m.yaw))/l*sp,vz=(-fx_*Math.sin(m.yaw)+fz*Math.cos(m.yaw))/l*sp;
  let rt=rollT(m.roll);if(m.roll&&m.dead){m.roll=null;rt=null;}
  // after phase C the roll becomes a locked 1.5x slide until a horizontal collision or Space
  if(m.roll){const rs=5.4*(rt>=ROLL.b?ROLL.speedMul:1);vx=m.roll.dx*rs;vz=m.roll.dz*rs;}
- let hitWall=false;const nx=m.x+vx*dt;if(!blocked(nx,m.z,m.y))m.x=nx;else if(Math.abs(vx)>1e-6)hitWall=true;const nz=m.z+vz*dt;if(!blocked(m.x,nz,m.y))m.z=nz;else if(Math.abs(vz)>1e-6)hitWall=true;
+ let hitWall=false;const nSub=Math.max(1,Math.ceil(Math.hypot(vx,vz)*dt/0.15));// substep (<=0.15 m) so fast slides can't tunnel
+ for(let i=0;i<nSub;i++){const sdt=dt/nSub;const nx=m.x+vx*sdt;if(!blocked(nx,m.z,m.y))m.x=nx;else if(Math.abs(vx)>1e-6)hitWall=true;const nz=m.z+vz*sdt;if(!blocked(m.x,nz,m.y))m.z=nz;else if(Math.abs(vz)>1e-6)hitWall=true;if(hitWall&&m.roll&&rollT(m.roll)>=ROLL.dur)break;}
  if(m.roll&&hitWall&&rt>=ROLL.dur){m.roll=null;rt=null;send('roll',{id:myId,ev:'end',ts:Date.now(),r:G.round});}
  if(canMove&&keys.Space&&m.ground&&!m.roll&&!m.noJumpUntilRelease){m.vy=7.2;m.ground=false;}
  m.vy-=21*dt;let ny=m.y+m.vy*dt;const g=surfH(m.x,m.z,m.y);

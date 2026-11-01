@@ -919,7 +919,7 @@ function lbNoteRun(W){if(!(W&&W.runId&&W.dead))return;const ev=CHAMP.activeEvent
 // Spook attack (leaderboard reset 2026-10-31): every all-time best was set to 30 server-side. Banner shows until 2026-11-08 00:00 ET.
 const SPOOK_UNTIL=Date.parse('2026-11-08T05:00:00Z'),SPOOK_EPOCH='20261031';
 function spookOn(){return Date.now()<SPOOK_UNTIL;}
-function spookBanner(){return el('div',{class:'t',style:'margin:8px auto 0;max-width:300px;padding:6px 8px;border:3px solid #000;box-shadow:0 0 0 3px #ff8a1a;background:#1a0d06;color:#ffd9a8;font-size:12px;line-height:1.35;text-align:center'},'&#127875; '+esc(t('Spook attack! Your scores are all even. Work your way back or lose hehe')));}
+function spookBanner(){return el('div',{class:'t spookb',style:'margin:8px auto 0;max-width:300px;padding:6px 8px;border:3px solid #000;box-shadow:0 0 0 3px #ff8a1a;background:#1a0d06;color:#ffd9a8;font-size:12px;line-height:1.35;text-align:center'},'&#127875; '+esc(t('Spook attack! Your scores are all even. Work your way back or lose hehe')));}
 // local bests uploaded before the reset must not block new uploads or be re-sent: clamp to the reset value and drop the old run
 function spookReconcile(){if(SAVE.lbReset===SPOOK_EPOCH)return;SAVE.lbReset=SPOOK_EPOCH;SAVE.lbBest=Math.min(SAVE.lbBest||0,30);SAVE.vBest=Math.min(SAVE.vBest||0,30);SAVE.vRun=null;SAVE.pending=0;persist();}
 function lbNameTaken(r){return !!(r&&r.rejected&&/name taken/i.test(String(r.msg||'')));}
@@ -1049,7 +1049,7 @@ function champRanksHtml(){const s=CHAMP.state();
  if(s==='banner'){const me=CHAMP.st&&CHAMP.st.is_me;return`<div class="ch-t">&#9819; ${t('LEADERBOARD CHAMPION')} &#9819;</div><div class="ch-n">${esc(CHAMP.st.winner_name||'')}${me?' ('+t('YOU')+')':''}</div><div class="ch-s">${CHAMP.cur&&CHAMP.cur.next?`${t('NEXT EVENT IN')} <span class="champcd">${champCountdown()}</span>`:t('Winner of the 1 of 1 space cat skin')}</div>`;}
  if(s==='upcoming')return`<div class="ch-t">&#9733; ${t('NEXT CHAMPION EVENT')} &#9733;</div><div class="ch-s">${t('48 hours. Best run wins a 1 of 1 pro skin')}</div><div class="ch-cd"><span class="dim">${t('STARTS IN')}</span> <span class="champcd">${champCountdown()}</span></div>`;
  return'';}
-function champRenderRanks(){const b=$('#lbchamp'),l=$('#lblist');if(!b)return;const h=champRanksHtml();b.innerHTML=h;b.className=h?'on '+CHAMP.state():'';if(l){l.classList.toggle('champ',!!h);l.style.top=h?(b.offsetTop+b.offsetHeight+4)+'px':'';}}
+function champRenderRanks(){const b=$('#lbchamp'),l=$('#lblist');if(!b)return;const ch=champRanksHtml(),h=(spookOn()?spookBanner().outerHTML.replace('margin:8px auto 0','margin:0 auto 6px'):'')+ch;b.innerHTML=h;b.className=h?'on '+(ch?CHAMP.state():''):'';if(l){l.classList.toggle('champ',!!h);l.style.top=h?(b.offsetTop+b.offsetHeight+4)+'px':'';}}
 // ---------- small countdown chip on the title screen ----------
 // winners whose pro skin is not minted yet get a CLAIM NFT button (claim page on the site; the mint is free for them)
 // OFAC region check for NFT features (server-side IP lookup; gameplay is unaffected). Asked once, only when there is something to claim.
@@ -1064,7 +1064,7 @@ function champTitleChip(){nftClaimChip();const s=$('#s-title');if(!s||CUR!=='tit
  if(st!=='pending'&&st!=='banner'&&st!=='upcoming'){if(c)c.remove();return;}
  if(!c){c=el('div',{id:'champchip',class:'click'});c.onclick=()=>{sfx('click');show('ranks');};s.appendChild(c);}
  c.innerHTML=st==='pending'?`&#9733; ${t('1 OF 1 SKIN FOR #1')} &middot; <span class="champcd">${champCountdown()}</span>`:st==='upcoming'?`&#9733; ${t('NEXT EVENT IN')} <span class="champcd">${champCountdown()}</span>`:`&#9819; ${t('CHAMPION')}: ${esc(CHAMP.st.winner_name||'')}${CHAMP.cur&&CHAMP.cur.next?` &middot; ${t('NEXT')} <span class="champcd">${champCountdown()}</span>`:''}`;
- {const hc=s.querySelector('.hwchip');c.style.top='';if(hc){const sr=s.getBoundingClientRect(),k=sr.height?s.offsetHeight/sr.height:1,d=(hc.getBoundingClientRect().bottom+6-c.getBoundingClientRect().top)*k;if(d>0)c.style.top=Math.round(c.offsetTop+d)+'px';}}}
+ {const hs=[...s.querySelectorAll('.hwchip,.spookb')];c.style.top='';if(hs.length){const sr=s.getBoundingClientRect(),k=sr.height?s.offsetHeight/sr.height:1,bot=Math.max(...hs.map(e=>e.getBoundingClientRect().bottom)),d=(bot+6-c.getBoundingClientRect().top)*k;if(d>0)c.style.top=Math.round(c.offsetTop+d)+'px';}}}
 // ---------- wardrobe: mystery box card / the owned skin ----------
 function champMysteryCard(){const d=el('div',{class:'item mystery','data-id':'mystery'});const [c,x]=mkCanvas(48,36);c.id='mystcv';d.appendChild(c);mysteryBox(x,48,36,0);
  const s=CHAMP.state();
@@ -1714,7 +1714,7 @@ function wardrobeFrame(dt){if(!WD.px)return;const x=WD.px;WD.t+=dt;x.setTransfor
 const RK={timer:null,busy:false,last:null};
 SCREENS.ranks=(s)=>{startMusic('menu');s.innerHTML='';s.style.background='#050806';
  const tb=el('div',{class:'topbar'});const back=el('div',{class:'btn sm'},'&lt; '+t('BACK'));back.onclick=()=>{sfx('click');show('title');};tb.appendChild(back);const tt=pixText(t('TOP 100'),3,BONE,'#ffd24a');fitPix(tt,170);tb.appendChild(tt);tb.appendChild(el('div',{style:'width:40px'}));s.appendChild(tb);
- if(spookOn()){const sb=spookBanner();sb.style.margin='4px auto';s.appendChild(sb);}s.appendChild(el('div',{id:'lbhead'},`<span id="lbstat"><span class="live off"></span>${t('LOADING...')}</span><span id="lbtime" class="dim"></span>`));
+ s.appendChild(el('div',{id:'lbhead'},`<span id="lbstat"><span class="live off"></span>${t('LOADING...')}</span><span id="lbtime" class="dim"></span>`));
  s.appendChild(el('div',{id:'lbchamp'}));
  s.appendChild(el('div',{id:'lblist'},`<div id="lbtabs"><span class="lbtab on" data-v="top">${t('TOP 100')}</span><span class="lbtab ban" data-v="ban">${t('BANNED')}<b id="lbbann"></b></span></div><div class="lbcolh"><span class="rk">#</span><span class="nm">${t('NAME')}</span><span class="sc" id="lbsch">${t('SCORE')}</span></div><div id="lbrows"><div class="small center" style="padding:20px">${t('Loading...')}</div></div>`));
  s.appendChild(el('div',{id:'lbpin'}));s.appendChild(aacBadge('aac-lb'));RK.view='top';

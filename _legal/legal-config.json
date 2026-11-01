@@ -9,11 +9,5 @@
   "WEBSITE": "https://lostauragames.com",
   "EFFECTIVE_DATE": "October 31, 2026",
   "MIN_AGE": "13",
-  "PAYMENT_PROVIDER_NAME": "Lemon Squeezy",
-  "PAYMENT_PROVIDER_LEGAL_NAME": "Lemon Squeezy, LLC",
-  "PAYMENT_PROVIDER_BUYER_TERMS_URL": "https://www.lemonsqueezy.com/buyer-terms",
-  "PAYMENT_PROVIDER_PRIVACY_URL": "https://www.lemonsqueezy.com/privacy",
-  "PAYMENT_PROVIDER_ORDERS_URL": "https://app.lemonsqueezy.com/my-orders",
-  "RECORD_RETENTION_YEARS": "7",
-  "STORE_LIVE": false
+  "RECORD_RETENTION_YEARS": "7"
 }

@@ -8,9 +8,9 @@ import json,os,re,html
 HERE=os.path.dirname(os.path.abspath(__file__));ROOT=os.path.dirname(HERE)
 C=json.load(open(os.path.join(HERE,'legal-config.json')))
 PAGES=[
- ('terms','Terms of Service','Terms of Service for Lost Aura Games: accounts, the game license, virtual currency with no cash value, purchases, termination and disputes.'),
- ('privacy','Privacy Policy','Privacy Policy for Lost Aura Games: what is stored in your browser, accounts and Coins on Supabase, optional NFT wallets and sanctions screening, payments through our merchant of record, your rights and children.'),
- ('refunds','Refund Policy','Refund Policy for Lost Aura Games coin bundles: immediate delivery, the 14-day withdrawal waiver, when refunds are given and how to ask.'),
+ ('terms','Terms of Service','Terms of Service for Lost Aura Games: accounts, the game license, earned virtual currency with no cash value, termination and disputes.'),
+ ('privacy','Privacy Policy','Privacy Policy for Lost Aura Games: what is stored in your browser, Mythweald accounts on Supabase, optional NFT wallets and sanctions screening, your rights and children.'),
+ ('refunds','Refund Policy','Refund Policy for Lost Aura Games: our games currently sell nothing, so there are no purchases to refund; MEOWTEOR NFTs trade peer-to-peer.'),
  ('contact','Contact & Imprint','Contact Lost Aura Games and operator (imprint) information.'),
 ]
 def fill(s):
@@ -85,7 +85,7 @@ os.makedirs(os.path.join(ROOT,'legal'),exist_ok=True)
 for slug,title,desc in PAGES:
     body=fill(open(os.path.join(HERE,slug+'.body.html')).read())
     lnav=''.join('<a class="btn%s" href="%s.html"%s>%s</a>'%(' gold' if s==slug else '',s,' aria-current="page"' if s==slug else '',t) for s,t,_ in PAGES)
-    store='' if C.get('STORE_LIVE') else '<p>Coin purchases are not open yet. The purchase sections apply once they launch.</p>'
+    store=''
     out=SHELL.format(title=html.escape(title),desc=html.escape(desc),slug=slug,date=fill('{{EFFECTIVE_DATE}}'),body=body,lnav=lnav,storenote=store,footer=footer_nav('../'))
     open(os.path.join(ROOT,'legal',slug+'.html'),'w').write(out)
     left=sorted(set(re.findall(r'\{\{(\w+)\}\}',out)))

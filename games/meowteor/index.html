@@ -1678,7 +1678,7 @@ function askName(after,isChange,msg){const wrap=el('div',{});wrap.appendChild(el
 // ---------- WARDROBE ----------
 const WD={tab:'fur',picked:false,timer:null,pc:null,px:null,t:0,raf:0};
 SCREENS.wardrobe=(s,tab)=>{if(tab)WD.tab=tab;else if(!WD.picked&&champTabVisible())WD.tab='skin';if(WD.tab==='skin'&&!champTabVisible())WD.tab='fur';startMusic('menu');s.innerHTML='';s.style.background='#050806';
- const tb=el('div',{class:'topbar'});const back=el('div',{class:'btn sm'},'&lt; '+t('BACK'));back.onclick=()=>{sfx('click');show('title');};tb.appendChild(back);const tt=pixText(t('WARDROBE'),3,BONE,'#ff7ac8');fitPix(tt,128);tb.appendChild(tt);if(WALLET.avail()){const w=el('div',{style:'display:flex;align-items:center;gap:4px'});w.appendChild(el('div',{},starsBadge()));w.appendChild(WALLET.button(true));tb.appendChild(w);}else tb.appendChild(el('div',{},starsBadge()));s.appendChild(tb);
+ const tb=el('div',{class:'topbar'});const back=el('div',{class:'btn sm'},'&lt; '+t('BACK'));back.onclick=()=>{sfx('click');show('title');};tb.appendChild(back);const tt=pixText(t('WARDROBE'),3,BONE,'#ff7ac8');fitPix(tt,128);tb.appendChild(tt);tb.appendChild(el('div',{},starsBadge()));s.appendChild(tb);
  const [pc,pxx]=mkCanvas(120,50);pc.id='wprev';s.appendChild(pc);WD.pc=pc;WD.px=pxx;
  const tabs=el('div',{class:'tabs'+(champTabVisible()?' has-skin':'')});for(const sl of SLOTS){if(sl.id==='skin'&&!champTabVisible())continue;const b=el('div',{class:'btn'+(WD.tab===sl.id?' on':'')+(sl.id==='skin'?' skintab':''),'data-tab':sl.id},sl.id==='skin'?'':(sl.id==='head'?t('HEAD'):t(sl.name).toUpperCase()));if(sl.id==='skin'){b.appendChild(crownIcon(2,'#ffd24a'));b.title=t('Full-body skins');b.setAttribute('aria-label',t('Full-body skins'));}b.onclick=()=>{sfx('click');WD.tab=sl.id;WD.picked=true;$$('.tabs .btn').forEach(e=>e.classList.toggle('on',e.dataset.tab===sl.id));renderGrid();};tabs.appendChild(b);}s.appendChild(tabs);
  s.appendChild(el('div',{id:'wgrid'}));
@@ -1736,52 +1736,11 @@ function renderRanks(rows,me){const bl=RK.banned||[];const bn=$('#lbbann');if(bn
  else{pin.innerHTML=`<div class="small center" style="padding-top:${BC.eligible&&LB.remote?2:12}px">${t("You're #{n} in the top 100! Your row is highlighted.",{n:me.rank})}</div><div class="bchost" data-k="bcpin"></div>`;liveConsentUi();}
  const meRow=box.querySelector('.lbrow.me');if(meRow&&!RK.scrolled){RK.scrolled=true;}}
 
-// ================= ACCOUNT WALLET BRIDGE (Lost Aura Games accounts + coin store) =================
-// Only active on lostauragames.com, where the page also loads assets/js/lag-config.js + lag-account.js
-// and LAG_CONFIG.COMMERCE_ENABLED is true. Otherwise WALLET.avail() is false and the game is unchanged.
-//   signed out -> the game uses the local balance in SAVE.stars exactly as before
-//   signed in  -> SAVE.stars mirrors the SERVER wallet; spending goes through the atomic spend() RPC,
-//                 run rewards through earn() (server caps), and the local guest balance is kept aside
-//                 (persist() always writes the guest balance to localStorage, never the server one).
-//   first sign-in on an account -> the local guest balance is merged once (server cap) and recorded in the ledger.
-var WALLET=(function(){
- const GAME='meowteor',FIELD='stars',ICON='&#9733;',QKEY='meowteor.pendingEarn';
- const A=()=>(window.LAGAccount&&window.LAGAccount.enabled)?window.LAGAccount:null;
- const W={on:false,guest:0,busy:false,syncing:null,
-  avail(){return !!A();},
-  persistView(s){if(!W.on)return s;const o=Object.assign({},s);o[FIELD]=W.guest;return o;},
-  set(b){SAVE[FIELD]=Math.max(0,Math.floor(+b||0));W.ui();},
-  ui(){try{refreshStars();if(CUR==='wardrobe'&&typeof renderGrid==='function')renderGrid();}catch(e){console.warn(e);}},
-  sync(u){const run=async()=>{const AC=A();if(!AC)return;
-   if(u){if(!W.on)W.guest=Math.max(0,Math.floor(+SAVE[FIELD]||0));
-    try{let w=await AC.wallet.get(GAME);
-     if(!w.guest_merged){const m=await AC.wallet.mergeGuest(GAME,W.guest);if(+m.credited>0)AC.toast(AC.t('{n} {cur} from this device were moved to your account.',{n:fmt(m.credited),cur:ICON_TXT}),4500);
-      if(!m.already_merged)W.guest=0;w=await AC.wallet.get(GAME);}
-     let q=0;try{q=+localStorage.getItem(QKEY)||0;localStorage.removeItem(QKEY);}catch(e){}
-     if(q>0){try{const r=await AC.wallet.earn(GAME,q,'retry');w={balance:r.balance};}catch(e){}}
-     W.on=true;SAVE[FIELD]=Math.max(0,+w.balance||0);persist();W.ui();}
-    catch(e){console.warn('[wallet] server unavailable, staying in local mode',e);if(e&&e.status!==401)AC.toast(AC.t('Could not reach the server. Please try again.'));}}
-   else if(W.on){W.on=false;SAVE[FIELD]=W.guest;persist();W.ui();}};
-   W.syncing=(W.syncing||Promise.resolve()).then(run,run);return W.syncing;},
-  // spend for an item; ok() runs only after the server accepted the debit (or locally when signed out)
-  spend(cost,item,ok,fail){cost=Math.floor(cost);
-   if(!W.on){if(!(cost>=0)||SAVE[FIELD]<cost){sfx('err');fail&&fail();return false;}SAVE[FIELD]-=cost;persist();ok();return true;}
-   if(W.busy)return false;if(SAVE[FIELD]<cost){sfx('err');fail&&fail();return false;}
-   W.busy=true;A().wallet.spend(GAME,cost,item).then(r=>{W.busy=false;SAVE[FIELD]=+r.balance;ok();W.ui();},
-    e=>{W.busy=false;sfx('err');if(/insufficient/.test(String(e&&e.message))){fail&&fail();W.reload();}else A().toast(A().t('Could not reach the server. Please try again.'));});
-   return true;},
-  earned(n){n=Math.floor(n);if(!W.on||!(n>0))return;
-   A().wallet.earn(GAME,n,'run').then(r=>{SAVE[FIELD]=+r.balance;if(r.capped)A().toast(A().t('Daily earning limit reached. Play again tomorrow to earn more {cur}.',{cur:ICON_TXT}),4500);W.ui();},
-    e=>{try{localStorage.setItem(QKEY,String((+localStorage.getItem(QKEY)||0)+n));}catch(x){}});},
-  replaced(){if(W.on){W.guest=Math.max(0,Math.floor(+SAVE[FIELD]||0));W.reload();}},
-  reload(){if(!W.on)return;A().wallet.get(GAME).then(w=>{SAVE[FIELD]=+w.balance;W.ui();},()=>{});},
-  openStore(){if(!A())return;sfx('click');A().openStore({game:GAME,icon:ICON,onBalance:b=>{if(W.on)W.set(b);}});},
-  openAccount(){if(!A())return;sfx('click');A().open(A().user()?'account':'signin');},
-  button(compact){const lbl=A()?A().t('Get Coins'):'';const b=el('div',{class:'btn gold sm lag-getcoins','title':lbl,'aria-label':lbl,role:'button'},compact?'+'+ICON:'+ '+lbl);b.onclick=e=>{e.stopPropagation();W.openStore();};return b;},
-  init(){const AC=A();if(!AC)return;AC.onChange(u=>W.sync(u));
-   const u=AC.user();(u?W.sync(u):Promise.resolve()).then(()=>AC.resumeCheckout({game:GAME,icon:ICON,onBalance:b=>{if(W.on)W.set(b);}}));}};
- const ICON_TXT=ICON.replace(/&#(\d+);/g,(m,d)=>String.fromCharCode(+d));
- return W;})();
+// ================= LOCAL WALLET =================
+// Earned currency lives in the local save only (SAVE.stars). Nothing is sold.
+var WALLET={persistView(s){return s;},
+ spend(cost,item,ok,fail){cost=Math.floor(cost);if(!(cost>=0)||SAVE.stars<cost){sfx('err');fail&&fail();return false;}SAVE.stars-=cost;persist();ok();return true;},
+ earned(){},replaced(){},init(){}};
 
 // =====================================================================================
 // REPLAYS (best run of each leaderboard player), REPORTS, LIVE VIEWER COUNT and the DAILY CHALLENGE
@@ -1911,9 +1870,6 @@ window.addEventListener('load',()=>{loadSave();WALLET.init();LB.init();LB.prefet
 window.MEOWTEOR_UI=Object.freeze({screen:()=>CUR,modal:()=>!!MODAL_OPEN});
 })();
 </script>
-<!-- Lost Aura Games: shared account + coin store (inactive unless LAG_CONFIG.COMMERCE_ENABLED) -->
-<script src="../../assets/js/lag-config.js"></script>
-<script src="../../assets/js/lag-account.js"></script>
 <!-- Lost Aura Games: small "back to site" link, shown only on the game's title screen -->
 <a id="lag-back" href="../../" aria-label="Back to Lost Aura Games" style="position:fixed;left:10px;top:10px;z-index:9999;display:none;font:bold 13px 'Courier New',monospace;color:#e8dcb5;background:rgba(0,0,0,.78);border:3px solid #e8dcb5;box-shadow:3px 3px 0 #000;padding:5px 10px;text-decoration:none;letter-spacing:1px;text-transform:uppercase;opacity:.8">&#9664; Lost Aura Games</a>
 <script>(function(){var a=document.getElementById('lag-back');function u(){var t;try{t=window.MEOWTEOR_UI?window.MEOWTEOR_UI.screen():null;}catch(e){t=null;}var m=false;try{m=!!(window.MEOWTEOR_UI&&window.MEOWTEOR_UI.modal());}catch(e){}a.style.display=(t==='title'&&!m)?'block':'none';}a.onmouseenter=function(){a.style.opacity=1;a.style.color='#fff';};a.onmouseleave=function(){a.style.opacity=.8;a.style.color='#e8dcb5';};var st=document.getElementById('stage');if(st){st.appendChild(a);a.style.position='absolute';a.style.left='8px';a.style.top='40px';a.style.fontSize='11px';a.style.padding='3px 7px';a.style.borderWidth='2px';a.style.boxShadow='2px 2px 0 #000';}setInterval(u,400);u();})();</script>

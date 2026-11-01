@@ -10,7 +10,7 @@ C=json.load(open(os.path.join(HERE,'legal-config.json')))
 PAGES=[
  ('terms','Terms of Service','Terms of Service for Lost Aura Games: accounts, the game license, earned virtual currency with no cash value, termination and disputes.'),
  ('privacy','Privacy Policy','Privacy Policy for Lost Aura Games: what is stored in your browser, Mythweald accounts on Supabase, optional NFT wallets and sanctions screening, your rights and children.'),
- ('refunds','Refund Policy','Refund Policy for Lost Aura Games: our games currently sell nothing, so there are no purchases to refund; MEOWTEOR NFTs trade peer-to-peer.'),
+ ('refunds','Refund Policy','Refund Policy for Lost Aura Games: our games sell nothing, so there are no purchases to refund; MEOWTEOR NFTs trade peer-to-peer.'),
  ('contact','Contact & Imprint','Contact Lost Aura Games and operator (imprint) information.'),
 ]
 def fill(s):
@@ -76,8 +76,6 @@ SHELL='''<!DOCTYPE html>
 <script src="../assets/js/site.js"></script>
 <script src="../assets/js/i18n-dict.js"></script>
 <script src="../assets/js/i18n.js"></script>
-<script src="../assets/js/lag-config.js"></script>
-<script src="../assets/js/lag-account.js"></script>
 </body>
 </html>
 '''

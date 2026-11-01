@@ -1,7 +1,7 @@
 /* Lost Aura Games - MetaMask wallet connect (optional, non-destructive).
    Connects MetaMask, treats the address as an identity, and can associate
    existing local progress (e.g. meowteor.save.v1) without deleting it.
-   Stored locally under lag.wallet.v1. Works even when COMMERCE_ENABLED is false. */
+   Stored locally under lag.wallet.v1. */
 (function(){
 'use strict';
 var KEY = 'lag.wallet.v1';

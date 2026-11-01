@@ -91,12 +91,40 @@ const mapG=new THREE.Group();scene.add(mapG);
   const g=new THREE.BufferGeometry();const v=[];const T=(a,b,c)=>v.push(...a,...b,...c);
   const A=P(r.x0,r.z0),B=P(r.x1,r.z0),Cc=P(r.x1,r.z1),Dd=P(r.x0,r.z1);T(A,B,Cc);T(A,Cc,Dd);g.setAttribute('position',new THREE.Float32BufferAttribute(v,3));
   const m=new THREE.Mesh(g,occMat);m.material.side=THREE.DoubleSide;mapG.add(m);}
- // sky: horizon contour ridges + wire dome rings
- const sky=[];let prev=null;for(let i=0;i<=240;i++){const a=i/240*Math.PI*2,R=220,h=14+10*Math.sin(a*5)+6*Math.sin(a*13+1)+3*Math.sin(a*31);const p=[Math.cos(a)*R,h,Math.sin(a)*R];if(prev)sky.push(...prev,...p);prev=p;}
- mapG.add(segs(sky,0xff2bd6,0.8));prev=null;const sky2=[];for(let i=0;i<=240;i++){const a=i/240*Math.PI*2,R=240,h=6+6*Math.sin(a*7+2)+4*Math.sin(a*17);const p=[Math.cos(a)*R,h,Math.sin(a)*R];if(prev)sky2.push(...prev,...p);prev=p;}
- mapG.add(segs(sky2,0x7a2cff,0.6));
- const dome=[];for(let k=1;k<6;k++){const el=k*0.25,R=300*Math.cos(el),y=300*Math.sin(el);for(let i=0;i<96;i++){const a=i/96*Math.PI*2,b=(i+1)/96*Math.PI*2;dome.push(Math.cos(a)*R,y,Math.sin(a)*R,Math.cos(b)*R,y,Math.sin(b)*R);}}
- mapG.add(segs(dome,0x102a80,0.5));})();
+ // (sky backdrop: see skyline section below)
+})();
+// ---------- skyline backdrop (visual only; not in mapG, no collisions/raycasts) ----------
+const skyG=new THREE.Group();skyG.name='skyline';scene.add(skyG);const skyU={t:{value:0}};const skyPulse=[];
+(function(){
+ // gradient dome + faint diagonal lines (one draw call)
+ const dm=new THREE.ShaderMaterial({uniforms:skyU,side:THREE.BackSide,depthWrite:false,depthTest:false,
+  vertexShader:'varying vec3 p;void main(){p=position;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}',
+  fragmentShader:`uniform float t;varying vec3 p;void main(){vec3 d=normalize(p);float e=d.y;float az=atan(d.z,d.x);
+   float h=exp(-abs(e-0.02)*5.5);vec3 c=mix(vec3(0.004,0.0,0.012),vec3(0.07,0.012,0.14),h);c+=vec3(0.05,0.01,0.09)*exp(-abs(e-0.05)*14.);
+   float k=az*120.+e*190.+t*0.35;float f=abs(fract(k)-0.5);float ln=smoothstep(0.035,0.0,f)*(0.5+0.5*sin(floor(k)*12.9898));
+   float k2=az*47.+e*74.+t*0.2;float ln2=smoothstep(0.02,0.0,abs(fract(k2)-0.5));
+   c+=vec3(0.55,0.42,0.85)*(ln*0.05+ln2*0.035)*(0.4+h);gl_FragColor=vec4(c,1.);}`});
+ const dome=new THREE.Mesh(new THREE.SphereGeometry(330,48,24),dm);dome.renderOrder=-10;dome.frustumCulled=false;skyG.add(dome);
+ // data-center blocks: vertical glowing bars only, merged into one geometry
+ let rs=1337;const rnd=()=>(rs=(rs*16807)%2147483647)/2147483647;
+ const R=255,CIRC=Math.PI*2*R,P=[],C=[],G2=[],GC=[];
+ const pal=[[0.0,0.95,1.0],[1.0,0.17,0.84],[0.55,0.55,0.62]];
+ const quad=(arr,col,a0,w,y0,y1,c,r)=>{const ca=Math.cos(a0),sa=Math.sin(a0),tx=-sa*w/2,tz=ca*w/2,x=ca*r,z=sa*r;
+  const A=[x-tx,y0,z-tz],B=[x+tx,y0,z+tz],Cc=[x+tx,y1,z+tz],D=[x-tx,y1,z-tz];arr.push(...A,...B,...Cc,...A,...Cc,...D);for(let i=0;i<6;i++)col.push(...c);};
+ let s=0;while(s<CIRC-6){const w=Math.min(CIRC-s-1,5+rnd()*16),hgt=rnd()<0.35?14+rnd()*14:rnd()<0.6?30+rnd()*30:60+rnd()*45;
+  const sp=0.55+rnd()*0.25,bw=0.16+rnd()*0.06,mode=Math.floor(rnd()*3);let j=0;
+  for(let x=s+sp/2;x<s+w;x+=sp,j++){const k=mode===0?j%3:mode===1?(j%2?2:Math.floor(rnd()*2)):Math.floor(rnd()*3);
+   const c=pal[k].map(v=>v*(k===2?0.11:0.24)*(0.7+rnd()*0.3)),a=x/R;quad(P,C,a,bw,-6,hgt,c,R);quad(G2,GC,a,bw*4,-6,hgt+0.6,c.map(v=>v*0.07),R+0.5);}
+  s+=w+0.6+rnd()*2.2;}
+ const mk=(pos,col)=>{const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));g.setAttribute('color',new THREE.Float32BufferAttribute(col,3));
+  const m=new THREE.Mesh(g,new THREE.MeshBasicMaterial({vertexColors:true,blending:THREE.AdditiveBlending,transparent:true,depthWrite:false,side:THREE.DoubleSide,fog:false}));m.renderOrder=-8;m.frustumCulled=false;return m;};
+ skyG.add(mk(G2,GC));skyG.add(mk(P,C));
+ // floating violet monoliths (4 around the ring), pulsing
+ for(let i=0;i<4;i++){const a=i/4*Math.PI*2+0.5,r=240,y=95+i%2*12;
+  for(const [w,h,o] of [[12,24,1],[18,30,0.12],[30,42,0.04]]){const m=new THREE.Mesh(new THREE.PlaneGeometry(w,h),new THREE.MeshBasicMaterial({color:0x9a30ff,transparent:true,opacity:o,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide,fog:false}));
+   m.position.set(Math.cos(a)*r,y,Math.sin(a)*r);m.lookAt(0,y,0);m.renderOrder=-7;m.userData.o=o;m.userData.ph=i*1.7;skyPulse.push(m);skyG.add(m);}}
+})();
+function tickSky(dt,now){skyG.rotation.y+=dt*0.012;skyU.t.value=now/1000;for(const m of skyPulse)m.material.opacity=m.userData.o*(0.55+0.45*Math.sin(now/1000*2.2+m.userData.ph));}
 // ---------- collision ----------
 const PR=0.35,PH=1.75,EYE=1.6,STEP=0.45;
 function surfH(x,z,feet){let g=0;for(const b of solids){if(x>b.x0-PR&&x<b.x1+PR&&z>b.z0-PR&&z<b.z1+PR&&b.y1<=feet+STEP&&b.y1>g)g=b.y1;}
@@ -461,7 +489,7 @@ function loop(){requestAnimationFrame(loop);const now=performance.now();const rd
  pollPad(rdt);padLook(dt);drawRoundStatic(rdt);
  if(G&&!G.ended){if(G.practice){}else if(isLeader())leaderTick(rdt);else clientTick();tickHeal();tickStatic();stepMe(dt);stepRemote(dt);hud();dmgFlash=Math.max(0,dmgFlash-dt*2);}
  else{const t=now/1000;camera.position.set(Math.cos(t*0.08)*26,9,Math.sin(t*0.08)*18);camera.lookAt(0,1,0);}
- tickFx(dt);render();}
+ tickSky(rdt,now);tickFx(dt);render();}
 // ---------- match end + reporting ----------
 async function endMatch(w){if(!G||G.ended)return;G.ended=true;setTimeout(()=>roundStatic(false),1200);$('pause').style.display='none';$('black').style.opacity=0;const win=w===G.team;document.exitPointerLock&&document.exitPointerLock();
  $('hud').style.display='none';$('result').style.display='flex';$('rtitle').innerHTML=`<span class="t${w}">${win?'VICTORY':'DEFEAT'}</span>`;$('rtxt').innerHTML=`${G.score.a} – ${G.score.b}<br>Reporting result…`;

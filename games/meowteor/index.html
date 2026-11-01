@@ -1616,7 +1616,7 @@ function aacBadge(extra){return el('div',{class:'aac'+(extra?' '+extra:'')},AAC_
 SCREENS.title=(s)=>{attract();$('#pauseb').classList.remove('on');startMusic('title');s.innerHTML='';
  s.appendChild(el('div',{class:'topbar',style:'right:54px'},`<div>${starsBadge()}</div><div class="t small" style="color:#e8dcb5">${t('BEST')} <span class="gold">${SAVE.best}</span></div>`));
  const logo=el('div',{class:'col',style:'position:absolute;left:0;right:0;top:92px'});const lt=pixText(GAME_NAME,6,'#ffd24a','#ff7ac8');lt.style.width='300px';logo.appendChild(lt);
- logo.appendChild(el('div',{class:'t',style:'font-size:13px;letter-spacing:3px;color:#bcd3ff;margin-top:4px'},t('A SPACE CAT TAP-FLYER')));{const hc=HW.chip();if(hc)logo.appendChild(hc);}if(spookOn())logo.appendChild(spookBanner());s.appendChild(logo);
+ logo.appendChild(el('div',{class:'t',style:'font-size:13px;letter-spacing:3px;color:#bcd3ff;margin-top:4px'},t('A SPACE CAT TAP-FLYER')));{const hc=HW.chip();if(hc)logo.appendChild(hc);}s.appendChild(logo);
  const b=el('div',{class:'col',style:'position:absolute;left:0;right:0;top:350px'});
  const play=el('div',{class:'btn big green'},'&#9654; '+t('PLAY'));play.onclick=()=>startGame();b.appendChild(play);
  const w=el('div',{class:'btn wide pink'},t('WARDROBE'));w.onclick=()=>{sfx('click');show('wardrobe');};b.appendChild(w);

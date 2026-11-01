@@ -227,7 +227,7 @@ function rollOff(t){if(t<ROLL.a)return -Math.PI/2*(t/ROLL.a);if(t<ROLL.b)return 
 function rollBlack(t){if(t<ROLL.a||t>=ROLL.b)return 0;return Math.min(1,(t-ROLL.a)/ROLL.fade,(ROLL.b-t)/ROLL.fade);}
 function remoteAlpha(t){if(t==null||t<ROLL.a)return 1;if(t<ROLL.b)return 0;return Math.min(1,(t-ROLL.b)/ROLL.remoteFade);}
 function rollT(r){return r?performance.now()/1000-r.t0:null;}
-function rollLow(r){return r&&rollT(r)>=ROLL.b?ROLL.heightMul:1;}
+function rollLow(r){const t=rollT(r);return r&&t>=ROLL.b&&t<ROLL.dur?ROLL.heightMul:1;}
 function startRoll(){const m=G.me;if(m.roll||!m.ground||m.dead||G.phase==='freeze')return;
  m.roll={t0:performance.now()/1000,dx:-Math.sin(m.yaw),dz:-Math.cos(m.yaw)};send('roll',{id:myId,ev:'start',ts:Date.now(),r:G.round});}
 function cancelRoll(){const m=G.me;if(!m.roll)return;m.roll=null;m.noJumpUntilRelease=true;m.vy=0;$('black').style.opacity=0;send('roll',{id:myId,ev:'cancel',ts:Date.now(),r:G.round});}
@@ -248,9 +248,11 @@ function stepMe(dt){const m=G.me;if(keys.ArrowLeft)m.yaw+=dt*2;if(keys.ArrowRigh
  const canMove=!m.dead&&G.phase!=='freeze';let fx_=0,fz=0;if(canMove){if(keys.KeyW)fz-=1;if(keys.KeyS)fz+=1;if(keys.KeyA)fx_-=1;if(keys.KeyD)fx_+=1;}
  const sprint=keys.ShiftLeft||keys.ShiftRight;const sp=(sprint&&fz<0?8.4:5.4)*(m.ground?1:0.9);const l=Math.hypot(fx_,fz)||1;
  let vx=(fx_*Math.cos(m.yaw)+fz*Math.sin(m.yaw))/l*sp,vz=(-fx_*Math.sin(m.yaw)+fz*Math.cos(m.yaw))/l*sp;
- let rt=rollT(m.roll);if(m.roll&&(rt>=ROLL.dur||m.dead)){m.roll=null;rt=null;}
+ let rt=rollT(m.roll);if(m.roll&&m.dead){m.roll=null;rt=null;}
+ // after phase C the roll becomes a locked 1.5x slide until a horizontal collision or Space
  if(m.roll){const rs=5.4*(rt>=ROLL.b?ROLL.speedMul:1);vx=m.roll.dx*rs;vz=m.roll.dz*rs;}
- const nx=m.x+vx*dt;if(!blocked(nx,m.z,m.y))m.x=nx;const nz=m.z+vz*dt;if(!blocked(m.x,nz,m.y))m.z=nz;
+ let hitWall=false;const nx=m.x+vx*dt;if(!blocked(nx,m.z,m.y))m.x=nx;else if(Math.abs(vx)>1e-6)hitWall=true;const nz=m.z+vz*dt;if(!blocked(m.x,nz,m.y))m.z=nz;else if(Math.abs(vz)>1e-6)hitWall=true;
+ if(m.roll&&hitWall){m.roll=null;rt=null;send('roll',{id:myId,ev:'end',ts:Date.now(),r:G.round});}
  if(canMove&&keys.Space&&m.ground&&!m.roll&&!m.noJumpUntilRelease){m.vy=7.2;m.ground=false;}
  m.vy-=21*dt;let ny=m.y+m.vy*dt;const g=surfH(m.x,m.z,m.y);
  for(const b of solids){if(m.vy>0&&m.x>b.x0-PR&&m.x<b.x1+PR&&m.z>b.z0-PR&&m.z<b.z1+PR&&m.y+PH<=b.y0+0.01&&ny+PH>b.y0){ny=b.y0-PH;m.vy=0;}}
@@ -258,7 +260,7 @@ function stepMe(dt){const m=G.me;if(keys.ArrowLeft)m.yaw+=dt*2;if(keys.ArrowRigh
  m.y=ny;const mv=Math.hypot(vx,vz)*dt;m.moveD+=mv;m.bob+=mv*1.6;
  if(m.trig||(mouseDown&&WEAP[m.w].auto)){fire();}m.trig=false;
  m.aimT=Math.max(0,m.aimT-dt);m.kick=Math.max(0,m.kick-dt*9);
- camera.position.set(m.x,m.y+(m.dead?0.35:EYE*rollLow(m.roll))+(m.ground&&!m.roll?Math.sin(m.bob*2.2)*0.03:0),m.z);camera.rotation.set(m.pitch+(m.roll?rollOff(rt):0),m.yaw,m.dead?0.5:0);
+ camera.position.set(m.x,m.y+(m.dead?0.35:EYE*rollLow(m.roll))+(m.ground&&!m.roll?Math.sin(m.bob*2.2)*0.03:0),m.z);camera.rotation.set(m.pitch+(m.roll&&rt<ROLL.dur?rollOff(rt):0),m.yaw,m.dead?0.5:0);
  const st_=performance.now()/1000,swX=Math.sin(st_*2*Math.PI*0.23)*0.002,swY=Math.sin(st_*2*Math.PI*0.31+1.1)*0.0015,swR=Math.sin(st_*2*Math.PI*0.27)*0.003;G.sway={x:swX,y:swY,r:swR};
  for(const k in vm){const g_=vm[k];const rel=m.reloadT>0?Math.sin(Math.min(1,1-m.reloadT/WEAP[k].reload)*Math.PI):0;
   g_.position.set(0.17+swX+Math.sin(m.bob)*0.012,-0.2+swY-rel*0.18+Math.abs(Math.cos(m.bob))*0.01,(k==='rifle'?-0.38:-0.42)+m.kick*0.05);g_.rotation.set(m.kick*0.08-rel*0.6+swR*0.5,0.04+swR,rel*0.3+swR*0.6);g_.visible=k===m.w&&!m.dead;}

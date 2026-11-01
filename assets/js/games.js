@@ -25,7 +25,7 @@ window.LAG_GAMES = [
     title: "Orbit Hills",
     subtitle: "A Galaxy Climb Racer",
     blurb: "A pixel-art hill-climb racer across 10 worlds. Floor it over procedural hills, flip in low gravity and don't land on your roof.",
-    genre: "Racing / Hill climb",
+    genre: "Racing / Hill climb / Casual",
     status: "Play now",
     play: "games/orbit-hills/",
     info: "games/orbit-hills.html",

@@ -144,7 +144,7 @@ document.querySelectorAll('.sens input').forEach(i=>i.addEventListener('input',(
 setSens(localStorage.getItem('nfps.sens')||10);
 // ---------- input ----------
 const keys={};let mouseDown=false,locked=false;const TEST=window.__NFPS_TEST||false;
-addEventListener('keydown',e=>{keys[e.code]=true;if(!G)return;if(e.code==='KeyC'&&!e.repeat)startRoll();if(e.code==='Space'&&G.me.roll)cancelRoll();if(e.code==='KeyR')startReload();if(e.code==='Digit1')swap('rifle');if(e.code==='Digit2')swap('pistol');if(e.code==='KeyQ')swap(G.me.w==='rifle'?'pistol':'rifle');});
+addEventListener('keydown',e=>{keys[e.code]=true;if(!G)return;if(e.code==='KeyC'&&!e.repeat)startRoll();if(e.code==='Space'&&!e.repeat){if(G.me.roll)cancelRoll();else if(G.me.wj)cancelWallJump();else tryWallJump();}if(e.code==='KeyR')startReload();if(e.code==='Digit1')swap('rifle');if(e.code==='Digit2')swap('pistol');if(e.code==='KeyQ')swap(G.me.w==='rifle'?'pistol':'rifle');});
 addEventListener('keydown',e=>{if(e.code==='KeyP'&&G&&G.practice)leavePractice();});
 addEventListener('keyup',e=>{keys[e.code]=false;if(e.code==='Space'&&G)G.me.noJumpUntilRelease=false;});
 addEventListener('mousedown',e=>{if(!G||(e.target.closest&&e.target.closest('.panel')))return;if(!locked&&!TEST){renderer.domElement.requestPointerLock();return;}if(e.button===0){mouseDown=true;G.me.trig=true;}});
@@ -161,34 +161,54 @@ function startMatch(m){
   me:{id:myId,x:0,y:0,z:0,vy:0,yaw:0,pitch:0,hp:100,dead:false,w:'rifle',ammo:{rifle:30,pistol:12},reloadT:0,lastShot:0,trig:false,ground:true,moveD:0,aimT:0,kick:0,bob:0}};
  for(const p of order)if(p.id!==myId)G.players[p.id]={...p,fig:new Figure(p.team,p.team===G.team),snaps:[],x:0,y:0,z:0,yaw:0,hp:100,dead:false,w:'rifle',anim:'idle',lastShot:{rifle:0,pistol:0},seenAt:0,alive:true};
  respawn();
+ const LAG=window.__NFPS_LAG||0;const H=f=>({payload})=>{if(LAG)setTimeout(()=>f(payload),LAG*(0.85+Math.random()*0.3));else f(payload);};   // LAG = test-only simulated one-way latency
  const ch=sb.channel('nfps:'+G.mid,{config:{broadcast:{self:false},presence:{key:myId}}});G.ch=ch;
- ch.on('broadcast',{event:'st'},({payload})=>onState(payload)).on('broadcast',{event:'shot'},({payload})=>onShot(payload))
-   .on('broadcast',{event:'hp'},({payload})=>onHp(payload)).on('broadcast',{event:'ctl'},({payload})=>onCtl(payload)).on('broadcast',{event:'roll'},({payload})=>onRoll(payload))
-   .on('presence',{event:'sync'},()=>{const st=ch.presenceState();G.present=new Set(Object.keys(st));G.present.add(myId);})
-   .subscribe(s=>{if(s==='SUBSCRIBED'){G.subOK=true;ch.track({t:Date.now()});}});
+ ch.on('broadcast',{event:'st'},H(onState)).on('broadcast',{event:'shot'},H(onShot)).on('broadcast',{event:'hp'},H(onHp)).on('broadcast',{event:'ctl'},H(onCtl)).on('broadcast',{event:'roll'},H(onRoll))
+   .on('broadcast',{event:'ping'},H(onPing)).on('broadcast',{event:'pong'},H(onPong)).on('broadcast',{event:'ack'},H(onAck))
+   .on('presence',{event:'sync'},()=>{const st=ch.presenceState();G.presSynced=true;G.present=new Set(Object.keys(st));G.present.add(myId);})
+   .subscribe(s=>{if(s==='SUBSCRIBED'){G.subOK=true;ch.track({t:Date.now()});send('ping',{id:myId,t:nowMs()});}});
  $('menu').style.display='none';$('queue').style.display='none';$('hud').style.display='block';
- if(!TEST)renderer.domElement.requestPointerLock();
+ if(!TEST)renderer.domElement.requestPointerLock();msg('<span style="font-size:22px">CONNECTING…</span>',30000);
  swap('rifle',true);feed(`Match found — ${order.filter(p=>p.team==='a').map(p=>esc(p.name)).join(' & ')} <span class="ta">vs</span> ${order.filter(p=>p.team==='b').map(p=>esc(p.name)).join(' & ')}`);}
 function send(ev,payload){if(G&&G.ch&&G.subOK)G.ch.send({type:'broadcast',event:ev,payload});}
-function respawn(){const s=spawnPos(G.team,G.idx);Object.assign(G.me,{x:s.x,z:s.z,y:0,vy:0,yaw:s.yaw,pitch:0,hp:100,dead:false,reloadT:0,ammo:{rifle:30,pistol:12},roll:null});
+function respawn(){const s=spawnPos(G.team,G.idx);Object.assign(G.me,{x:s.x,z:s.z,y:0,vy:0,yaw:s.yaw,pitch:0,hp:100,dead:false,reloadT:0,ammo:{rifle:30,pistol:12},roll:null,wj:null});
  for(const id in G.players){const p=G.players[id];p.hp=100;p.dead=false;p.snaps=[];p.roll=null;const sp=spawnPos(p.team,p.idx);Object.assign(p,{x:sp.x,y:0,z:sp.z});}}
-function isLeader(){for(const p of G.order)if(G.present.has(p.id))return p.id===myId;return false;}
+// ---- match control: one fixed leader (first player of team A) owns the round clock. Phase end times are in the
+// leader's clock; every client estimates (leader clock - local clock) with ping/pong, so countdowns line up despite
+// latency and clock skew, and each client advances freeze->live on its own when the countdown hits 0 (no message needed).
+function nowMs(){return Date.now()+(window.__NFPS_SKEW||0);}           // __NFPS_SKEW: test-only simulated clock skew
+function leaderNow(){return nowMs()+(G.off||0);}
+function isLeader(){const L0=G.order[0].id;if(G.present.has(L0)||!G.presSynced||performance.now()-G.startAt<8000||(G.players[L0]&&performance.now()-G.players[L0].seenAt<3000))return L0===myId;
+ for(const p of G.order)if(G.present.has(p.id))return p.id===myId;return false;}
+function onPing(p){if(isLeader())send('pong',{id:p.id,t:p.t,lt:nowMs()});}
+function onPong(p){if(p.id!==myId)return;const n=nowMs(),rtt=n-p.t;if(rtt<0||rtt>5000)return;const off=p.lt+rtt/2-n;
+ (G.offS=G.offS||[]).push({rtt,off});G.offS.sort((x,y)=>x.rtt-y.rtt);G.offS.length=Math.min(G.offS.length,8);G.off=G.offS[0].off;G.rtt=G.offS[0].rtt;G.offOK=true;}
+function onAck(a){if(G.acks&&a.round===G.round)G.acks.add(a.id);}
+function adoptEnd(c){if(c.endL==null)return;G.endL=(G.offOK||isLeader())?c.endL:leaderNow()+c.rem*1000;}
 function alive(team){let n=0;for(const p of G.order){if(p.team!==team)continue;if(p.id===myId){if(!G.me.dead)n++;continue;}const r=G.players[p.id];if(G.present.has(p.id)&&!r.dead)n++;}return n;}
-function onCtl(c){if(!G)return;if(c.score)G.score=c.score;
- if(c.ev==='round'&&c.round!==G.round){G.round=c.round;G.phase='freeze';G.phaseT=c.t;respawn();msg(`ROUND ${c.round}`,1500);}
- else if(c.ev==='rend'&&G.phase!=='post'){G.phase='post';G.phaseT=c.t;msg(c.winner?`<span class="t${c.winner}">${c.winner===G.team?'ROUND WON':'ROUND LOST'}</span>`:'ROUND DRAW',2500);}
+function onCtl(c){if(!G||G.ended)return;if(c.score)G.score=c.score;
+ if(c.ev==='round'){send('ack',{id:myId,round:c.round});if(c.round!==G.round){G.round=c.round;G.phase='freeze';adoptEnd(c);respawn();msg(`ROUND ${c.round}`,1500);}}
+ else if(c.ev==='rend'&&G.phase!=='post'){G.phase='post';adoptEnd(c);msg(c.winner?`<span class="t${c.winner}">${c.winner===G.team?'ROUND WON':'ROUND LOST'}</span>`:'ROUND DRAW',2500);}
  else if(c.ev==='mend')endMatch(c.winner);
- else if(c.ev==='sync'&&!isLeader()){if(c.round!==G.round&&c.phase!=='post'){G.round=c.round;respawn();}G.phase=c.phase;G.phaseT=c.t;}}
-function leaderTick(dt){G.phaseT-=dt;
- if(G.phase==='warmup'){const all=G.order.every(p=>G.present.has(p.id));if((all&&performance.now()-G.startAt>2500)||performance.now()-G.startAt>15000)nextRound();}
- else if(G.phase==='freeze'&&G.phaseT<=0){G.phase='live';G.phaseT=ROUND_TIME;ctl({ev:'sync'});}
+ else if(c.ev==='sync'&&!isLeader()){if(c.round!==G.round&&c.phase!=='post'){G.round=c.round;respawn();if(c.phase==='freeze')msg(`ROUND ${c.round}`,1500);}
+  if(!(G.phase==='live'&&c.phase==='freeze'&&c.round===G.round))G.phase=c.phase;adoptEnd(c);}}
+function phaseLeft(){return G.endL?(G.endL-leaderNow())/1000:0;}
+function clientTick(){G.phaseT=phaseLeft();if(G.phase==='freeze'&&G.phaseT<=0){G.phase='live';G.endL+=ROUND_TIME*1000;G.phaseT=phaseLeft();}  // local fallback, no message needed
+ G.pingT=(G.pingT||0)-1;if(G.subOK&&performance.now()-(G.lastPing||0)>((G.offS&&G.offS.length>=3)?3000:500)){G.lastPing=performance.now();send('ping',{id:myId,t:nowMs()});}}
+function setEnd(sec){G.endL=leaderNow()+sec*1000;G.phaseT=sec;}
+function leaderTick(dt){G.phaseT=phaseLeft();G.off=0;
+ if(G.phase==='warmup'){const others=G.order.filter(p=>p.id!==myId);const ready=others.every(p=>G.present.has(p.id)||(G.players[p.id]&&performance.now()-G.players[p.id].seenAt<1500));
+  if((G.subOK&&ready&&performance.now()-G.startAt>600)||performance.now()-G.startAt>10000)nextRound();}
+ else if(G.phase==='freeze'&&G.phaseT<=0){G.phase='live';setEnd(ROUND_TIME);ctl({ev:'sync'});}
  else if(G.phase==='live'){const a=alive('a'),b=alive('b');let w=null,done=false;
   if(a===0||b===0){done=true;w=a>b?'a':b>a?'b':null;}else if(G.phaseT<=0){done=true;const hp=t=>G.order.filter(p=>p.team===t).reduce((s,p)=>s+(p.id===myId?G.me.hp:G.players[p.id].hp),0);const ha=hp('a'),hb=hp('b');w=ha>hb?'a':hb>ha?'b':null;}
-  if(done){if(w)G.score[w]++;onCtl({ev:'rend',winner:w,t:3});ctl({ev:'rend',winner:w});}}
- else if(G.phase==='post'&&G.phaseT<=0){if(G.score.a>=WIN_ROUNDS||G.score.b>=WIN_ROUNDS){const w=G.score.a>=WIN_ROUNDS?'a':'b';ctl({ev:'mend',winner:w});endMatch(w);}else nextRound();}
- G.syncT=(G.syncT||0)-dt;if(G.syncT<=0){G.syncT=1;ctl({ev:'sync'});}}
-function ctl(c){c.score=G.score;c.round=c.round||G.round;c.phase=c.phase||G.phase;c.t=c.t!=null?c.t:G.phaseT;send('ctl',c);}
-function nextRound(){G.round++;G.phase='freeze';G.phaseT=3;respawn();ctl({ev:'round',round:G.round,t:3});msg(`ROUND ${G.round}`,1500);}
+  if(done){if(w)G.score[w]++;setEnd(3);const c={ev:'rend',winner:w};onCtl({...c,endL:G.endL,rem:3});ctl(c);}}
+ else if(G.phase==='post'&&G.phaseT<=0){if(G.score.a>=WIN_ROUNDS||G.score.b>=WIN_ROUNDS){const w=G.score.a>=WIN_ROUNDS?'a':'b';ctl({ev:'mend',winner:w});setTimeout(()=>G&&ctl({ev:'mend',winner:w}),400);endMatch(w);}else nextRound();}
+ // resend round start until every other player acks it (lost/late packets, sends before subscribe)
+ if(G.phase==='freeze'&&G.acks&&performance.now()-G.roundSentAt>350&&G.order.some(p=>p.id!==myId&&!G.acks.has(p.id))&&G.resends<12){G.resends++;G.roundSentAt=performance.now();ctl({ev:'round',round:G.round});}
+ G.syncT=(G.syncT||0)-dt;if(G.syncT<=0){G.syncT=0.5;ctl({ev:'sync'});}}
+function ctl(c){c.score=G.score;c.round=c.round||G.round;c.phase=c.phase||G.phase;c.endL=G.endL;c.rem=phaseLeft();send('ctl',c);}
+function nextRound(){G.round++;G.phase='freeze';setEnd(3);respawn();G.acks=new Set();G.resends=0;G.roundSentAt=performance.now();ctl({ev:'round',round:G.round});msg(`ROUND ${G.round}`,1500);}
 // ---------- networking handlers ----------
 function onState(s){const p=G&&G.players[s.id];if(!p)return;p.snaps.push({t:performance.now()/1000,x:s.x,y:s.y,z:s.z,yaw:s.yaw,pitch:s.p});if(p.snaps.length>30)p.snaps.shift();
  p.anim=s.a;p.w=s.w;if(!s.rl&&p.roll&&rollT(p.roll)>0.4)p.roll=null;else if(s.rl&&!p.roll&&performance.now()-(p.rollEvAt||0)>1500)p.roll={t0:performance.now()/1000-ROLL.dur};p.seenAt=performance.now();if(s.r===G.round){p.hp=s.hp;p.dead=s.d;}}
@@ -235,7 +255,7 @@ function remoteAlpha(t){if(t==null||t<ROLL.a)return 1;if(t<ROLL.b)return 0;retur
 function easeEye(c,t,dt){if(c==null||t<c)return t;return Math.min(t,c+(1-ROLL.heightMul)*dt/0.1);}
 function rollT(r){return r?performance.now()/1000-r.t0:null;}
 function rollLow(r){return r&&rollT(r)>=ROLL.b?ROLL.heightMul:1;}
-function startRoll(){const m=G.me;if(m.roll||!m.ground||m.dead||G.phase==='freeze')return;
+function startRoll(){const m=G.me;if(m.roll||m.wj||!m.ground||m.dead||G.phase==='freeze'||G.phase==='warmup')return;
  m.roll={t0:performance.now()/1000,dx:-Math.sin(m.yaw),dz:-Math.cos(m.yaw)};send('roll',{id:myId,ev:'start',ts:Date.now(),r:G.round});}
 function cancelRoll(){const m=G.me;if(!m.roll)return;m.roll=null;m.noJumpUntilRelease=true;m.vy=0;$('black').style.opacity=0;send('roll',{id:myId,ev:'cancel',ts:Date.now(),r:G.round});}
 function onRoll(r){const p=G&&G.players[r.id];if(!p)return;p.rollEvAt=performance.now();p.roll=r.ev==='start'?{t0:performance.now()/1000}:null;}
@@ -263,6 +283,14 @@ function shotSound(weapon,dist){const c=audioInit();if(!c||SND.muted)return;if(c
  car.onended=()=>{SND.voices=Math.max(0,SND.voices-1);try{out.disconnect();}catch(e){}};}
 addEventListener('keydown',e=>{if(e.code==='KeyM')setMute(!SND.muted);});
 addEventListener('pointerdown',()=>{const c=audioInit();if(c&&c.state==='suspended')c.resume();},{capture:true});
+// ---------- wall jump ----------
+// airborne + within WJ.contact of a blocker + facing it (forward within WJ.maxAngle of the wall's inward normal) + fresh Space press
+const WJ={contact:0.12,maxAngle:70,mult:1.4,minBase:5.4,dur:1.0,upV:3.5};
+function wallContact(m){let best=null;for(const [nx,nz] of[[1,0],[-1,0],[0,1],[0,-1]]){if(blocked(m.x+nx*WJ.contact,m.z+nz*WJ.contact,m.y)){const fx=-Math.sin(m.yaw),fz=-Math.cos(m.yaw);const dot=fx*nx+fz*nz;if(!best||dot>best.dot)best={nx,nz,dot};}}return best;}
+function tryWallJump(){const m=G.me;if(!G||m.dead||m.ground||m.roll||m.wj||G.phase==='freeze'||G.phase==='warmup')return false;const c=wallContact(m);
+ if(!c||c.dot<Math.cos(WJ.maxAngle*Math.PI/180))return false;const sp=Math.max(WJ.minBase,m.hv||0)*WJ.mult;
+ m.wj={t0:performance.now()/1000,vx:Math.sin(m.yaw)*sp,vz:Math.cos(m.yaw)*sp,sp};m.vy=Math.max(m.vy,WJ.upV);m.noJumpUntilRelease=true;return true;}
+function cancelWallJump(){const m=G.me;if(!m.wj)return;m.wj=null;}
 // ---------- HUD ----------
 let msgTO;function msg(h,ms){$('msg').innerHTML=h;clearTimeout(msgTO);msgTO=setTimeout(()=>$('msg').innerHTML='',ms);}
 function feed(h){const d=document.createElement('div');d.innerHTML=h;$('feed').prepend(d);setTimeout(()=>d.remove(),6000);}
@@ -276,12 +304,15 @@ function hud(){const m=G.me;const tc=`t${G.team}`;$('hp').className='glow '+tc;$
 // ---------- simulation ----------
 function stepMe(dt){const m=G.me;if(keys.ArrowLeft)m.yaw+=dt*2;if(keys.ArrowRight)m.yaw-=dt*2;
  m.reloadT>0&&(m.reloadT-=dt)<=0&&(m.reloadT=0,m.ammo[m.w]=WEAP[m.w].mag);
- const canMove=!m.dead&&G.phase!=='freeze';let fx_=0,fz=0;if(canMove){if(keys.KeyW)fz-=1;if(keys.KeyS)fz+=1;if(keys.KeyA)fx_-=1;if(keys.KeyD)fx_+=1;}
+ const canMove=!m.dead&&G.phase!=='freeze'&&G.phase!=='warmup';let fx_=0,fz=0;if(canMove){if(keys.KeyW)fz-=1;if(keys.KeyS)fz+=1;if(keys.KeyA)fx_-=1;if(keys.KeyD)fx_+=1;}
  const sprint=keys.ShiftLeft||keys.ShiftRight;const sp=(sprint&&fz<0?10.92:5.4)*(m.ground?1:0.9);const l=Math.hypot(fx_,fz)||1;
  let vx=(fx_*Math.cos(m.yaw)+fz*Math.sin(m.yaw))/l*sp,vz=(-fx_*Math.sin(m.yaw)+fz*Math.cos(m.yaw))/l*sp;
  let rt=rollT(m.roll);if(m.roll&&m.dead){m.roll=null;rt=null;}
  // after phase C the roll becomes a locked 1.5x slide until a horizontal collision or Space
  if(m.roll){const rs=5.4*(rt>=ROLL.b?ROLL.speedMul:1);vx=m.roll.dx*rs;vz=m.roll.dz*rs;}
+ if(m.wj&&(performance.now()/1000-m.wj.t0>=WJ.dur||m.dead))m.wj=null;
+ if(m.wj){vx=m.wj.vx;vz=m.wj.vz;}
+ m.hv=Math.hypot(vx,vz);
  let hitWall=false;const nSub=Math.max(1,Math.ceil(Math.hypot(vx,vz)*dt/0.15));// substep (<=0.15 m) so fast slides can't tunnel
  for(let i=0;i<nSub;i++){const sdt=dt/nSub;const nx=m.x+vx*sdt;if(!blocked(nx,m.z,m.y))m.x=nx;else if(Math.abs(vx)>1e-6)hitWall=true;const nz=m.z+vz*sdt;if(!blocked(m.x,nz,m.y))m.z=nz;else if(Math.abs(vz)>1e-6)hitWall=true;if(hitWall&&m.roll&&rollT(m.roll)>=ROLL.dur)break;}
  if(m.roll&&hitWall&&rt>=ROLL.dur){m.roll=null;rt=null;send('roll',{id:myId,ev:'end',ts:Date.now(),r:G.round});}
@@ -309,7 +340,7 @@ function stepRemote(dt){const rt=performance.now()/1000-INTERP;
   f.set(pose,side,p.w||'rifle');f.g.visible=G.present.has(id)||performance.now()-p.seenAt<3000;}}
 let last=performance.now();
 function loop(){requestAnimationFrame(loop);const now=performance.now();const rdt=Math.min(1,(now-last)/1000),dt=Math.min(0.05,rdt);last=now;
- if(G&&!G.ended){if(G.practice){}else if(isLeader())leaderTick(rdt);else G.phaseT-=rdt;stepMe(dt);stepRemote(dt);hud();dmgFlash=Math.max(0,dmgFlash-dt*2);}
+ if(G&&!G.ended){if(G.practice){}else if(isLeader())leaderTick(rdt);else clientTick();stepMe(dt);stepRemote(dt);hud();dmgFlash=Math.max(0,dmgFlash-dt*2);}
  else{const t=now/1000;camera.position.set(Math.cos(t*0.08)*26,9,Math.sin(t*0.08)*18);camera.lookAt(0,1,0);}
  tickFx(dt);render();}
 // ---------- match end + reporting ----------
@@ -347,5 +378,5 @@ async function poll(){try{const r=await rpc('nfps_queue_poll',{p_id:myId,p_secre
 addEventListener('beforeunload',()=>{if(qTimer)navigator.sendBeacon&&0;});
 // ---------- boot ----------
 fetch('assets/art.json').then(r=>r.json()).then(a=>{ART=a;buildVM();loop();register().catch(e=>{$('me').textContent='offline: '+e.message;});});
-window.NFPS={get G(){return G;},SENS,setSens,SND,ROLL,roll:()=>{const m=G.me,t=rollT(m.roll);return{rolling:!!m.roll,t,off:m.roll?rollOff(t):0,camX:camera.rotation.x,pitch:m.pitch,black:+getComputedStyle($('black')).opacity,eyeY:camera.position.y-m.y,x:m.x,z:m.z,y:m.y,vy:m.vy};},cross:()=>{const o=crossOff();return{off:o,px:crossPx(o),dur:XH.dur,t:performance.now()/1000-XH.t0};},camera,swap:w=>swap(w),fire:()=>G&&(G.me.trig=true),keys,rayMap,solids,WEAP};
+window.NFPS={get G(){return G;},WJ,SENS,setSens,SND,ROLL,roll:()=>{const m=G.me,t=rollT(m.roll);return{rolling:!!m.roll,t,off:m.roll?rollOff(t):0,camX:camera.rotation.x,pitch:m.pitch,black:+getComputedStyle($('black')).opacity,eyeY:camera.position.y-m.y,x:m.x,z:m.z,y:m.y,vy:m.vy};},cross:()=>{const o=crossOff();return{off:o,px:crossPx(o),dur:XH.dur,t:performance.now()/1000-XH.t0};},camera,swap:w=>swap(w),fire:()=>G&&(G.me.trig=true),keys,rayMap,solids,WEAP};
 })();

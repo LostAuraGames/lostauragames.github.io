@@ -1,0 +1,26 @@
+Cave Runner - asset credits and licences
+========================================
+
+3D models in assets/models/*.glb were built by Lost Aura Games with Blender 4.2 (headless, Python scripts).
+Every texture is procedurally generated and baked in Blender (base colour, tangent-space normal map,
+ambient occlusion / roughness / metalness packed as ORM, emissive). No photo textures or paid assets are used.
+
+Third-party ART assets (all CC0 1.0 Universal - public domain dedication):
+
+  * MakeHuman base mesh "hm08" (data/3dobjs/base.obj) and morph targets
+      macrodetails/caucasian-male-young.target
+      macrodetails/universal-male-young-maxmuscle-averageweight.target
+    Source:  https://github.com/makehumancommunity/makehuman  (makehuman/data/...)
+    Licence: CC0 1.0 - "This asset was explicitly released as CC0 in september 2020"
+             (copyright holders at release: Data Collection AB, Joel Palmius, Jonas Hauquier)
+    Used for: the hero's body/head topology (re-rigged, re-posed, re-textured; outfits are derived shells).
+
+Original work by Lost Aura Games (no third-party content):
+  * The 7 outfits (Wanderer, Crimson Hunter, Bone Knight, Shadow Ninja, Neon Stalker, Plague Doctor,
+    Gilded Warden), the 7 blades, the black widow and all animation clips (run, swing, hit, fall /
+    run, pounce, leap). Designs follow the game's original code-built models.
+
+Code libraries (not art; permissive licences):
+  * three.js r160 incl. GLTFLoader / DRACOLoader / SkeletonUtils - MIT licence (see three.LICENSE.txt)
+  * Draco decoder (assets/draco/) - Apache License 2.0, Copyright Google LLC
+    https://github.com/google/draco

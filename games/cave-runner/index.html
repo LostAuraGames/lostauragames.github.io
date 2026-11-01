@@ -133,6 +133,7 @@ html,body{margin:0;height:100%;background:#000;overflow:hidden;font-family:"Cour
 <div id="toast"></div>
 <a id="lag-back" href="../../" aria-label="Back to Lost Aura Games">&#9664; Lost Aura Games</a>
 <script src="assets/three.min.js"></script>
+<script src="assets/gltf-loader.js"></script>
 <script src="assets/cr-models.js"></script>
 <script>
 'use strict';
@@ -481,7 +482,7 @@ function bankRun(){if(G.ended||!G.t)return;G.ended=true;if(G.score>SAVE.best)SAV
 function startRun(pi,noCut){if(CUR==='play'||CUR==='pause')bankRun();if(pi==null)pi=Math.floor(Math.random()*PRESETS.length);buildCave(pi);clearObstacles();
  if(!noCut&&!window.__noCut){startCut();return;}beginRun();}
 function beginRun(){resize();spot.intensity=0;rimLight.intensity=10;
- Object.assign(G,{t:0,score:0,speed:13,dist:0,lane:1,px:0,blood:0,dread:0,slow:0,swingT:-9,swingCd:0,ended:false,deathT:0,cause:'',nextRow:40,nextSnake:2.8,kills:0,shake:0,webHits:0,hintT:0,lastSwingT:-9,lockSnake:null,swingHit:false,swingJudged:true,tooEarly:0,fall:0,landed:false});WD.z=3.7;WD.x=0;WD.lunge=0;WD.pounce=0;player.visible=true;player.rotation.set(0,0,0);PED.visible=false;
+ if(HERO&&HERO.stopClip)HERO.stopClip();Object.assign(G,{t:0,score:0,speed:13,dist:0,lane:1,px:0,blood:0,dread:0,slow:0,swingT:-9,swingCd:0,ended:false,deathT:0,cause:'',nextRow:40,nextSnake:2.8,kills:0,shake:0,webHits:0,hintT:0,lastSwingT:-9,lockSnake:null,swingHit:false,swingJudged:true,tooEarly:0,fall:0,landed:false});WD.z=3.7;WD.x=0;WD.lunge=0;WD.pounce=0;player.visible=true;player.rotation.set(0,0,0);PED.visible=false;
  player.position.set(0,0,0);applyLook(SAVE.eq);SAVE.runs++;persist();show('play');toast(t('Cave: {n}',{n:t(PRESET.name)}));}
 // ================= CUTSCENE: the widow hunts =================
 const CUT={t:0,skip:false,dur:3.7};
@@ -505,7 +506,7 @@ function swing(){if(CUR!=='play'||G.ended)return;if(G.lockSnake&&G.lockSnake.sta
 // (too early = no second try), otherwise a short 0.7s recovery. Well-timed taps (up to 0.17s early) still kill.
 function judgeSwing(){if(G.swingJudged)return;G.swingJudged=true;if(G.swingHit)return;const lp=snakes.find(s=>s.state==='leap');
  if(lp){G.lockSnake=lp;G.tooEarly=1.2;SFX.whiff();}else{G.swingCd=Math.max(G.swingCd,.7);}}
-function die(cause){if(G.ended)return;G.ended=true;G.cause=cause;G.deathT=0;G.landed=false;WD.pounce=0;SFX.death();if(cause==='dark'){SFX.skitter();}else{flash(.8);G.shake=.6;G.fall=1;}
+function die(cause){if(G.ended)return;G.ended=true;if(HERO&&HERO.play)HERO.play(cause==='dark'?'fall':'hit');G.cause=cause;G.deathT=0;G.landed=false;WD.pounce=0;SFX.death();if(cause==='dark'){SFX.skitter();}else{flash(.8);G.shake=.6;G.fall=1;}
  const sc=G.score;let nb=false;if(sc>SAVE.best){SAVE.best=sc;nb=true;}SAVE.blood+=G.blood;persist();G.newBest=nb;}
 function killSnake(sn){sn.state='dead';G.swingHit=true;G.swingCd=.15;sn.shadow.visible=false;sn.ring.visible=false;const hp=sn.head.position;goreBurst(hp.x,hp.y,hp.z,46);SFX.kill();G.kills++;const amt=5+Math.floor(G.t/30);G.blood+=amt;
  popText('+'+amt,'50%','38%');document.getElementById('splat').style.opacity=.7;setTimeout(()=>document.getElementById('splat').style.opacity=0,220);
@@ -665,7 +666,8 @@ function tick(dt){if(window.__freeze)return;
   scrollCave(sp*dt,dt);G.px+=(0-G.px)*Math.min(1,dt*5);player.position.x=G.px;G.lane=1;WIDOW_HI.g.visible=WIDOW_LO.g.visible=false;player.visible=true;player.rotation.x=0;
   if(CUR==='ward'){WSW=(WSW+dt)%3.2;animPlayer(dt,0,WSW>2.4?WSW-2.4:-9);}else animPlayer(dt,sp,-9);
   if(CUR==='ward'){ROT+=window.__rotLock?0:dt*.55;if(window.__rotLock!=null&&window.__rotLock!==true)ROT=window.__rotLock;emitTrail(dt,true);player.rotation.y=ROT;player.position.y=.12;PED.visible=true;PED.position.set(0,0,0);spot.intensity=22;spot.target.position.set(0,1,0);rimLight.position.set(Math.sin(ROT*.0)*0-1.2,2.3,1.6);rimLight.intensity=18;camera.position.set(0,1.5,-3.9);camera.lookAt(0,1.0,0);
-   if(innerWidth>innerHeight&&innerHeight<=620)camera.setViewOffset(innerWidth,innerHeight,innerWidth*.22,0,innerWidth,innerHeight);else camera.setViewOffset(innerWidth,innerHeight,0,innerHeight*.2,innerWidth,innerHeight);}
+   if(innerWidth>innerHeight&&innerHeight<=620)camera.setViewOffset(innerWidth,innerHeight,innerWidth*.22,0,innerWidth,innerHeight);else camera.setViewOffset(innerWidth,innerHeight,0,innerHeight*.2,innerWidth,innerHeight);
+   const co=window.__camOv;if(co){camera.clearViewOffset();camera.position.set(co[0],co[1],co[2]);camera.lookAt(co[3],co[4],co[5]);}}
   else{emitTrail(dt,false);player.position.y=0;PED.visible=false;spot.intensity=0;rimLight.intensity=10;const por=innerHeight>innerWidth;camera.position.set(por?.75:1.05,por?3.0:2.75,por?4.8:3.9);camera.lookAt(por?.2:.35,1.4,-9);}
   keyLight.position.set(.8,2.6,CUR==='ward'?-1.5:.8);if(CUR!=='ward')rimLight.position.set(-.4,2.4,-1.8);
   $('#dark').style.opacity=0;}

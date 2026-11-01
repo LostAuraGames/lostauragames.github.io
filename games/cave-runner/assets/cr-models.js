@@ -42,6 +42,17 @@ CRM.makeEnv=function(renderer){const s=new T.Scene();s.background=new T.Color(0x
  add(new T.PlaneGeometry(6,6),em(0x40507a,.6),0,6,0);add(new T.PlaneGeometry(3,2),em(0xffd0b0,2.2),1,2,5);add(new T.PlaneGeometry(10,10),em(0x200406,1),0,-5,0);
  const pm=new T.PMREMGenerator(renderer);const tex=pm.fromScene(s,.03).texture;pm.dispose();return tex;};
 
+
+// ---------------- GLB MODELS (Blender-built, Draco + WebP; lazy-loaded, code-built fallback) ----------------
+const GL={};CRM.GL=GL;
+GL.disabled=/[?&]noglb\b/.test(location.search)||typeof T.GLTFLoader!=='function';
+GL.lo=/[?&]lo\b/.test(location.search)||(!/[?&]hi\b/.test(location.search)&&((window.matchMedia&&matchMedia('(pointer:coarse)').matches)||Math.min(screen.width,screen.height)<720));
+GL.base='assets/models/';GL.cache={};GL.ok={};GL.fail={};let _ldr=null;
+function ldr(){if(_ldr)return _ldr;const d=new T.DRACOLoader();d.setDecoderPath('assets/draco/');d.setDecoderConfig({type:'wasm'});_ldr=new T.GLTFLoader();_ldr.setDRACOLoader(d);return _ldr;}
+GL.load=function(name){if(GL.disabled)return Promise.resolve(null);const f=name+(GL.lo?'_lo':'')+'.glb';
+ if(!GL.cache[f])GL.cache[f]=ldr().loadAsync(GL.base+f).then(g=>{GL.ok[name]=1;return g;}).catch(e=>{GL.fail[name]=String(e&&e.message||e);console.warn('[CR] model fallback:',f);return null;});return GL.cache[f];};
+function prepGLB(root){root.traverse(o=>{if(o.isMesh){o.frustumCulled=false;const m=o.material;if(m){m.envMapIntensity=1.15;if(m.map)m.map.anisotropy=4;}}});return root;}
+
 // ---------------- HERO RIG ----------------
 function rig(root){const G=(p,x,y,z)=>{const o=new T.Group();o.position.set(x,y,z);p.add(o);return o;};const R={root};
  R.hips=G(root,0,.98,0);R.spine=G(R.hips,0,.1,0);R.chest=G(R.spine,0,.2,0);R.neck=G(R.chest,0,.3,0);R.head=G(R.neck,0,.08,0);
@@ -199,15 +210,34 @@ function bladeDef(id){const S=std,B=[];const add=(g,mk,m)=>B.push({g,mk,m});let 
  return {B,mats,glow,len,orb:id==='void',drip:id==='venom'?0x6aff20:(id==='bloodfang'?0xff1020:null)};}
 
 class Hero{
- constructor(root,GLOW){this.root=root;this.R=rig(root);this.GLOW=GLOW;this.outfits={};this.blades={};this.oid=null;this.bid=null;this.cape=[.3,.1,.1];this.capeV=[0,0,0];this.tail=[.2,.1,.1];this.tailV=[0,0,0];this.t=0;}
+ constructor(root,GLOW){this.root=root;this.R=rig(root);this.GLOW=GLOW;this.outfits={};this.blades={};this.oid=null;this.bid=null;this.cape=[.3,.1,.1];this.capeV=[0,0,0];this.tail=[.2,.1,.1];this.tailV=[0,0,0];this.t=0;
+  this.gOut={};this.gBlade={};this.gBones=null;this.glbOn=false;this.act=null;
+  this.bodyP=GL.load('hero_body').then(g=>{if(!g)return null;const sc=prepGLB(g.scene);const bones={};sc.traverse(o=>{if(o.isBone)bones[o.name]=o;});
+   if(!bones.hips)return null;this.gBones=bones;this.gRest=bones.hips.position.clone();this.gScene=sc;sc.visible=false;this.root.add(sc);
+   this.mixer=new T.AnimationMixer(sc);this.clips={};for(const a of g.animations)this.clips[a.name]=a;this._mode();return bones;});}
+ _loadOutfit(id){if(this.gOut[id]!==undefined)return;this.gOut[id]=null;
+  Promise.all([this.bodyP,GL.load('outfit_'+id)]).then(([bones,g])=>{if(!bones||!g)return;const ms=[];g.scene.traverse(o=>{if(o.isSkinnedMesh)ms.push(o);});
+   for(const m of ms){const sk=m.skeleton;const nb=sk.bones.map(b=>bones[b.name]);if(nb.some(b=>!b))return;m.bind(new T.Skeleton(nb,sk.boneInverses.map(x=>x.clone())),m.bindMatrix.clone());}
+   for(const m of ms){prepGLB(m);m.visible=false;this.gScene.add(m);}this.gOut[id]=ms;this._mode();});}
+ _loadBlade(id){if(this.gBlade[id]!==undefined)return;this.gBlade[id]=null;
+  GL.load('blade_'+id).then(g=>{if(!g)return;const b=this.blades[id];if(!b)return;const sc=prepGLB(g.scene);this.gBlade[id]=sc;
+   for(const c of b.g.children)if(c.isMesh&&!b.orbs.includes(c))c.visible=false;b.g.add(sc);});}
+ _mode(){const on=!!(this.gBones&&this.gOut[this.oid]);this.glbOn=on;
+  for(const k in this.outfits)for(const m of this.outfits[k])m.visible=!on&&(k===this.oid);
+  for(const k in this.gOut)if(this.gOut[k])for(const m of this.gOut[k])m.visible=on&&(k===this.oid);
+  if(this.gScene)this.gScene.visible=on;const par=on?this.gBones.grip:this.R.grip;for(const k in this.blades){const g=this.blades[k].g;if(g.parent!==par)par.add(g);}}
+ play(name){if(!this.mixer||!this.clips[name])return;this.mixer.stopAllAction();const a=this.mixer.clipAction(this.clips[name]);a.reset();a.setLoop(T.LoopOnce,1);a.clampWhenFinished=true;a.play();this.act=a;}
+ stopClip(){if(this.mixer)this.mixer.stopAllAction();this.act=null;}
+ syncGLB(dt){if(!this.glbOn)return;if(this.act){this.mixer.update(dt);return;}const B=this.gBones,R=this.R;
+  for(const n in B){const r=R[n];if(r)B[n].quaternion.copy(r.quaternion);}B.hips.position.set(this.gRest.x,this.gRest.y+(R.hips.position.y-.98),this.gRest.z);}
  setOutfit(id){if(this.oid===id)return;for(const k in this.outfits)for(const m of this.outfits[k])m.visible=(k===id);
-  if(!this.outfits[id]){const B=new Builder();(OUT[id]||OUT.wanderer)(B,this.R);this.outfits[id]=B.build(outfitMats(id));}this.oid=id;}
+  if(!this.outfits[id]){const B=new Builder();(OUT[id]||OUT.wanderer)(B,this.R);this.outfits[id]=B.build(outfitMats(id));}this.oid=id;this._loadOutfit(id);this._mode();}
  setBlade(id){if(this.bid===id)return;for(const k in this.blades)this.blades[k].g.visible=(k===id);
   if(!this.blades[id]){const d=bladeDef(id);const g=new T.Group();const merged=new Map();for(const p of d.B){if(!merged.has(p.mk))merged.set(p.mk,[]);merged.get(p.mk).push({g:p.g,m:p.m});}
    for(const [mk,items] of merged){const mesh=new T.Mesh(mergeGeos(items),d.mats[mk]);mesh.frustumCulled=false;g.add(mesh);}
    let spr=null;if(d.glow){spr=new T.Sprite(new T.SpriteMaterial({map:this.GLOW,color:d.glow,blending:T.AdditiveBlending,depthWrite:false,transparent:true,opacity:.55}));spr.position.y=d.len*.55;spr.scale.set(.5,d.len*1.3,1);g.add(spr);}
    const orbs=[];if(d.orb){for(let i=0;i<3;i++){const o=new T.Mesh(new T.OctahedronGeometry(.035,0),d.mats.e);g.add(o);orbs.push(o);}}
-   this.R.grip.add(g);this.blades[id]={g,spr,orbs,d};}
+   (this.glbOn?this.gBones.grip:this.R.grip).add(g);this.blades[id]={g,spr,orbs,d};this._loadBlade(id);}
   this.bid=id;}
  bladeTip(out){const b=this.blades[this.bid];if(!b)return out.set(0,0,0);out.set(0,b.d.len*.8,0);b.g.localToWorld(out);return out;}
  setDim(d){const b=this.blades[this.bid];if(b&&b.spr)b.spr.visible=!d;}
@@ -231,6 +261,7 @@ class Hero{
   R.tail0.rotation.x=-this.tail[0];R.tail1.rotation.x=-(this.tail[1]+Math.sin(ph*2+1.5)*.06*a);R.tail2.rotation.x=-this.tail[2];
   const b=this.blades[this.bid];if(b){for(let i=0;i<b.orbs.length;i++){const an=this.t*2.4+i*2.1;b.orbs[i].position.set(Math.cos(an)*.16,b.d.len*.6+Math.sin(an*1.3)*.25,Math.sin(an)*.16);b.orbs[i].rotation.set(an,an*1.3,0);}
    if(b.spr)b.spr.material.opacity=.45+.15*Math.sin(this.t*6);}
+  this.syncGLB(dt);
  }}
 CRM.Hero=Hero;
 
@@ -275,7 +306,12 @@ class Widow{
    const f=mk(l1,.1,.075,fem,0);const kn=mk(l2,.075,.055,fem,l1);const an=mk(l3,.05,.016,kn,l2);
    this.legs.push({s,p,hip,fem,kn,an,l1,l2,l3,rest:new T.Vector3(s*Math.sin(ang[p])*rad[p],0,-Math.cos(ang[p])*rad[p]+hipZ[p]),off:(((p%2)^(s>0?1:0))*.5)+p*.06});}
   this.cyc=0;this.t=0;this.bodyH=.95;this.pose='run';this.p=0;
-  this.g.traverse(o=>o.frustumCulled=false);}
+  this.g.traverse(o=>o.frustumCulled=false);this.gB=null;
+  GL.load('widow').then(g=>{if(!g)return;const sc=prepGLB(T.SkeletonUtils.clone(g.scene));const bones={};sc.traverse(o=>{if(o.isBone)bones[o.name]=o;});if(!bones.body)return;
+   const map=[[bones.body,this.body]];for(const L of this.legs){const k=L.p+(L.s<0?'L':'R');for(const j of['hip','fem','kn','an'])if(bones[j+k])map.push([bones[j+k],L[j]]);}
+   this.palps.forEach((p,i)=>{const b=bones['palp'+(i?'R':'L')];if(b)map.push([b,p]);});
+   this.body.traverse(o=>{if(o.isMesh)o.visible=false;});this.g.add(sc);this.gB=map;this.gScene=sc;this.clips=g.animations;});}
+ syncGLB(){if(!this.gB)return;for(const [b,o] of this.gB){b.quaternion.copy(o.quaternion);if(o===this.body)b.position.copy(o.position);}}
  // speed in m/s of the gait; mode: 'run' | 'pounce' (k 0..1)
  update(dt,speed,mode,k){this.t+=dt;const stride=2.1;const f=Math.min(7.5,Math.max(.6,speed/stride));this.cyc=(this.cyc+dt*f)%1;
   const bh=this.bodyH,B=this.body;const pk=mode==='pounce'?k:0;
@@ -288,7 +324,8 @@ class Widow{
    T0.copy(L.rest);T0.z+=z;T0.y=y-B.position.y;
    if(pk>0){// legs reach forward and up to grab
     T0.set(L.s*(1.2+L.p*.1),.3+(3-L.p)*.25,-1.6-(3-L.p)*.5+L.p*.6).lerp(T0,1-pk);}
-   this.ik(L,T0);}}
+   this.ik(L,T0);}
+  this.syncGLB();}
  ik(L,tgt){const hx=L.hip.position.x,hy=L.hip.position.y,hz=L.hip.position.z;const dx=tgt.x-hx,dy=tgt.y-hy,dz=tgt.z-hz;
   L.hip.rotation.y=Math.atan2(-dz,dx);const r=Math.hypot(dx,dz),v=dy;const beta=.55;const a2=L.l2,a3=L.l3;
   const kx=a2+a3*Math.cos(beta),ky=-a3*Math.sin(beta);const L2=Math.hypot(kx,ky),del=Math.atan2(ky,kx);const L1=L.l1;

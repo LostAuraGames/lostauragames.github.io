@@ -1,6 +1,6 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="robots" content="noindex,nofollow"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>VOLTLINE — 2v2 neon FPS</title>
+<title>VOLTLINE — 1v1 neon FPS</title>
 <style>
 html,body{margin:0;height:100%;background:#000;color:#bff;font:15px/1.4 "Courier New",monospace;overflow:hidden}
 canvas{display:block}
@@ -29,13 +29,13 @@ input{background:transparent;border:1px solid #0ff;color:#fff;font:16px "Courier
 .ta{color:#3ff}.tb{color:#f4e}
 </style></head><body>
 <div class="ov" id="menu"><div class="panel">
-<h1>VOLTLINE</h1><div class="sub glow">2 v 2 · neon line arena · ranked</div>
+<h1>VOLTLINE</h1><div class="sub glow">1 v 1 · neon line arena · ranked</div>
 <div>Name <input id="name" maxlength="16"></div>
 <div style="margin-top:10px" class="glow" id="me">connecting…</div>
 <button id="play">PLAY</button><button id="practice" style="border-color:#0ff;box-shadow:0 0 10px #0ff,inset 0 0 8px #0ff;text-shadow:0 0 8px #0ff">PRACTICE</button>
 <div style="font-size:12px;color:#699">Win +10 RP · Loss −7 RP · First team to 3 rounds wins</div>
-<div id="lb"></div>
-<div style="font-size:11px;color:#577;margin-top:10px">WASD move · Shift sprint · Space jump · C roll · Click shoot · R reload · 1/2/Q weapon · Esc release mouse</div>
+<button id="mute" style="font-size:12px;padding:3px 12px;border-color:#088;box-shadow:none">SOUND: ON (M)</button><div id="lb"></div>
+<div style="font-size:11px;color:#577;margin-top:10px">WASD move · Shift sprint · Space jump · C roll · Click shoot · R reload · 1/2/Q weapon · M mute · Esc release mouse</div>
 </div></div>
 <div class="ov" id="queue" style="display:none"><div class="panel"><h1 style="font-size:32px">QUEUE</h1>
 <div id="qtxt" class="glow">Searching…</div><button id="cancel">CANCEL</button></div></div>

@@ -138,10 +138,11 @@ function tickFx(dt){for(let i=fx.length-1;i>=0;i--){const f=fx[i];f.life-=dt;f.o
 // ---------- input ----------
 const keys={};let mouseDown=false,locked=false;const TEST=window.__NFPS_TEST||false;
 addEventListener('keydown',e=>{keys[e.code]=true;if(!G)return;if(e.code==='KeyR')startReload();if(e.code==='Digit1')swap('rifle');if(e.code==='Digit2')swap('pistol');if(e.code==='KeyQ')swap(G.me.w==='rifle'?'pistol':'rifle');});
+addEventListener('keydown',e=>{if(e.code==='KeyP'&&G&&G.practice)leavePractice();});
 addEventListener('keyup',e=>{keys[e.code]=false;});
 addEventListener('mousedown',e=>{if(!G)return;if(!locked&&!TEST){renderer.domElement.requestPointerLock();return;}if(e.button===0){mouseDown=true;G.me.trig=true;}});
 addEventListener('mouseup',e=>{if(e.button===0)mouseDown=false;});
-document.addEventListener('pointerlockchange',()=>{locked=document.pointerLockElement===renderer.domElement;$('hint').style.display=locked?'none':'block';});
+document.addEventListener('pointerlockchange',()=>{locked=document.pointerLockElement===renderer.domElement;$('hint').style.display=locked?'none':'block';$('leave').style.display=(!locked&&G&&G.practice)?'block':'none';});
 addEventListener('mousemove',e=>{if(!G||!locked)return;G.me.yaw-=e.movementX*0.0022;G.me.pitch=Math.max(-1.5,Math.min(1.5,G.me.pitch-e.movementY*0.0022));});
 // ---------- match state ----------
 let G=null;
@@ -208,7 +209,7 @@ function fire(){const m=G.me,W_=WEAP[m.w];const now=performance.now()/1000;if(m.
  const e=[o[0]+d[0]*t,o[1]+d[1]*t,o[2]+d[2]*t];
  const mz=new THREE.Vector3(0.18,-0.16,-0.7).applyMatrix4(camera.matrixWorld);tracer([mz.x,mz.y,mz.z],e,COL[G.team]);spark(e,hit?0xffffff:COL[G.team]);
  const fl=vm[m.w].userData.flash;fl.visible=true;setTimeout(()=>fl.visible=false,45);
- send('shot',{id:myId,o,e,w:m.w,hit,head});if(m.ammo[m.w]===0)startReload();}
+ if(G.practice){if(hit)practiceHit(G.players[hit],W_.dmg*(head?W_.head:1),head,e);}else send('shot',{id:myId,o,e,w:m.w,hit,head});if(m.ammo[m.w]===0)startReload();}
 // ---------- HUD ----------
 let msgTO;function msg(h,ms){$('msg').innerHTML=h;clearTimeout(msgTO);msgTO=setTimeout(()=>$('msg').innerHTML='',ms);}
 function feed(h){const d=document.createElement('div');d.innerHTML=h;$('feed').prepend(d);setTimeout(()=>d.remove(),6000);}
@@ -217,7 +218,7 @@ let dmgFlash=0;function flashDamage(){dmgFlash=1;}
 function hud(){const m=G.me;const tc=`t${G.team}`;$('hp').className='glow '+tc;$('ammo').className='glow '+tc;
  $('hp').innerHTML=m.dead?'✕ DOWN':`✚ ${m.hp}`;$('ammo').innerHTML=(m.reloadT>0?'RELOADING ':'')+`${m.ammo[m.w]}<span style="font-size:18px">/${WEAP[m.w].mag} ${m.w.toUpperCase()}</span>`;
  const tm=G.phase==='live'?Math.ceil(G.phaseT):G.phase==='freeze'?Math.ceil(G.phaseT):'';
- $('score').innerHTML=`<span class="ta">CYAN ${G.score.a}</span> &nbsp;<span style="color:#ff4">${G.phase==='freeze'?'⟳ '+tm:tm}</span>&nbsp; <span class="tb">${G.score.b} MAGENTA</span><div style="font-size:12px;color:#699">ROUND ${G.round||'-'} · first to ${WIN_ROUNDS} · you are ${G.team==='a'?'CYAN':'MAGENTA'}</div>`;
+ if(G.practice){$('score').innerHTML=`<span class="tb">PRACTICE</span> · bot kills ${G.kills} · bot HP ${G.players.bot.hp}<div style="font-size:12px;color:#699">offline · no RP · Esc then LEAVE (or P) to exit</div>`;}else $('score').innerHTML=`<span class="ta">CYAN ${G.score.a}</span> &nbsp;<span style="color:#ff4">${G.phase==='freeze'?'⟳ '+tm:tm}</span>&nbsp; <span class="tb">${G.score.b} MAGENTA</span><div style="font-size:12px;color:#699">ROUND ${G.round||'-'} · first to ${WIN_ROUNDS} · you are ${G.team==='a'?'CYAN':'MAGENTA'}</div>`;
  document.body.style.boxShadow=dmgFlash>0?`inset 0 0 ${80*dmgFlash}px rgba(255,0,60,${dmgFlash})`:'none';}
 // ---------- simulation ----------
 function stepMe(dt){const m=G.me;if(keys.ArrowLeft)m.yaw+=dt*2;if(keys.ArrowRight)m.yaw-=dt*2;
@@ -248,7 +249,7 @@ function stepRemote(dt){const rt=performance.now()/1000-INTERP;
   f.set(pose,side,p.w||'rifle');f.g.visible=G.present.has(id)||performance.now()-p.seenAt<3000;}}
 let last=performance.now();
 function loop(){requestAnimationFrame(loop);const now=performance.now();const rdt=Math.min(1,(now-last)/1000),dt=Math.min(0.05,rdt);last=now;
- if(G&&!G.ended){if(isLeader())leaderTick(rdt);else G.phaseT-=rdt;stepMe(dt);stepRemote(dt);hud();dmgFlash=Math.max(0,dmgFlash-dt*2);}
+ if(G&&!G.ended){if(G.practice){}else if(isLeader())leaderTick(rdt);else G.phaseT-=rdt;stepMe(dt);stepRemote(dt);hud();dmgFlash=Math.max(0,dmgFlash-dt*2);}
  else{const t=now/1000;camera.position.set(Math.cos(t*0.08)*26,9,Math.sin(t*0.08)*18);camera.lookAt(0,1,0);}
  tickFx(dt);render();}
 // ---------- match end + reporting ----------
@@ -260,6 +261,20 @@ async function endMatch(w){if(!G||G.ended)return;G.ended=true;const win=w===G.te
  $('rtxt').innerHTML=`${G.score.a} – ${G.score.b}<br>${st&&st.status==='done'?`<span style="color:#ff4">${delta>=0?'+':''}${delta} RP → ${me.rp} RP</span>`:'Result could not be confirmed by both teams (no RP change).'}`;
  try{G.ch.unsubscribe();}catch(e){}for(const id in G.players)G.players[id].fig.dispose();}
 $('back').onclick=()=>{$('result').style.display='none';$('menu').style.display='flex';G=null;refreshMe();};
+// ---------- practice (offline, no network, no RP) ----------
+function startPractice(){
+ G={practice:true,mid:null,order:[{id:myId,name:me.name||'You',team:'a',idx:0},{id:'bot',name:'Practice Bot',team:'b',idx:0}],team:'a',idx:0,players:{},score:{a:0,b:0},round:1,phase:'live',phaseT:0,present:new Set([myId,'bot']),lastSend:0,ended:false,startAt:performance.now(),kills:0,
+  me:{id:myId,x:-24,y:0,z:-5.8,vy:0,yaw:-Math.PI/2,pitch:0,hp:100,dead:false,w:'rifle',ammo:{rifle:30,pistol:12},reloadT:0,lastShot:0,trig:false,ground:true,moveD:0,aimT:0,kick:0,bob:0}};
+ G.players.bot={id:'bot',name:'Practice Bot',team:'b',idx:0,fig:new Figure('b',false),snaps:[],x:-15,y:0,z:-5.8,yaw:Math.PI/2,hp:100,dead:false,w:'rifle',anim:'idle',lastShot:{},seenAt:performance.now(),alive:true};
+ $('menu').style.display='none';$('hud').style.display='block';if(!TEST)renderer.domElement.requestPointerLock();swap('rifle',true);msg('PRACTICE',1500);}
+function practiceHit(p,dmg,head,pt){p.hp=Math.max(0,p.hp-dmg);dmgNum(pt,dmg,head);hitMarker(p.hp<=0);
+ if(p.hp<=0&&!p.dead){p.dead=true;G.kills++;feed(`<span class="ta">${esc(me.name||'You')}</span> ⟶ <span class="tb">Practice Bot</span>${head?' ◎':''}`);setTimeout(()=>{if(G&&G.practice){p.hp=100;p.dead=false;}},2000);}}
+function dmgNum(pt,dmg,head){const v=new THREE.Vector3(...pt).project(camera);if(v.z>1)return;const d=document.createElement('div');
+ d.textContent=(head?'◎ ':'')+dmg;d.className='glow';d.style.cssText=`position:absolute;left:${(v.x+1)/2*innerWidth}px;top:${(1-v.y)/2*innerHeight}px;color:${head?'#ff4':'#fff'};font:bold ${head?26:20}px Courier New;transition:all .7s ease-out;pointer-events:none`;
+ $('hud').appendChild(d);requestAnimationFrame(()=>{d.style.transform='translateY(-40px)';d.style.opacity=0;});setTimeout(()=>d.remove(),750);}
+function leavePractice(){if(!G||!G.practice)return;for(const id in G.players)G.players[id].fig.dispose();G=null;document.exitPointerLock&&document.exitPointerLock();for(const k in vm)vm[k].visible=false;
+ $('hud').style.display='none';$('leave').style.display='none';$('menu').style.display='flex';refreshMe();}
+$('practice').onclick=()=>{if(!G)startPractice();};$('leave').onclick=leavePractice;
 // ---------- queue ----------
 let qTimer=null;
 $('play').onclick=async()=>{try{await register();}catch(e){$('me').textContent='Server error: '+e.message;return;}$('menu').style.display='none';$('queue').style.display='flex';$('qtxt').textContent='Joining queue…';poll();};

@@ -178,11 +178,11 @@ function spark(p,color){const a=[];for(let i=0;i<10;i++){const d=[Math.random()-
 function tickFx(dt){for(let i=fx.length-1;i>=0;i--){const f=fx[i];f.life-=dt;f.o.material.opacity=Math.max(0,f.life/f.max);if(f.life<=0){scene.remove(f.o);f.o.geometry.dispose();f.o.material.dispose();fx.splice(i,1);}}}
 // ---------- mouse sensitivity (1-100 %, multiplier = value*0.1) ----------
 const SENS={val:10,mult:1};
-function setSens(v){v=Math.max(1,Math.min(100,Math.round(+v)||10));SENS.val=v;SENS.mult=v*0.1;localStorage.setItem('nfps.sens',v);
+function setSens(v){v=Math.max(1,Math.min(100,Math.round(+v)||10));SENS.val=v;SENS.mult=v*0.1;
  document.querySelectorAll('.msens input').forEach(i=>{if(+i.value!==v)i.value=v;});document.querySelectorAll('.msens .sensOut').forEach(o=>o.textContent=`${v}% – ${SENS.mult.toFixed(1)}x mouse sensitivity`);}
 document.querySelectorAll('.msens input').forEach(i=>i.addEventListener('input',()=>setSens(i.value)));
 setSens(localStorage.getItem('nfps.sens')||10);
-function setBri(k,v){v=Math.max(70,Math.min(100,Math.round(+v)||100));BRI[k]=v/100;localStorage.setItem('nfps.bri.'+k,v);document.querySelectorAll('.bri_'+k+' input').forEach(i=>{if(+i.value!==v)i.value=v;});BRI.apply();}
+function setBri(k,v){v=Math.max(70,Math.min(100,Math.round(+v)||100));BRI[k]=v/100;document.querySelectorAll('.bri_'+k+' input').forEach(i=>{if(+i.value!==v)i.value=v;});BRI.apply();}
 for(const k of['world','enemy']){document.querySelectorAll('.bri_'+k+' input').forEach(i=>i.addEventListener('input',()=>setBri(k,i.value)));}
 for(const k of['world','enemy'])setBri(k,localStorage.getItem('nfps.bri.'+k)||100);
 // ---------- input ----------
@@ -190,7 +190,7 @@ const keys={};let mouseDown=false,locked=false;const TEST=window.__NFPS_TEST||fa
 addEventListener('keydown',e=>{keys[e.code]=true;if(!G)return;if(e.code==='KeyC'&&!e.repeat)startRoll();if(e.code==='Space'&&!e.repeat){if(G.me.roll)cancelRoll();else if(G.me.wj)cancelWallJump();else tryWallJump();}if(e.code==='KeyF')startReload();if(e.code==='KeyR'&&!e.repeat)startHeal();if(e.code==='Digit1')swap('rifle');if(e.code==='Digit2')swap('pistol');if(e.code==='KeyQ')swap(G.me.w==='rifle'?'pistol':'rifle');});
 addEventListener('keydown',e=>{if(e.code==='KeyP'&&G&&G.practice)leavePractice();});
 addEventListener('keyup',e=>{keys[e.code]=false;if(e.code==='Space'&&G)G.me.noJumpUntilRelease=false;});
-addEventListener('mousedown',e=>{if(!G||(e.target.closest&&e.target.closest('.panel')))return;if(!locked&&!TEST){renderer.domElement.requestPointerLock();return;}if(e.button===0){mouseDown=true;G.me.trig=true;}});
+addEventListener('mousedown',e=>{if(!G||(e.target.closest&&e.target.closest('.panel,#settings')))return;if(!locked&&!TEST){renderer.domElement.requestPointerLock();return;}if(e.button===0){mouseDown=true;G.me.trig=true;}});
 addEventListener('mouseup',e=>{if(e.button===0)mouseDown=false;});
 document.addEventListener('pointerlockchange',()=>{locked=document.pointerLockElement===renderer.domElement;$('hint').style.display=locked?'none':'block';$('leave').style.display=(G&&G.practice)?'inline-block':'none';});
 addEventListener('mousemove',e=>{if(!G||(!locked&&!TEST))return;const k=0.0022*SENS.mult;G.me.yaw-=e.movementX*k;G.me.pitch=Math.max(-1.5,Math.min(1.5,G.me.pitch-e.movementY*k));});
@@ -206,7 +206,7 @@ function startMatch(m){
  respawn();
  const LAG=window.__NFPS_LAG||0;const H=f=>({payload})=>{if(LAG)setTimeout(()=>f(payload),LAG*(0.85+Math.random()*0.3));else f(payload);};   // LAG = test-only simulated one-way latency
  const ch=sb.channel('nfps:'+G.mid,{config:{broadcast:{self:false},presence:{key:myId}}});G.ch=ch;
- ch.on('broadcast',{event:'st'},H(onState)).on('broadcast',{event:'shot'},H(onShot)).on('broadcast',{event:'hp'},H(onHp)).on('broadcast',{event:'ctl'},H(onCtl)).on('broadcast',{event:'roll'},H(onRoll))
+ ch.on('broadcast',{event:'st'},H(onState)).on('broadcast',{event:'shot'},H(onShot)).on('broadcast',{event:'hp'},H(onHp)).on('broadcast',{event:'ctl'},H(onCtl)).on('broadcast',{event:'roll'},H(onRoll)).on('broadcast',{event:'wj'},H(onWj))
    .on('broadcast',{event:'ping'},H(onPing)).on('broadcast',{event:'pong'},H(onPong)).on('broadcast',{event:'ack'},H(onAck))
    .on('presence',{event:'sync'},()=>{const st=ch.presenceState();G.presSynced=true;G.present=new Set(Object.keys(st));G.present.add(myId);})
    .subscribe(s=>{if(s==='SUBSCRIBED'){G.subOK=true;ch.track({t:Date.now()});send('ping',{id:myId,t:nowMs()});}});
@@ -214,7 +214,7 @@ function startMatch(m){
  if(!TEST)renderer.domElement.requestPointerLock();msg('<span style="font-size:22px">CONNECTING…</span>',30000);
  swap('rifle',true);feed(`Match found — ${order.filter(p=>p.team==='a').map(p=>esc(p.name)).join(' & ')} <span class="ta">vs</span> ${order.filter(p=>p.team==='b').map(p=>esc(p.name)).join(' & ')}`);}
 function send(ev,payload){if(G&&G.ch&&G.subOK)G.ch.send({type:'broadcast',event:ev,payload});}
-function respawn(){roundStatic(false);const s=spawnPos(G.team,G.idx);Object.assign(G.me,{x:s.x,z:s.z,y:0,vy:0,yaw:s.yaw,pitch:0,hp:100,dead:false,reloadT:0,ammo:{rifle:30,pistol:12},roll:null,wj:null,heal:null,healCd:0});clearStatic(true);
+function respawn(){STAM.v=STAM.max;STAM.lock=false;roundStatic(false);const s=spawnPos(G.team,G.idx);Object.assign(G.me,{x:s.x,z:s.z,y:0,vy:0,yaw:s.yaw,pitch:0,hp:100,dead:false,reloadT:0,ammo:{rifle:30,pistol:12},roll:null,wj:null,heal:null,healCd:0});clearStatic(true);
  for(const id in G.players){const p=G.players[id];p.hp=100;p.dead=false;p.snaps=[];p.roll=null;const sp=spawnPos(p.team,p.idx);Object.assign(p,{x:sp.x,y:0,z:sp.z});}}
 // ---- match control: one fixed leader (first player of team A) owns the round clock. Phase end times are in the
 // leader's clock; every client estimates (leader clock - local clock) with ping/pong, so countdowns line up despite
@@ -254,7 +254,7 @@ function leaderTick(dt){G.phaseT=phaseLeft();G.off=0;
 function ctl(c){c.score=G.score;c.round=c.round||G.round;c.phase=c.phase||G.phase;c.endL=G.endL;c.rem=phaseLeft();send('ctl',c);}
 function nextRound(){G.round++;G.phase='freeze';setEnd(3);respawn();G.acks=new Set();G.resends=0;G.roundSentAt=performance.now();ctl({ev:'round',round:G.round});msg(`ROUND ${G.round}`,1500);}
 // ---------- networking handlers ----------
-function onState(s){const p=G&&G.players[s.id];if(!p)return;p.snaps.push({t:performance.now()/1000,x:s.x,y:s.y,z:s.z,yaw:s.yaw,pitch:s.p});if(p.snaps.length>30)p.snaps.shift();
+function onState(s){const p=G&&G.players[s.id];if(!p)return;p.sprint=!!s.sp;p.snaps.push({t:performance.now()/1000,x:s.x,y:s.y,z:s.z,yaw:s.yaw,pitch:s.p});if(p.snaps.length>30)p.snaps.shift();
  p.anim=s.a;p.w=s.w;if(!s.rl&&p.roll&&rollT(p.roll)>0.4)p.roll=null;else if(s.rl&&!p.roll&&performance.now()-(p.rollEvAt||0)>1500)p.roll={t0:performance.now()/1000-ROLL.dur};p.seenAt=performance.now();if(s.r===G.round){p.hp=s.hp;p.dead=s.d;}}
 function onShot(s){const p=G&&G.players[s.id];if(!p)return;const col=COL[p.team];tracer(s.o,s.e,col);spark(s.e,col);shotSound(s.w,Math.hypot(s.o[0]-G.me.x,s.o[1]-G.me.y-1.6,s.o[2]-G.me.z));p.anim='aim';p.aimT=0.4;
  if(s.hit===myId)validateHit(p,s);else if(s.hit&&G.players[s.hit])spark(s.e,0xffffff);}
@@ -267,7 +267,7 @@ function validateHit(p,s){const m=G.me;if(m.dead||G.phase!=='live'||p.dead)retur
  if(m.hp<=0){m.dead=true;feed(`<span class="t${p.team}">${esc(p.name)}</span> ⟶ <span class="t${G.team}">${esc(me.name)}</span>${s.head?' ◎':''}`);}
  send('hp',{id:myId,hp:m.hp,d:m.dead,by:p.id,r:G.round,head:s.head,z:zone});}
 function onHp(h){const p=G&&G.players[h.id];if(!p||h.r!==G.round)return;const was=p.dead;p.hp=h.hp;p.dead=h.d;
- if(h.by===myId){hitMarker(h.d);hitConfirmSound(h.z||(h.head?'head':'body'));}if(h.d&&!was){const k=h.by===myId?{name:me.name,team:G.team}:G.players[h.by];if(k)feed(`<span class="t${k.team}">${esc(k.name)}</span> ⟶ <span class="t${p.team}">${esc(p.name)}</span>${h.head?' ◎':''}`);}}
+ if(h.by===myId){hitPulse(h.z||(h.head?'head':'body'));hitConfirmSound(h.z||(h.head?'head':'body'));}if(h.d&&!was){const k=h.by===myId?{name:me.name,team:G.team}:G.players[h.by];if(k)feed(`<span class="t${k.team}">${esc(k.name)}</span> ⟶ <span class="t${p.team}">${esc(p.name)}</span>${h.head?' ◎':''}`);}}
 // ---------- weapons ----------
 function swap(w,force){const m=G.me;if(!force&&m.w===w)return;m.w=w;m.reloadT=0;m.lastShot=performance.now()/1000-0.2;for(const k in vm)vm[k].visible=k===w;}
 function startReload(){const m=G.me;if(m.reloadT>0||m.dead)return;if(m.ammo[m.w]>=WEAP[m.w].mag)return;m.reloadT=WEAP[m.w].reload;}
@@ -280,7 +280,7 @@ function fire(){const m=G.me,W_=WEAP[m.w];const now=performance.now()/1000;if(m.
  const e=[o[0]+d[0]*t,o[1]+d[1]*t,o[2]+d[2]*t];
  const mz=new THREE.Vector3(0.18,-0.16,-0.7).applyMatrix4(camera.matrixWorld);tracer([mz.x,mz.y,mz.z],e,COL[G.team]);spark(e,hit?0xffffff:COL[G.team]);
  const fl=vm[m.w].userData.flash;fl.visible=true;setTimeout(()=>fl.visible=false,45);
- cancelHeal();if(G.practice){shotSound(m.w,null);if(hit){practiceHit(G.players[hit],W_.zone[zone],head,e);hitConfirmSound(zone);}}else shotSound(m.w,null);send('shot',{id:myId,o,e,w:m.w,hit,head,z:zone});
+ cancelHeal();if(G.practice){shotSound(m.w,null);if(hit){practiceHit(G.players[hit],W_.zone[zone],head,e);hitPulse(zone);hitConfirmSound(zone);}}else shotSound(m.w,null);send('shot',{id:myId,o,e,w:m.w,hit,head,z:zone});
  // permanent recoil: same rise the old camera kick peaked at, applied to the real aim, never recovered
  const pBefore=m.pitch;m.pitch=Math.max(-1.5,Math.min(1.5,m.pitch+W_.recoil));crossKick(m.pitch-pBefore,W_.rate*0.7);m.yaw+=W_.recoilYaw;if(m.ammo[m.w]===0)startReload();}
 // ---------- crosshair recoil lag (display only; aim/camera snap instantly) ----------
@@ -333,7 +333,7 @@ const WJ={contact:0.12,maxAngle:70,mult:1.4,minBase:5.4,dur:1.0,upV:3.5};
 function wallContact(m){let best=null;for(const [nx,nz] of[[1,0],[-1,0],[0,1],[0,-1]]){if(blocked(m.x+nx*WJ.contact,m.z+nz*WJ.contact,m.y)){const fx=-Math.sin(m.yaw),fz=-Math.cos(m.yaw);const dot=fx*nx+fz*nz;if(!best||dot>best.dot)best={nx,nz,dot};}}return best;}
 function tryWallJump(){const m=G.me;if(!G||m.dead||m.ground||m.roll||m.wj||G.phase==='freeze'||G.phase==='warmup')return false;const c=wallContact(m);
  if(!c||c.dot<Math.cos(WJ.maxAngle*Math.PI/180))return false;const sp=Math.max(WJ.minBase,m.hv||0)*WJ.mult;
- m.wj={t0:performance.now()/1000,vx:Math.sin(m.yaw)*sp,vz:Math.cos(m.yaw)*sp,sp};m.vy=Math.max(m.vy,WJ.upV);m.noJumpUntilRelease=true;return true;}
+ m.wj={t0:performance.now()/1000,vx:Math.sin(m.yaw)*sp,vz:Math.cos(m.yaw)*sp,sp};m.vy=Math.max(m.vy,WJ.upV);m.noJumpUntilRelease=true;wjClick(null);send('wj',{id:myId,r:G.round});return true;}
 function cancelWallJump(){const m=G.me;if(!m.wj)return;m.wj=null;}
 // ---------- shield heal ----------
 // HP 0-100; HP above 50 is shield. R / d-pad Right: 1.0 s channel then +25 shield, only while health is full (HP >= 50), cap 100.
@@ -344,6 +344,32 @@ function startHeal(){const m=G&&G.me;if(!m||!canHeal(m))return false;m.heal={t0:
 function cancelHeal(){const m=G&&G.me;if(m&&m.heal){m.heal=null;}}
 function tickHeal(){const m=G.me;if(!m.heal)return;if(m.dead||m.hp<50){m.heal=null;return;}const t=performance.now()/1000-m.heal.t0;
  if(t>=HEAL.chan){m.heal=null;m.healCd=performance.now()/1000+HEAL.cd;m.hp=Math.min(100,m.hp+HEAL.amount);if(!G.practice)send('hp',{id:myId,hp:m.hp,d:false,by:null,r:G.round,heal:1});}}
+// ---------- movement sounds: sprint/slide wind loop + wall-jump key click, distance-attenuated + panned ----------
+const MSND={sprint:0.05,slide:0.09,click:0.4,ref:4,src:{},clicks:0};
+function srcPan(x,z){const m=G&&G.me;if(!m)return 0;const dx=x-m.x,dz=z-m.z,d=Math.hypot(dx,dz);if(d<0.3)return 0;return Math.max(-0.85,Math.min(0.85,(dx*Math.cos(m.yaw)-dz*Math.sin(m.yaw))/d*0.85));}
+function srcAtt(x,y,z){const m=G&&G.me;if(!m)return 0;const d=Math.hypot(x-m.x,y-m.y,z-m.z);return 1/(1+(d/MSND.ref)**2);}
+function windNode(id){if(MSND.src[id])return MSND.src[id];const c=audioInit();if(!c)return null;
+ if(!SND.wind){const n=c.createBuffer(1,c.sampleRate*2,c.sampleRate),d=n.getChannelData(0);let b=0;for(let i=0;i<d.length;i++){b=0.97*b+0.03*(Math.random()*2-1);d[i]=b*6;}SND.wind=n;}
+ const src=c.createBufferSource();src.buffer=SND.wind;src.loop=true;const bp=c.createBiquadFilter();bp.type='bandpass';bp.frequency.value=900;bp.Q.value=1.4;
+ const lfo=c.createOscillator();lfo.frequency.value=0.4;const lg=c.createGain();lg.gain.value=450;lfo.connect(lg);lg.connect(bp.frequency);
+ const gate=c.createGain();gate.gain.value=0.75;const pul=c.createOscillator();pul.type='square';pul.frequency.value=8;const pg=c.createGain();pg.gain.value=0.25;pul.connect(pg);pg.connect(gate.gain); // techno 16th gating
+ const pan=c.createStereoPanner?c.createStereoPanner():c.createGain();const out=c.createGain();out.gain.value=0;
+ src.connect(bp);bp.connect(gate);gate.connect(pan);pan.connect(out);out.connect(SND.master);src.start();lfo.start();pul.start();
+ return MSND.src[id]={out,pan,level:0};}
+function tickMoveSnd(){if(!SND.ctx&&!(G&&G.me&&(G.me.sprinting||G.me.roll)))return;const want={};
+ if(G&&!G.ended){const m=G.me,rt=rollT(m.roll);want.me={v:m.dead?0:m.roll&&rt>=ROLL.b?MSND.slide:m.sprinting?MSND.sprint:0,x:m.x,y:m.y,z:m.z};
+  for(const id in G.players){const p=G.players[id];const rt2=rollT(p.roll);want[id]={v:p.dead?0:p.roll&&rt2>=ROLL.b?MSND.slide:p.sprint?MSND.sprint:0,x:p.x,y:p.y,z:p.z};}}
+ for(const id in MSND.src)if(!want[id])want[id]={v:0};
+ for(const id in want){const w=want[id];if(!w.v&&!MSND.src[id])continue;const n=windNode(id);if(!n)return;const g=w.v?w.v*(id==='me'?1:srcAtt(w.x,w.y,w.z)):0;
+  n.level=g;n.out.gain.setTargetAtTime(g,SND.ctx.currentTime,0.08);if(n.pan.pan)n.pan.pan.setTargetAtTime(id==='me'?0:srcPan(w.x,w.z),SND.ctx.currentTime,0.05);}}
+function wjClick(p){const att=p?srcAtt(p.x,p.y,p.z):1;const o=sfxOut(MSND.click*att);if(!o)return;MSND.clicks++;MSND.lastClick=att;const {c,g,t}=o;
+ let dst=g;if(p&&c.createStereoPanner){const pn=c.createStereoPanner();pn.pan.value=srcPan(p.x,p.z);pn.connect(g);dst=pn;}
+ const tick=(t0,f,amp)=>{const x=c.createOscillator(),e=c.createGain();x.type='square';x.frequency.setValueAtTime(f,t0);x.frequency.exponentialRampToValueAtTime(f*0.45,t0+0.018);
+  e.gain.setValueAtTime(0.0001,t0);e.gain.linearRampToValueAtTime(amp,t0+0.001);e.gain.exponentialRampToValueAtTime(0.0005,t0+0.022);x.connect(e);e.connect(dst);x.start(t0);x.stop(t0+0.03);
+  const nz=c.createBufferSource();nz.buffer=SND.noise;const hp=c.createBiquadFilter();hp.type='highpass';hp.frequency.value=4000;const ne=c.createGain();ne.gain.setValueAtTime(amp*0.8,t0);ne.gain.exponentialRampToValueAtTime(0.0005,t0+0.012);
+  nz.connect(hp);hp.connect(ne);ne.connect(dst);nz.start(t0);nz.stop(t0+0.015);};
+ tick(t,2600,0.5);tick(t+0.038,3400,0.22);}   // key down + key up
+function onWj(w){const p=G&&G.players[w.id];if(!p||w.r!==G.round)return;wjClick(p);}
 // ---------- hit / headshot sounds ----------
 function sfxOut(vol){const c=audioInit();if(!c||SND.muted)return null;if(c.state==='suspended')c.resume();const g=c.createGain();g.gain.value=vol;g.connect(SND.master);return{c,g,t:c.currentTime+0.001};}
 function hitConfirmSound(zone){const o=sfxOut(zone==='head'?0.85:zone==='chest'?0.5:0.4);if(!o)return;const {c,g,t}=o;let n=1;SND.hits=(SND.hits||0)+1;SND.lastHit=zone;
@@ -382,19 +408,31 @@ function shatter(){const box=$('heartWrap');SND.shatters=(SND.shatters||0)+1;for
 // ---------- HUD ----------
 let msgTO;function msg(h,ms){$('msg').innerHTML=h;clearTimeout(msgTO);msgTO=setTimeout(()=>$('msg').innerHTML='',ms);}
 function feed(h){const d=document.createElement('div');d.innerHTML=h;$('feed').prepend(d);setTimeout(()=>d.remove(),6000);}
-function hitMarker(kill){const e=$('hitm');e.style.borderColor=kill?'#f44':'#fff';e.style.opacity=1;setTimeout(()=>e.style.opacity=0,120);}
+// hit confirmation: the U crosshair pulses red; strength by zone (body faint, chest medium, head full)
+const XPULSE={body:0.28,chest:0.6,head:1};
+function hitPulse(zone){const e=document.querySelector('#cross .xhit');if(!e)return;const a=XPULSE[zone]||XPULSE.body;XPULSE.last={zone,a,t:performance.now()};
+ e.getAnimations().forEach(x=>x.cancel());e.animate([{opacity:a},{opacity:a,offset:0.35},{opacity:0}],{duration:260,easing:'ease-out'});}
 let dmgFlash=0;function flashDamage(){dmgFlash=1;}
 function hud(){const m=G.me;const tc=`t${G.team}`;$('ammo').className='glow '+tc;
  hudHealth();$('ammo').innerHTML=(m.reloadT>0?'RELOADING ':'')+`${m.ammo[m.w]}<span style="font-size:18px">/${WEAP[m.w].mag} ${m.w.toUpperCase()}</span>`;
  const tm=G.phase==='live'?Math.ceil(G.phaseT):G.phase==='freeze'?Math.ceil(G.phaseT):'';
  if(G.practice){$('score').innerHTML=`<span class="tb">PRACTICE</span> · bot kills ${G.kills} · bot HP ${G.players.bot.hp}<div style="font-size:12px;color:#699">offline · no RP · Esc then LEAVE (or P) to exit</div>`;}else $('score').innerHTML=`<span class="ta">CYAN ${G.score.a}</span> &nbsp;<span style="color:#ff4">${G.phase==='freeze'?'⟳ '+tm:tm}</span>&nbsp; <span class="tb">${G.score.b} MAGENTA</span><div style="font-size:12px;color:#699">ROUND ${G.round||'-'} · first to ${WIN_ROUNDS} · you are ${G.team==='a'?'CYAN':'MAGENTA'}</div>`;
- drawCross();{const pv=(!G.ended&&(PAD.paused||(!locked&&!TEST&&!PAD.active)))?'flex':'none';if($('pause').style.display!==pv)$('pause').style.display=pv;const lv=G.practice?'inline-block':'none';if($('leave').style.display!==lv)$('leave').style.display=lv;}{const rt=rollT(G.me.roll);$('black').style.opacity=rt==null?0:rollBlack(rt).toFixed(3);}document.body.style.boxShadow=dmgFlash>0?`inset 0 0 ${80*dmgFlash}px rgba(255,0,60,${dmgFlash})`:'none';}
+ drawCross();{const pv=(!G.ended&&(PAD.paused||(!locked&&!TEST&&!PAD.active)))?'flex':'none';if($('pause').style.display!==pv)$('pause').style.display=pv;if(pv==='none'&&SET.open&&SET.from==='pause')closeSettings();const lv=G.practice?'inline-block':'none';if($('leave').style.display!==lv)$('leave').style.display=lv;}{const rt=rollT(G.me.roll);$('black').style.opacity=rt==null?0:rollBlack(rt).toFixed(3);}document.body.style.boxShadow=dmgFlash>0?`inset 0 0 ${80*dmgFlash}px rgba(255,0,60,${dmgFlash})`:'none';}
 // ---------- simulation ----------
+// ---------- sprint stamina: 4 s max continuous, 7.5 s empty->full recharge while not sprinting (real time) ----------
+const STAM={max:4,recharge:7.5,v:4,lock:false,active:false,last:0,endAt:-1e9,ever:false,show:3,solid:2};
+function tickStam(want,now){const dt=STAM.last?Math.min(0.25,(now-STAM.last)/1000):0;STAM.last=now;
+ if(!want)STAM.lock=false;                                    // empty -> must release sprint (re-press) before sprinting again
+ const can=want&&!STAM.lock&&STAM.v>0;
+ if(can){STAM.v=Math.max(0,STAM.v-dt);if(STAM.v<=0){STAM.lock=true;if(PAD.sprint)PAD.sprint=false;}}else STAM.v=Math.min(STAM.max,STAM.v+dt*STAM.max/STAM.recharge);
+ const act=can&&STAM.v>0;if(STAM.active&&!act)STAM.endAt=now;STAM.active=act;if(act)STAM.ever=true;
+ const el=$('stam');if(el){const t=(now-STAM.endAt)/1000;const o=act?1:!STAM.ever?0:t<STAM.solid?1:t<STAM.show?STAM.show-t:0;el.style.opacity=o.toFixed(3);if(o>0)$('stamFill').style.width=(STAM.v/STAM.max*100).toFixed(2)+'%';}
+ return act;}
 function stepMe(dt){const m=G.me;if(keys.ArrowLeft)m.yaw+=dt*2;if(keys.ArrowRight)m.yaw-=dt*2;
  m.reloadT>0&&(m.reloadT-=dt)<=0&&(m.reloadT=0,m.ammo[m.w]=WEAP[m.w].mag);
  const canMove=!m.dead&&G.phase!=='freeze'&&G.phase!=='warmup'&&!PAD.paused;let fx_=0,fz=0,padMag=1;if(canMove){if(keys.KeyW)fz-=1;if(keys.KeyS)fz+=1;if(keys.KeyA)fx_-=1;if(keys.KeyD)fx_+=1;
   if(PAD.active&&!fx_&&!fz&&(PAD.ls[0]||PAD.ls[1])){fx_=PAD.ls[0];fz=PAD.ls[1];padMag=Math.min(1,Math.hypot(fx_,fz));}}
- const sprint=keys.ShiftLeft||keys.ShiftRight||(PAD.active&&PAD.sprint);const sp=(sprint&&fz<0?10.92:5.4)*(m.ground?1:0.9);const l=Math.hypot(fx_,fz)||1;
+ const sprintKey=keys.ShiftLeft||keys.ShiftRight||(PAD.active&&PAD.sprint);const sprint=tickStam(sprintKey&&fz<0&&canMove&&!m.roll&&!m.wj,performance.now());m.sprinting=sprint;const sp=(sprint?10.92:5.4)*(m.ground?1:0.9);const l=Math.hypot(fx_,fz)||1;
  let vx=(fx_*Math.cos(m.yaw)+fz*Math.sin(m.yaw))/l*sp*padMag,vz=(-fx_*Math.sin(m.yaw)+fz*Math.cos(m.yaw))/l*sp*padMag;
  let rt=rollT(m.roll);if(m.roll&&m.dead){m.roll=null;rt=null;}
  // after phase C the roll becomes a locked 1.5x slide until a horizontal collision or Space
@@ -417,7 +455,7 @@ function stepMe(dt){const m=G.me;if(keys.ArrowLeft)m.yaw+=dt*2;if(keys.ArrowRigh
  for(const k in vm){const g_=vm[k];const rel=m.reloadT>0?Math.sin(Math.min(1,1-m.reloadT/WEAP[k].reload)*Math.PI):0;
   g_.position.set(0.17+swX+Math.sin(m.bob)*0.012,-0.2+swY-rel*0.18+Math.abs(Math.cos(m.bob))*0.01,(k==='rifle'?-0.38:-0.42)+m.kick*0.05);g_.rotation.set(m.kick*0.08-rel*0.6+swR*0.5,0.04+swR,rel*0.3+swR*0.6);g_.visible=k===m.w&&!m.dead;}
  const now=performance.now();if(now-G.lastSend>1000/NET_HZ){G.lastSend=now;
-  send('st',{id:myId,x:+m.x.toFixed(3),y:+m.y.toFixed(3),z:+m.z.toFixed(3),yaw:+m.yaw.toFixed(3),p:+m.pitch.toFixed(3),a:m.dead?'dead':m.aimT>0?'aim':mv>0.001?(Math.floor(m.moveD/0.9)%2?'run1':'run2'):'idle',w:m.w,hp:m.hp,d:m.dead,r:G.round,rl:m.roll?1:0});}}
+  send('st',{id:myId,x:+m.x.toFixed(3),y:+m.y.toFixed(3),z:+m.z.toFixed(3),yaw:+m.yaw.toFixed(3),p:+m.pitch.toFixed(3),a:m.dead?'dead':m.aimT>0?'aim':mv>0.001?(Math.floor(m.moveD/0.9)%2?'run1':'run2'):'idle',w:m.w,hp:m.hp,d:m.dead,r:G.round,rl:m.roll?1:0,sp:m.sprinting?1:0});}}
 function stepRemote(dt){const rt=performance.now()/1000-INTERP;
  for(const id in G.players){const p=G.players[id],S=p.snaps;if(S.length){let a=S[0],b=S[S.length-1];for(let i=0;i<S.length-1;i++){if(S[i].t<=rt&&S[i+1].t>=rt){a=S[i];b=S[i+1];break;}}
    if(rt>=b.t){p.x=b.x;p.y=b.y;p.z=b.z;p.yaw=b.yaw;}else{const k=b.t>a.t?(rt-a.t)/(b.t-a.t):1;p.x=a.x+(b.x-a.x)*k;p.y=a.y+(b.y-a.y)*k;p.z=a.z+(b.z-a.z)*k;p.yaw=a.yaw+(b.yaw-a.yaw)*k;}}
@@ -444,10 +482,10 @@ function classifyPad(id){id=String(id||'');let ven=null,prod=null;let mm=id.matc
 const PROMPTS={xbox:{A:'A',B:'B',X:'X',Y:'Y',LT:'LT',RT:'RT',LB:'LB',RB:'RB',L3:'L3',start:'Menu',back:'View'},ps:{A:'Cross',B:'Circle',X:'Square',Y:'Triangle',LT:'L2',RT:'R2',LB:'L1',RB:'R1',L3:'L3',start:'Options',back:'Create'}};
 const PAD={active:false,index:-1,info:null,ls:[0,0],rs:[0,0],rt:0,prev:[],sprint:false,paused:false,aa:0,aaTarget:0,lookMul:1,navT:0,focus:0};
 const CSENS={val:10,mult:1};
-function setCSens(v){v=Math.max(1,Math.min(100,Math.round(+v)||10));CSENS.val=v;CSENS.mult=v*0.1;localStorage.setItem('nfps.csens',v);
+function setCSens(v){v=Math.max(1,Math.min(100,Math.round(+v)||10));CSENS.val=v;CSENS.mult=v*0.1;
  document.querySelectorAll('.csens input').forEach(i=>{if(+i.value!==v)i.value=v;});document.querySelectorAll('.csens .sensOut').forEach(o=>o.textContent=`${v}% – ${CSENS.mult.toFixed(1)}x controller sensitivity`);}
 document.querySelectorAll('.csens input').forEach(i=>i.addEventListener('input',()=>setCSens(i.value)));setCSens(localStorage.getItem('nfps.csens')||10);
-const CAX={h:1,v:1};function setCAx(k,v){v=Math.max(10,Math.min(200,Math.round(+v)||100));CAX[k]=v/100;localStorage.setItem('nfps.cax.'+k,v);
+const CAX={h:1,v:1};function setCAx(k,v){v=Math.max(10,Math.min(200,Math.round(+v)||100));CAX[k]=v/100;
  document.querySelectorAll('.cax_'+k+' input').forEach(i=>{if(+i.value!==v)i.value=v;});document.querySelectorAll('.cax_'+k+' .sensOut').forEach(o=>o.textContent=`${v}% – ${CAX[k].toFixed(2)}x ${k==='h'?'horizontal':'vertical'}`);}
 for(const k of['h','v']){document.querySelectorAll('.cax_'+k+' input').forEach(i=>i.addEventListener('input',()=>setCAx(k,i.value)));setCAx(k,localStorage.getItem('nfps.cax.'+k)||100);}
 const PAD_LOOK=3.0;   // rad/s at full deflection, 1.0x
@@ -472,12 +510,12 @@ function pollPad(dt){const list=navigator.getGamepads?Array.from(navigator.getGa
  const map={0:'Space',2:'KeyF',1:'KeyC',3:'KeyQ',8:'KeyM',15:'KeyR'};for(const i in map){if(edge(+i))key(map[i],true);else if(rel(+i))key(map[i],false);}
  if(edge(10))PAD.sprint=!PAD.sprint;if(Math.hypot(...PAD.ls)<0.2)PAD.sprint=false;
  if(edge(7)&&G)G.me.trig=true;}
-function menuNav(b,edge,dt){const panel=[...document.querySelectorAll('.ov')].find(o=>o.style.display!=='none'&&getComputedStyle(o).display!=='none');if(!panel)return;
+function menuNav(b,edge,dt){const panel=SET.open?$('settings'):[...document.querySelectorAll('.ov')].find(o=>o.style.display!=='none'&&getComputedStyle(o).display!=='none');if(!panel)return;
  const items=[...panel.querySelectorAll('button,input[type=range]')].filter(e=>e.offsetParent!==null);if(!items.length)return;PAD.focus=Math.max(0,Math.min(items.length-1,PAD.focus));
  PAD.navT-=dt;const up=b[12]>0.5||PAD.ls[1]<-0.6,down=b[13]>0.5||PAD.ls[1]>0.6,left=b[14]>0.5||PAD.ls[0]<-0.6,right=b[15]>0.5||PAD.ls[0]>0.6;
  if((up||down||left||right)&&PAD.navT<=0){PAD.navT=PAD.navHeld?0.12:0.4;PAD.navHeld=true;const el=items[PAD.focus];if((left||right)&&el.type==='range'){el.value=+el.value+(right?1:-1);el.dispatchEvent(new Event('input'));}else if(up||down)PAD.focus=(PAD.focus+(down?1:items.length-1))%items.length;}
  if(!(up||down||left||right)){PAD.navT=0;PAD.navHeld=false;}
- items.forEach((e,i)=>e.classList.toggle('padfocus',i===PAD.focus));if(edge(0)&&items[PAD.focus].tagName==='BUTTON')items[PAD.focus].click();if(edge(1)&&G&&PAD.paused)PAD.paused=false;}
+ items.forEach((e,i)=>e.classList.toggle('padfocus',i===PAD.focus));if(edge(0)&&items[PAD.focus].tagName==='BUTTON')items[PAD.focus].click();if(edge(1)&&SET.open){const pg=[...document.querySelectorAll('#settings .setPage')].find(d=>d.style.display!=='none');if(pg&&pg.dataset.p!=='list')setPage('list');else closeSettings();}else if(edge(1)&&G&&PAD.paused)PAD.paused=false;}
 // Aim assist: crosshair ray vs the existing hitbox (vertical box/cylinder r=0.42, h=1.82, 70% while rolling low).
 // inside: slowdown = 15% + 15%*(1-d), d=|x offset from box centre line|/half-width; outside 0. Controller look only.
 function aimAssistTarget(){if(!G)return 0;const m=G.me;const eye=[m.x,m.y+EYE*rollLow(m.roll),m.z];const cy=Math.cos(m.yaw),sy=Math.sin(m.yaw),cp=Math.cos(m.pitch),spp=Math.sin(m.pitch);let best=0;
@@ -502,7 +540,7 @@ function loop(){requestAnimationFrame(loop);const now=performance.now();const rd
  pollPad(rdt);padLook(dt);drawRoundStatic(rdt);
  if(G&&!G.ended){if(G.practice){}else if(isLeader())leaderTick(rdt);else clientTick();tickHeal();tickStatic();stepMe(dt);stepRemote(dt);hud();dmgFlash=Math.max(0,dmgFlash-dt*2);}
  else{const t=now/1000;camera.position.set(Math.cos(t*0.08)*26,9,Math.sin(t*0.08)*18);camera.lookAt(0,1,0);}
- tickSky(rdt,now);tickFx(dt);render();}
+ tickSky(rdt,now);tickMoveSnd();tickFx(dt);render();}
 // ---------- match end + reporting ----------
 async function endMatch(w){if(!G||G.ended)return;G.ended=true;setTimeout(()=>roundStatic(false),1200);$('pause').style.display='none';$('black').style.opacity=0;const win=w===G.team;document.exitPointerLock&&document.exitPointerLock();
  $('hud').style.display='none';$('result').style.display='flex';$('rtitle').innerHTML=`<span class="t${w}">${win?'VICTORY':'DEFEAT'}</span>`;$('rtxt').innerHTML=`${G.score.a} – ${G.score.b}<br>Reporting result…`;
@@ -518,7 +556,7 @@ function startPractice(){
   me:{id:myId,x:-24,y:0,z:-5.8,vy:0,yaw:-Math.PI/2,pitch:0,hp:100,dead:false,w:'rifle',ammo:{rifle:30,pistol:12},reloadT:0,lastShot:0,trig:false,ground:true,moveD:0,aimT:0,kick:0,bob:0}};
  G.players.bot={id:'bot',name:'Practice Bot',team:'b',idx:0,fig:new Figure('b',false),snaps:[],x:-15,y:0,z:-5.8,yaw:Math.PI/2,hp:100,dead:false,w:'rifle',anim:'idle',lastShot:{},seenAt:performance.now(),alive:true};
  $('menu').style.display='none';$('hud').style.display='block';if(!TEST)renderer.domElement.requestPointerLock();swap('rifle',true);msg('PRACTICE',1500);}
-function practiceHit(p,dmg,head,pt){p.hp=Math.max(0,p.hp-dmg);dmgNum(pt,dmg,head);hitMarker(p.hp<=0);
+function practiceHit(p,dmg,head,pt){p.hp=Math.max(0,p.hp-dmg);dmgNum(pt,dmg,head);
  if(p.hp<=0&&!p.dead){p.dead=true;G.kills++;feed(`<span class="ta">${esc(me.name||'You')}</span> ⟶ <span class="tb">Practice Bot</span>${head?' ◎':''}`);setTimeout(()=>{if(G&&G.practice){p.hp=100;p.dead=false;}},2000);}}
 function dmgNum(pt,dmg,head){const v=new THREE.Vector3(...pt).project(camera);if(v.z>1)return;const d=document.createElement('div');
  d.textContent=(head?'◎ ':'')+dmg;d.dataset.dmg=dmg;d.className='glow';d.style.cssText=`position:absolute;left:${(v.x+1)/2*innerWidth}px;top:${(1-v.y)/2*innerHeight}px;color:${head?'#ff4':'#fff'};font:bold ${head?26:20}px Courier New;transition:all .7s ease-out;pointer-events:none`;
@@ -527,6 +565,22 @@ function leavePractice(){if(!G||!G.practice)return;$('black').style.opacity=0;fo
  $('hud').style.display='none';$('pause').style.display='none';$('menu').style.display='flex';refreshMe();}
 $('resume').onclick=()=>{PAD.paused=false;if(!PAD.active&&!TEST)renderer.domElement.requestPointerLock();};
 $('mute').onclick=()=>setMute(!SND.muted);setMute(SND.muted);
+// ---------- crosshair colour (0 = white, 1..360 = hue) ----------
+const XCOL={v:0};function xcolCss(v){return v<=0?'#ffffff':`hsl(${v-1},100%,60%)`;}
+function setXCol(v){v=Math.max(0,Math.min(360,Math.round(+v)||0));XCOL.v=v;document.documentElement.style.setProperty('--xc',xcolCss(v));
+ document.querySelectorAll('.xcol input').forEach(i=>{if(+i.value!==v)i.value=v;});document.querySelectorAll('.xcol .sensOut').forEach(o=>o.textContent=v<=0?'White':`Hue ${v-1}°`);}
+document.querySelectorAll('.xcol input').forEach(i=>i.addEventListener('input',()=>setXCol(i.value)));setXCol(localStorage.getItem('nfps.xcol')||0);
+// ---------- settings panel (sliders apply live for this session; SAVE SETTINGS persists them) ----------
+const SET={open:false,from:null};
+function setPage(p){document.querySelectorAll('#settings .setPage').forEach(d=>d.style.display=d.dataset.p===p?'block':'none');PAD.focus=0;}
+function openSettings(from){SET.open=true;SET.from=from;$('settings').style.display='flex';setPage('list');}
+function closeSettings(){SET.open=false;$('settings').style.display='none';PAD.focus=0;}
+function saveSettings(){localStorage.setItem('nfps.sens',SENS.val);localStorage.setItem('nfps.csens',CSENS.val);for(const k of['world','enemy'])localStorage.setItem('nfps.bri.'+k,Math.round(BRI[k]*100));
+ for(const k of['h','v'])localStorage.setItem('nfps.cax.'+k,Math.round(CAX[k]*100));localStorage.setItem('nfps.xcol',XCOL.v);localStorage.setItem('nfps.mute',SND.muted?'1':'0');
+ const m=$('savedMsg');m.style.opacity=1;clearTimeout(SET.tm);SET.tm=setTimeout(()=>m.style.opacity=0,1400);}
+document.querySelectorAll('.openSet').forEach(b=>b.onclick=()=>openSettings(b.closest('#pause')?'pause':'menu'));
+document.querySelectorAll('.setCat').forEach(b=>b.onclick=()=>setPage(b.dataset.c));document.querySelectorAll('.setBack').forEach(b=>b.onclick=()=>setPage('list'));
+$('closeSet').onclick=closeSettings;$('saveSet').onclick=saveSettings;
 $('practice').onclick=()=>{if(!G)startPractice();};$('leave').onclick=leavePractice;
 // ---------- queue ----------
 let qTimer=null;
@@ -539,5 +593,5 @@ async function poll(){try{const r=await rpc('nfps_queue_poll',{p_id:myId,p_secre
 addEventListener('beforeunload',()=>{if(qTimer)navigator.sendBeacon&&0;});
 // ---------- boot ----------
 fetch('assets/art.json').then(r=>r.json()).then(a=>{ART=a;buildVM();loop();register().catch(e=>{$('me').textContent='offline: '+e.message;});});
-window.NFPS={get G(){return G;},BRI,setBri,CAX,setCAx,HS,RS,HEAL,TRI,startHeal,hitZone,hitConfirmSound,headStatic,PAD,CSENS,setCSens,classifyPad,aimAssistTarget,WJ,SENS,setSens,SND,ROLL,roll:()=>{const m=G.me,t=rollT(m.roll);return{rolling:!!m.roll,t,off:m.roll?rollOff(t):0,camX:camera.rotation.x,pitch:m.pitch,black:+getComputedStyle($('black')).opacity,eyeY:camera.position.y-m.y,x:m.x,z:m.z,y:m.y,vy:m.vy};},cross:()=>{const o=crossOff();return{off:o,px:crossPx(o),dur:XH.dur,t:performance.now()/1000-XH.t0};},camera,swap:w=>swap(w),fire:()=>G&&(G.me.trig=true),keys,rayMap,solids,WEAP};
+window.NFPS={get G(){return G;},MSND,wjClick,XPULSE,hitPulse,XCOL,setXCol,SET,openSettings,closeSettings,saveSettings,setPage,STAM,BRI,setBri,CAX,setCAx,HS,RS,HEAL,TRI,startHeal,hitZone,hitConfirmSound,headStatic,PAD,CSENS,setCSens,classifyPad,aimAssistTarget,WJ,SENS,setSens,SND,ROLL,roll:()=>{const m=G.me,t=rollT(m.roll);return{rolling:!!m.roll,t,off:m.roll?rollOff(t):0,camX:camera.rotation.x,pitch:m.pitch,black:+getComputedStyle($('black')).opacity,eyeY:camera.position.y-m.y,x:m.x,z:m.z,y:m.y,vy:m.vy};},cross:()=>{const o=crossOff();return{off:o,px:crossPx(o),dur:XH.dur,t:performance.now()/1000-XH.t0};},camera,swap:w=>swap(w),fire:()=>G&&(G.me.trig=true),keys,rayMap,solids,WEAP};
 })();

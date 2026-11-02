@@ -54,7 +54,7 @@ create table if not exists public.meowteor_hw_config(
   starts_at timestamptz,                                         -- set at go-live
   ends_at timestamptz not null default timestamptz '2026-11-14 00:00:00 America/New_York',
   threshold int not null default 25,
-  spawn_rate double precision not null default 0.0016,          -- per gap passed (endless normal only)
+  spawn_rate double precision not null default 0.0048,          -- per gap passed (was 0.0016; tripled 2026-11-02) (endless normal only)
   item_id text not null default 'skin_halloween_widow',
   token_id int not null default 12,
   art_id text not null default 'hw-2026-widow');

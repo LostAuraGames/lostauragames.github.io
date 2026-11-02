@@ -1118,7 +1118,13 @@ const HW={live:false,preview:/[?&]hw=preview\b/.test(location.search),kills:0,th
  // tap/click: kill a spider under the pointer (world coordinates); returns true when a spider was hit (no flap then)
  hit(e){if(!this.spiders.length||!this.on()||G.mode!=='play'||G.paused)return false;const W=G.world;const r=GC.getBoundingClientRect();
   const wx=(e.clientX-r.left)/r.width*PHYS.W,wy=(e.clientY-r.top)/r.height*PHYS.H;
-  for(const s of this.spiders){if(Math.abs(wx-s.x)<20&&Math.abs(wy-(s.y+10))<20){this.kill(W,s);return true;}}return false;},
+  // touch/pen: a finger covers far more than a mouse tip, the spider keeps scrolling left during touch latency and
+  // the tap point is usually under the finger pad (a bit below/right of the target): use a bigger, latency-shifted
+  // box and take the closest spider. Mouse keeps the tighter box.
+  const touch=e.pointerType&&e.pointerType!=='mouse';const rx=touch?32:20,ry=touch?30:20,lag=touch?Math.min(18,W.speed()*.12):0;
+  let best=null,bd=1e9;for(const s of this.spiders){const cx=s.x+lag*.5,cy=s.y+12;const dx=Math.abs(wx-cx),dy=Math.abs(wy-cy);
+   if(dx<rx+lag*.5&&dy<ry){const d=dx*dx+dy*dy;if(d<bd){bd=d;best=s;}}}
+  if(best){this.kill(W,best);return true;}return false;},
  kill(W,s){this.spiders.splice(this.spiders.indexOf(s),1);W.hw.kills.push([s.gap,W.frame]);sfx('star');G.shake=Math.max(G.shake,2);
   const C=['#16121c','#16121c','#e0102e','#ff5a6e','#ffffff','#b8b0c8'];for(let i=0;i<26;i++){const a=i/26*6.283;const v=40+(i%5)*22;this.fx.push({x:s.x,y:s.y+10,vx:Math.cos(a)*v,vy:Math.sin(a)*v-40,t:0,life:.55+(i%4)*.12,c:C[i%C.length],sz:i%3?1:2});}
   this.fx.push({ring:1,x:s.x,y:s.y+10,vx:0,vy:0,t:0,life:.35,c:'#ffffff'});

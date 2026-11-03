@@ -994,6 +994,7 @@ const CHAMP={event:null,cur:null,off:0,skins:{},newest:null,cache:{items:{}},bus
    catch(e){if(e.status!==404)throw e;const r=await this.rpc('claim_champion_skin',{p_player_id:lbPlayerId(),p_event:this.event||CHAMP_LEGACY_EVENT});
     list=r&&r.ok&&r.art?[{event:r.event,item:r.item||CHAMP_ITEM,name:r.name,score:r.score,art:r.art,grants:[]}]:[];}
    for(const w of list||[]){for(const g of w.grants||[])if(IMAP[g])SAVE.owned[g]=1;
+    if(w.reward&&!(SAVE.rewardSeen||{})[w.item]){SAVE.rewardSeen=Object.assign(SAVE.rewardSeen||{},{[w.item]:1});persist();setTimeout(()=>toast('&#127942; '+esc(t('RUNNER UP REWARD'))+': '+esc(w.name||'')+' &middot; '+esc(t('Find it in the Wardrobe. You can mint it as an NFT on the claim page.')),'#ffd24a'),1200);}
     if(!w.art||!w.art.code)continue;const old=this.cache.items[w.item];if(old&&old.v===w.art.v&&this.skins[w.item]){SAVE.owned[w.item]=1;continue;}
     const c={event:w.event,item:w.item,code:w.art.code,v:w.art.v,name:w.name,score:w.score,at:Date.now()};
     if(this.load(c)){this.cache.items[w.item]=c;if(!old)fresh=w.item;SAVE.owned[w.item]=1;}}

@@ -16,7 +16,7 @@ function render(st){var w=st&&st.wallet;document.getElementById('nftaddr').textC
  var box=document.getElementById('nftlist');box.innerHTML='<b>2. Claim</b>';var list=(st&&st.claimable)||[];
  // open-edition event items (Halloween 2026): one per player; the edition number is per claim and shown here
  ((st&&st.editions)||[]).forEach(function(t){var d=document.createElement('div');var m=t.status==='minted';
-  d.innerHTML='<img alt="" src="images/'+t.token_id+'.png"><p><b>'+t.name+'</b> &middot; '+(t.reward?('<span style="color:#ffd24a">'+String(t.reward).replace(/[<>&"]/g,'')+' reward</span>'):'Halloween 2026 Event')+' &middot; '+(m?('Edition #'+t.edition_no+' &middot; minted '+new Date(t.minted_at).toLocaleDateString()):(t.enabled?'ready to claim':'claiming opens soon'))+'</p>';
+  d.innerHTML='<img alt="" src="images/'+t.token_id+'.png"><p><b>'+t.name+'</b> &middot; '+(t.reward?('<span style="color:#ffd24a">'+String(t.reward).replace(/[<>&"]/g,'')+'</span>'):'Halloween 2026 Event')+' &middot; '+(m?('Edition #'+t.edition_no+' &middot; minted '+new Date(t.minted_at).toLocaleDateString()):(t.enabled?'ready to claim':'claiming opens soon'))+'</p>';
   if(!m){var b=document.createElement('button');b.className='nftb';b.textContent=t.status==='pending'?'Retry / check mint':'Claim NFT';b.disabled=!w||!t.enabled;
    b.onclick=async function(){b.disabled=true;log('Minting... this can take a minute.');try{var r=await I.claimEdition(pid,t.token_id);log('Status: '+r.status+(r.edition_no?(' - Edition #'+r.edition_no):''));load();}catch(e){log('Error: '+e.message);b.disabled=false;}};d.appendChild(b);}
   box.appendChild(d);});

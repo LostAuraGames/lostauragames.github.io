@@ -20,11 +20,11 @@
    "trait_type": "Event"
   },
   {
-   "value": "-",
+   "value": "GREENFLASH",
    "trait_type": "Won By"
   },
   {
-   "value": 0,
+   "value": 100,
    "trait_type": "Score",
    "display_type": "number"
   }

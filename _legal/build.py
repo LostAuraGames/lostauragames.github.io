@@ -9,8 +9,8 @@ HERE=os.path.dirname(os.path.abspath(__file__));ROOT=os.path.dirname(HERE)
 C=json.load(open(os.path.join(HERE,'legal-config.json')))
 PAGES=[
  ('terms','Terms of Service','Terms of Service for Lost Aura Games: accounts, the game license, earned virtual currency with no cash value, termination and disputes.'),
- ('privacy','Privacy Policy','Privacy Policy for Lost Aura Games: what is stored in your browser, Mythweald accounts on Supabase, optional NFT wallets and sanctions screening, your rights and children.'),
- ('refunds','Refund Policy','Refund Policy for Lost Aura Games: our games sell nothing, so there are no purchases to refund; MEOWTEOR NFTs trade peer-to-peer.'),
+ ('privacy','Privacy Policy','Privacy Policy for Lost Aura Games: what is stored in your browser, Mythweald accounts on Supabase, MEOWTEOR leaderboard and event skins, your rights and children.'),
+ ('refunds','Refund Policy','Refund Policy for Lost Aura Games: our games sell nothing, so there are no purchases to refund.'),
  ('contact','Contact & Imprint','Contact Lost Aura Games and operator (imprint) information.'),
 ]
 def fill(s):
@@ -20,8 +20,8 @@ def fill(s):
         return html.escape(str(v),quote=True) if k not in ('BUSINESS_FORM',) else html.escape(str(v))
     return re.sub(r'\{\{(\w+)\}\}',r,s)
 def footer_nav(pre):
-    return ('<nav aria-label="Footer"><a href="%s">Home</a><a href="%sindex.html#games">Games</a><a href="%sabout.html">About</a>'
-            '<a href="%slegal/terms.html">Terms</a><a href="%slegal/privacy.html">Privacy</a><a href="%slegal/refunds.html">Refunds</a><a href="%slegal/contact.html">Contact</a></nav>')%((pre or './'),pre,pre,pre,pre,pre,pre)
+    return ('<nav aria-label="Footer"><a href="%s">Home</a>'
+            '<a href="%slegal/terms.html">Terms</a><a href="%slegal/privacy.html">Privacy</a><a href="%slegal/refunds.html">Refunds</a><a href="%slegal/contact.html">Contact</a></nav>')%((pre or './'),pre,pre,pre,pre)
 SHELL='''<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -50,7 +50,7 @@ SHELL='''<!DOCTYPE html>
 <header class="site-header">
  <div class="wrap">
   <a class="brand" href="../" aria-label="Lost Aura Games home"><canvas class="pixel-logo" data-size="4" aria-hidden="true"></canvas></a>
-  <nav aria-label="Main"><ul class="nav"><li><a href="../">Home</a></li><li><a href="../index.html#games">Games</a></li><li><a href="../about.html">About</a></li></ul></nav>
+  <nav aria-label="Main"><ul class="nav"><li><a href="../">Home</a></li></ul></nav>
  </div>
 </header>
 <main id="main" class="wrap">
@@ -72,10 +72,7 @@ SHELL='''<!DOCTYPE html>
  </div>
 </footer>
 <script src="../assets/js/pixel.js"></script>
-<script src="../assets/js/games.js"></script>
 <script src="../assets/js/site.js"></script>
-<script src="../assets/js/i18n-dict.js"></script>
-<script src="../assets/js/i18n.js"></script>
 </body>
 </html>
 '''

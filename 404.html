@@ -3,57 +3,63 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Page not found - Lost Aura Games</title>
-<meta name="description" content="This page wandered off into the fog.">
-<link rel="canonical" href="https://lostauragames.com/404.html">
+<title>Lost Aura Games - Under Construction</title>
+<meta name="description" content="Lost Aura Games is under construction. We'll be back soon.">
 <meta name="robots" content="noindex">
 <meta name="theme-color" content="#020403">
 <meta name="color-scheme" content="dark">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Lost Aura Games">
-<meta property="og:title" content="Page not found - Lost Aura Games">
-<meta property="og:description" content="This page wandered off into the fog.">
-<meta property="og:url" content="https://lostauragames.com/404.html">
+<meta property="og:title" content="Lost Aura Games - Under Construction">
+<meta property="og:description" content="Lost Aura Games is under construction. We'll be back soon.">
+<meta property="og:url" content="https://lostauragames.com/">
 <meta property="og:image" content="https://lostauragames.com/assets/img/og.png">
-<meta property="og:image:width" content="1200">
-<meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="Lost Aura Games pixel-art logo with the tagline Lost light, found in pixels.">
-<meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Page not found - Lost Aura Games">
-<meta name="twitter:description" content="This page wandered off into the fog.">
-<meta name="twitter:image" content="https://lostauragames.com/assets/img/og.png">
 <link rel="icon" href="/favicon.ico" sizes="any">
 <link rel="icon" type="image/png" sizes="32x32" href="/assets/img/favicon-32.png">
-<link rel="icon" type="image/png" sizes="16x16" href="/assets/img/favicon-16.png">
 <link rel="apple-touch-icon" href="/assets/img/apple-touch-icon.png">
 <link rel="manifest" href="/site.webmanifest">
 <link rel="stylesheet" href="/assets/css/site.css">
+<style>
+body{min-height:100vh;display:flex;flex-direction:column}
+.uc{flex:1;display:flex;align-items:center;justify-content:center;padding:32px 16px}
+.uc .panel{text-align:center;max-width:560px;width:100%;padding:36px 28px}
+.uc .logo{display:block;margin:0 auto 18px;image-rendering:pixelated;max-width:100%}
+.uc h1{margin:6px 0 10px;font-size:clamp(28px,6vw,46px);color:var(--gold);text-transform:uppercase;letter-spacing:2px;text-shadow:3px 3px 0 #000,0 0 18px rgba(255,210,74,.45)}
+.uc p.sub{margin:0;color:var(--bone);font-size:clamp(15px,2.4vw,18px)}
+.face{position:relative;display:inline-block;width:1.2em;height:1.2em;font-size:clamp(72px,16vw,112px);line-height:1.2;margin:18px 0 6px;font-family:"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif;font-weight:normal}
+.face span{position:absolute;inset:0;text-align:center}
+.face .wink{opacity:0}
+@media (prefers-reduced-motion:no-preference){
+ .face .smile{animation:uc-smile 1.2s steps(1,end) infinite}
+ .face .wink{animation:uc-wink 1.2s steps(1,end) infinite}
+ .face{animation:uc-bob 1.2s ease-in-out infinite}
+}
+@keyframes uc-smile{0%{opacity:1}70%{opacity:0}95%{opacity:1}}
+@keyframes uc-wink{0%{opacity:0}70%{opacity:1}95%{opacity:0}}
+@keyframes uc-bob{0%,60%,100%{transform:translateY(0)}80%{transform:translateY(-4px) rotate(-4deg)}}
+.uc .legal-links{margin-top:22px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+.uc .legal-links .btn{font-size:13px;padding:6px 10px}
+</style>
 </head>
 <body data-root="/">
-<a class="skip" href="#main">Skip to content</a>
 <canvas id="bg" aria-hidden="true"></canvas>
-<header class="site-header">
- <div class="wrap">
-  <a class="brand" href="/" aria-label="Lost Aura Games home"><canvas class="pixel-logo" data-size="4" aria-hidden="true"></canvas></a>
-  <nav aria-label="Main"><ul class="nav"><li><a href="/index.html">Home</a></li><li><a href="/index.html#games">Games</a></li><li><a href="/about.html">About</a></li></ul></nav>
- </div>
-</header>
-<main id="main" class="wrap lost">
- <p class="big404" aria-hidden="true">404</p>
- <h1>This page lost its aura</h1>
- <p class="lead">It wandered off into the fog. Let's get you back to the arcade.</p>
- <div class="actions" style="justify-content:center"><a class="btn gold big" href="/">Back to Lost Aura Games</a><a class="btn" href="/games/croak-and-dagger/">&#9654; Play Croak &amp; Dagger</a></div>
+<main id="main" class="uc">
+ <section class="panel" aria-labelledby="uc-h">
+  <canvas class="pixel-logo logo" data-size="4" aria-label="Lost Aura Games" role="img"></canvas>
+  <p class="kicker">Lost Aura Games</p>
+  <h1 id="uc-h">Under Construction</h1>
+  <div class="face" role="img" aria-label="Smiling face that winks"><span class="smile">&#x1F642;</span><span class="wink" aria-hidden="true">&#x1F609;</span></div>
+  <p class="sub">We're building something new. Check back soon!</p>
+  <nav class="legal-links" aria-label="Legal"><a class="btn" href="/legal/privacy.html">Privacy</a><a class="btn" href="/legal/terms.html">Terms</a></nav>
+ </section>
 </main>
 <footer class="site-footer">
  <div class="wrap">
   <p style="margin:0"><canvas class="pixel-emblem" data-size="1" aria-hidden="true" width="32" height="32"></canvas>&copy; Lost Aura Games 2026</p>
-  <nav aria-label="Footer"><a href="/">Home</a><a href="/index.html#games">Games</a><a href="/about.html">About</a><a href="/legal/terms.html">Terms</a><a href="/legal/privacy.html">Privacy</a><a href="/legal/refunds.html">Refunds</a><a href="/legal/contact.html">Contact</a></nav>
+  <nav aria-label="Footer"><a href="/legal/terms.html">Terms</a><a href="/legal/privacy.html">Privacy</a><a href="/legal/refunds.html">Refunds</a><a href="/legal/contact.html">Contact</a></nav>
  </div>
 </footer>
 <script src="/assets/js/pixel.js"></script>
-<script src="/assets/js/games.js"></script>
 <script src="/assets/js/site.js"></script>
-<script src="/assets/js/i18n-dict.js"></script>
-<script src="/assets/js/i18n.js"></script>
 </body>
 </html>

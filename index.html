@@ -3,86 +3,63 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Lost Aura Games - Retro pixel games you can play in your browser</title>
-<meta name="description" content="Lost Aura Games makes retro-style pixel-art games you can play right in your browser. No downloads, no installs: just press Play. Now playing: MEOWTEOR, Orbit Hills, Croak &amp; Dagger and Mythweald (closed testing).">
+<title>Lost Aura Games - Under Construction</title>
+<meta name="description" content="Lost Aura Games is under construction. We'll be back soon.">
 <link rel="canonical" href="https://lostauragames.com/">
 <meta name="theme-color" content="#020403">
 <meta name="color-scheme" content="dark">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Lost Aura Games">
-<meta property="og:title" content="Lost Aura Games - Retro pixel games you can play in your browser">
-<meta property="og:description" content="Lost Aura Games makes retro-style pixel-art games you can play right in your browser. No downloads, no installs: just press Play. Now playing: MEOWTEOR, Orbit Hills, Croak &amp; Dagger and Mythweald (closed testing).">
+<meta property="og:title" content="Lost Aura Games - Under Construction">
+<meta property="og:description" content="Lost Aura Games is under construction. We'll be back soon.">
 <meta property="og:url" content="https://lostauragames.com/">
 <meta property="og:image" content="https://lostauragames.com/assets/img/og.png">
-<meta property="og:image:width" content="1200">
-<meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="Lost Aura Games pixel-art logo with the tagline Lost light, found in pixels.">
-<meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Lost Aura Games - Retro pixel games you can play in your browser">
-<meta name="twitter:description" content="Lost Aura Games makes retro-style pixel-art games you can play right in your browser. No downloads, no installs: just press Play. Now playing: MEOWTEOR, Orbit Hills, Croak &amp; Dagger and Mythweald (closed testing).">
-<meta name="twitter:image" content="https://lostauragames.com/assets/img/og.png">
 <link rel="icon" href="favicon.ico" sizes="any">
 <link rel="icon" type="image/png" sizes="32x32" href="assets/img/favicon-32.png">
-<link rel="icon" type="image/png" sizes="16x16" href="assets/img/favicon-16.png">
 <link rel="apple-touch-icon" href="assets/img/apple-touch-icon.png">
 <link rel="manifest" href="site.webmanifest">
 <link rel="stylesheet" href="assets/css/site.css">
+<style>
+body{min-height:100vh;display:flex;flex-direction:column}
+.uc{flex:1;display:flex;align-items:center;justify-content:center;padding:32px 16px}
+.uc .panel{text-align:center;max-width:560px;width:100%;padding:36px 28px}
+.uc .logo{display:block;margin:0 auto 18px;image-rendering:pixelated;max-width:100%}
+.uc h1{margin:6px 0 10px;font-size:clamp(28px,6vw,46px);color:var(--gold);text-transform:uppercase;letter-spacing:2px;text-shadow:3px 3px 0 #000,0 0 18px rgba(255,210,74,.45)}
+.uc p.sub{margin:0;color:var(--bone);font-size:clamp(15px,2.4vw,18px)}
+.face{position:relative;display:inline-block;width:1.2em;height:1.2em;font-size:clamp(72px,16vw,112px);line-height:1.2;margin:18px 0 6px;font-family:"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif;font-weight:normal}
+.face span{position:absolute;inset:0;text-align:center}
+.face .wink{opacity:0}
+@media (prefers-reduced-motion:no-preference){
+ .face .smile{animation:uc-smile 1.2s steps(1,end) infinite}
+ .face .wink{animation:uc-wink 1.2s steps(1,end) infinite}
+ .face{animation:uc-bob 1.2s ease-in-out infinite}
+}
+@keyframes uc-smile{0%{opacity:1}70%{opacity:0}95%{opacity:1}}
+@keyframes uc-wink{0%{opacity:0}70%{opacity:1}95%{opacity:0}}
+@keyframes uc-bob{0%,60%,100%{transform:translateY(0)}80%{transform:translateY(-4px) rotate(-4deg)}}
+.uc .legal-links{margin-top:22px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+.uc .legal-links .btn{font-size:13px;padding:6px 10px}
+</style>
 </head>
 <body data-root="">
-<a class="skip" href="#main">Skip to content</a>
 <canvas id="bg" aria-hidden="true"></canvas>
-<header class="site-header">
- <div class="wrap">
-  <a class="brand" href="./" aria-label="Lost Aura Games home"><canvas class="pixel-logo" data-size="4" aria-hidden="true"></canvas></a>
-  <nav aria-label="Main"><ul class="nav"><li><a href="./" aria-current="page">Home</a></li><li><a href="index.html#games">Games</a></li><li><a href="about.html">About</a></li></ul></nav>
- </div>
-</header>
-<main id="main">
- <section class="hero wrap" aria-labelledby="site-title">
-  <h1 id="site-title"><canvas class="pixel-logo" data-size="9" data-fluid aria-hidden="true"></canvas><span class="sr-only">Lost Aura Games</span></h1>
-  <p class="tagline">Lost light, found in pixels.<span class="blink" aria-hidden="true">_</span></p>
-  <p class="lead">Retro-style pixel-art games you can play right in your browser. No downloads, no installs: press Play and you're in.</p>
-  <div class="actions"><a class="btn gold big" href="games/meowteor/">&#9654; Play MEOWTEOR</a><a class="btn" href="#games">All games</a></div>
- </section>
-
- <section class="wrap" aria-labelledby="featured-title">
-  <div id="featured" class="panel purple featured">
-   <div class="feat-body"><p class="kicker">Featured game</p><h2 id="featured-title">MEOWTEOR</h2><p><a class="btn gold" href="games/meowteor/">Play</a></p></div>
-  </div>
- </section>
-
- <section id="games" class="wrap" aria-labelledby="games-h">
-  <div class="section-title"><h2 id="games-h">The <span class="glow">Arcade</span></h2></div>
-  <div id="games-grid" class="grid">
-   <noscript><p>Turn on JavaScript to see the game list, or go straight to <a href="games/meowteor.html">MEOWTEOR</a>, <a href="games/orbit-hills.html">Orbit Hills</a> or <a href="games/croak-and-dagger.html">Croak &amp; Dagger</a>, plus the <a href="games/mythweald.html">Mythweald</a> Closed Testing.</p></noscript>
-  </div>
- </section>
-
- <section class="wrap" aria-labelledby="about-h">
-  <div class="panel blue about-strip">
-   <canvas class="pixel-emblem" data-size="4" aria-hidden="true" width="128" height="128"></canvas>
-   <div>
-    <h2 id="about-h">About the <span class="glow">Studio</span></h2>
-    <p>Lost Aura Games is a small studio making retro-style, pixel-art games. Every game here runs in your browser on desktop and mobile, and your progress saves on your device. Expect handcrafted pixels, chiptune sound and games that are quick to pick up and hard to put down.</p>
-    <div class="actions"><a class="btn" href="about.html">More about us</a></div>
-   </div>
-  </div>
+<main id="main" class="uc">
+ <section class="panel" aria-labelledby="uc-h">
+  <canvas class="pixel-logo logo" data-size="4" aria-label="Lost Aura Games" role="img"></canvas>
+  <p class="kicker">Lost Aura Games</p>
+  <h1 id="uc-h">Under Construction</h1>
+  <div class="face" role="img" aria-label="Smiling face that winks"><span class="smile">&#x1F642;</span><span class="wink" aria-hidden="true">&#x1F609;</span></div>
+  <p class="sub">We're building something new. Check back soon!</p>
+  <nav class="legal-links" aria-label="Legal"><a class="btn" href="legal/privacy.html">Privacy</a><a class="btn" href="legal/terms.html">Terms</a></nav>
  </section>
 </main>
 <footer class="site-footer">
  <div class="wrap">
   <p style="margin:0"><canvas class="pixel-emblem" data-size="1" aria-hidden="true" width="32" height="32"></canvas>&copy; Lost Aura Games 2026</p>
-  <nav aria-label="Footer"><a href="./">Home</a><a href="index.html#games">Games</a><a href="about.html">About</a><a href="legal/terms.html">Terms</a><a href="legal/privacy.html">Privacy</a><a href="legal/refunds.html">Refunds</a><a href="legal/contact.html">Contact</a></nav>
+  <nav aria-label="Footer"><a href="legal/terms.html">Terms</a><a href="legal/privacy.html">Privacy</a><a href="legal/refunds.html">Refunds</a><a href="legal/contact.html">Contact</a></nav>
  </div>
 </footer>
 <script src="assets/js/pixel.js"></script>
-<script src="assets/js/games.js"></script>
-<script src="assets/js/keyart-croak.js"></script>
-<script src="assets/js/keyart-orbit.js"></script>
-<script src="assets/js/keyart-meowteor.js"></script>
 <script src="assets/js/site.js"></script>
-<script src="assets/js/i18n-dict.js"></script>
-<script src="assets/js/i18n.js"></script>
-<script src="assets/js/lag-wallet.js"></script>
 </body>
 </html>

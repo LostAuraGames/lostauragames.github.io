@@ -1,6 +1,4 @@
 User-agent: *
 Allow: /
-Disallow: /playtest/
-Disallow: /press/
 
 Sitemap: https://lostauragames.com/sitemap.xml
